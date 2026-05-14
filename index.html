@@ -1760,10 +1760,9 @@
       ].filter(cell => cell.value !== '' && cell.value !== null && cell.value !== undefined);
 
       try {
-        const response = await fetch('https://api.smartsheet.com/2.0/sheets/1062655107223428/rows', {
+        const response = await fetch('/api/submit', {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer MMFCJy7oudAiogthKDG5BTPjzwq1PHDSaTe4D',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
