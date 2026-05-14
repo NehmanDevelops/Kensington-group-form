@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     const response = await fetch('https://api.smartsheet.com/2.0/sheets/1062655107223428/rows', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer MMFCJy7oudAiogthKDG5BTPjzwq1PHDSaTe4D',
+        'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(req.body)
