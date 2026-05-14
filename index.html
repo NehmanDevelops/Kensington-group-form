@@ -1307,18 +1307,17 @@
 
       <div class="field">
         <label class="field-label">What type of cabin class will we be booking?<span class="required-mark">*</span></label>
-        <div class="field-subtitle">Select all that apply</div>
         <div class="checkbox-group">
           <label class="checkbox-item">
-            <input type="checkbox" name="cabinClass" value="Economy" />
+            <input type="radio" name="cabinClass" value="Economy" />
             <span>Economy</span>
           </label>
           <label class="checkbox-item">
-            <input type="checkbox" name="cabinClass" value="Premium Economy" />
+            <input type="radio" name="cabinClass" value="Premium Economy" />
             <span>Premium Economy</span>
           </label>
           <label class="checkbox-item">
-            <input type="checkbox" name="cabinClass" value="Business Class" />
+            <input type="radio" name="cabinClass" value="Business Class" />
             <span>Business Class</span>
           </label>
         </div>
@@ -1726,7 +1725,7 @@
         { columnId: 8196600534175620, value: v('arrivalTime') },
         { columnId: 2478852306931588, value: v('departureDate') || null },
         { columnId: 6634168741302148, value: v('departureTime') },
-        { columnId: 6673259956572036, value: arr('cabinClass') },
+        { columnId: 6673259956572036, value: v('cabinClass') },
         { columnId: 4421460142886788, value: v('checkedBag') },
         { columnId: 565093900521348,  value: v('prepaidSeats') },
         { columnId: 7577779062476676, value: v('prepaidSeatsOther') },
