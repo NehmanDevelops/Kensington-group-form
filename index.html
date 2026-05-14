@@ -1258,10 +1258,6 @@
         </div>
       </div>
 
-      <div class="field">
-        <label class="field-label" for="numPassengers">Approximate number of passengers</label>
-        <input type="text" id="numPassengers" name="numPassengers" class="field-input" />
-      </div>
 
       <div class="field">
         <label class="field-label" for="sameGateway">Will your group have 10 or more passengers departing from the same gateway?</label>
@@ -1498,8 +1494,8 @@
         <div class="field-subtitle">Group travel manager will be in contact for full details — please do not enter credit card numbers in this form</div>
         <select id="afterHoursPaid" name="afterHoursPaid" class="field-select">
           <option value="">Select an option</option>
-          <option value="Company Card">Company Card</option>
-          <option value="Individual Traveller Card">Individual Traveller Card</option>
+          <option value="Employer">Employer</option>
+          <option value="Passenger">Passenger</option>
         </select>
       </div>
 
@@ -1718,7 +1714,6 @@
         // ── AIRFARE ──
         { columnId: 6295560381566852, value: v('arrivalAirport') },
         { columnId: 1775164865154948, value: v('departureAirport') },
-        { columnId: 842609924018052,  value: v('numPassengers') },
         { columnId: 3285595760922500, value: v('sameGateway') },
         { columnId: 4526373669736324, value: v('gatewayDetails') },
         { columnId: 7478593671434116, value: v('arrivalDate') || null },
