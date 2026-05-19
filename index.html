@@ -1686,71 +1686,71 @@
       // Build Smartsheet row cells mapped to column IDs
       const cells = [
         // ── EVENT INFORMATION ──
-        { columnId: 1712482115948420, value: v('companyName') },
-        { columnId: 6769782417559428, value: v('eventManagerName') },
-        { columnId: 4624166610571140, value: v('eventManagerEmail') },
-        { columnId: 6286747108675460, value: v('eventManagerPhone') },
-        { columnId: 4031663792492420, value: v('groupType') },
-        { columnId: 7101992181993348, value: v('groupTypeOther') },
-        { columnId: 1498389002096516, value: v('eventName') },
-        { columnId: 2651896707059588, value: v('eventDate') || null },
-        { columnId: 3187238862360452, value: v('eventAddress') },
-        { columnId: 6382359103704964, value: v('eventCode') },
-        { columnId: 391043102314372,  value: arr('reporting') },
-        { columnId: 1930116078014340, value: v('reportingOtherText') },
-        { columnId: 5463006422273924, value: arr('reportingSchedule') },
-        { columnId: 3935167873060740, value: v('reportingScheduleOtherText') },
-        { columnId: 3217955075952516, value: v('numAttendees') },
-        { columnId: 8212693273317252, value: v('approvedList') },
-        { columnId: 425602959314820,  value: v('registrationLink') },
-        { columnId: 5298686342238084, value: v('expenses') },
-        { columnId: 4500006035033988, value: v('expensesOther') },
-        { columnId: 3367395141128068, value: v('needAir') },
-        { columnId: 3611051202744196, value: v('needHotel') },
-        { columnId: 3329576226033540, value: v('needGround') },
-        { columnId: 5211124843974532, value: v('deviations') },
-        { columnId: 8705274482560900, value: v('deviationCovered') },
+        { columnId: 1061015075983236, value: v('companyName') },
+        { columnId: 5564614703353732, value: v('eventManagerName') },
+        { columnId: 3312814889668484, value: v('eventManagerEmail') },
+        { columnId: 7816414517038980, value: v('eventManagerPhone') },
+        { columnId: 2186914982825860, value: v('groupType') },
+        { columnId: 6690514610196356, value: v('groupTypeOther') },
+        { columnId: 4438714796511108, value: v('eventName') },
+        { columnId: 8942314423881604, value: v('eventDate') || null },
+        { columnId: 40668285407108,   value: v('eventAddress') },
+        { columnId: 4544267912777604, value: v('eventCode') },
+        { columnId: 2292468099092356, value: arr('reporting') },
+        { columnId: 6796067726462852, value: v('reportingOtherText') },
+        { columnId: 1166568192249732, value: arr('reportingSchedule') },
+        { columnId: 5670167819620228, value: v('reportingScheduleOtherText') },
+        { columnId: 3418368005934980, value: v('numAttendees') },
+        { columnId: 7921967633305476, value: v('approvedList') },
+        { columnId: 603618238828420,  value: v('registrationLink') },
+        { columnId: 5107217866198916, value: v('expenses') },
+        { columnId: 2855418052513668, value: v('expensesOther') },
+        { columnId: 7359017679884164, value: v('needAir') },
+        { columnId: 1729518145671044, value: v('needHotel') },
+        { columnId: 6233117773041540, value: v('needGround') },
+        { columnId: 3981317959356292, value: v('deviations') },
+        { columnId: 8484917586726788, value: v('deviationCovered') },
 
         // ── AIRFARE ──
-        { columnId: 6295560381566852, value: v('arrivalAirport') },
-        { columnId: 1775164865154948, value: v('departureAirport') },
-        { columnId: 3285595760922500, value: v('sameGateway') },
-        { columnId: 4526373669736324, value: v('gatewayDetails') },
-        { columnId: 7478593671434116, value: v('arrivalDate') || null },
-        { columnId: 8196600534175620, value: v('arrivalTime') },
-        { columnId: 2478852306931588, value: v('departureDate') || null },
-        { columnId: 6634168741302148, value: v('departureTime') },
-        { columnId: 6673259956572036, value: v('cabinClass') },
-        { columnId: 4421460142886788, value: v('checkedBag') },
-        { columnId: 565093900521348,  value: v('prepaidSeats') },
-        { columnId: 7577779062476676, value: v('prepaidSeatsOther') },
-        { columnId: 1018745526194052, value: v('upgradedSeats') },
-        { columnId: 8021183902814084, value: v('upgradedSeatsOther') },
-        { columnId: 8925059770257284, value: v('airfareParams') },
+        { columnId: 2573943075803012, value: v('arrivalAirport') },
+        { columnId: 7077542703173508, value: v('departureAirport') },
+        { columnId: 1448043168960388, value: v('sameGateway') },
+        { columnId: 5951642796330884, value: v('gatewayDetails') },
+        { columnId: 3699842982645636, value: v('arrivalDate') || null },
+        { columnId: 8203442610016132, value: v('arrivalTime') },
+        { columnId: 885093215539076,  value: v('departureDate') || null },
+        { columnId: 5388692842909572, value: v('departureTime') },
+        { columnId: 3136893029224324, value: v('cabinClass') },
+        { columnId: 7640492656594820, value: v('checkedBag') },
+        { columnId: 2010993122381700, value: v('prepaidSeats') },
+        { columnId: 6514592749752196, value: v('prepaidSeatsOther') },
+        { columnId: 4262792936066948, value: v('upgradedSeats') },
+        { columnId: 8766392563437444, value: v('upgradedSeatsOther') },
+        { columnId: 181405773762436,  value: v('airfareParams') },
 
         // ── HOTEL ──
-        { columnId: 8146516417220484, value: v('groupBlock') },
-        { columnId: 828167022743428,  value: v('groupBlockOther') },
-        { columnId: 8445557843726212, value: v('hotelSourcing') },
-        { columnId: 5331766650113924, value: v('hotelSourcingDetails') },
-        { columnId: 4155235554856836, value: v('singleRooms') },
-        { columnId: 6970786970898308, value: v('doubleRooms') },
-        { columnId: 5264387874262916, value: v('otherRoomType') },
-        { columnId: 7511093219200900, value: v('roomingLink') },
+        { columnId: 2433205587447684, value: v('groupBlock') },
+        { columnId: 6936805214818180, value: v('groupBlockOther') },
+        { columnId: 1307305680605060, value: v('hotelSourcing') },
+        { columnId: 5810905307975556, value: v('hotelSourcingDetails') },
+        { columnId: 8062705121660804, value: v('singleRooms') },
+        { columnId: 744355727183748,  value: v('doubleRooms') },
+        { columnId: 5247955354554244, value: v('otherRoomType') },
+        { columnId: 2996155540868996, value: v('roomingLink') },
 
         // ── GROUND TRANSPORTATION ──
-        { columnId: 2074250919055236, value: v('transfers') },
+        { columnId: 1870255634026372, value: v('transfers') },
 
         // ── AFTER HOURS & POLICY ──
-        { columnId: 4890978485047172, value: v('disruptionCovered') },
-        { columnId: 5238725276897156, value: v('afterHoursPaid') },
-        { columnId: 6549930574647172, value: v('anythingElse') },
+        { columnId: 4122055447711620, value: v('disruptionCovered') },
+        { columnId: 8625655075082116, value: v('afterHoursPaid') },
+        { columnId: 462880750473092,  value: v('anythingElse') },
 
         // ── HIDDEN SYSTEM FIELDS ──
-        { columnId: 2852290737508228, value: 'Kensington Website Form' }, // Source Form
-        { columnId: 6896621391744900, value: 'New' },                      // Status
-        { columnId: 7966051068579716, value: false },                      // Needs Review
-        { columnId: 5971395157987204, value: today },                      // Date of Request
+        { columnId: 1588780657315716, value: 'Kensington Website Form' }, // Source Form
+        { columnId: 2714680564158340, value: 'New' },                      // Status
+        { columnId: 6092380284686212, value: false },                      // Needs Review
+        { columnId: 3840580471000964, value: today },                      // Date of Request
       ].filter(cell => cell.value !== '' && cell.value !== null && cell.value !== undefined);
 
       try {
