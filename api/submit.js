@@ -8,7 +8,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const response = await fetch('https://api.smartsheet.com/2.0/sheets/3569349083221892/rows', {
+    // ── Step 1: Save to Group Travel intake sheet ──────────────────────────
+    const intakeRes = await fetch('https://api.smartsheet.com/2.0/sheets/3569349083221892/rows', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
@@ -17,10 +18,71 @@ export default async function handler(req, res) {
       body: JSON.stringify(req.body)
     });
 
-    const data = await response.json();
+    const intakeData = await intakeRes.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.message || 'Smartsheet error' });
+    if (!intakeRes.ok) {
+      return res.status(intakeRes.status).json({ error: intakeData.message || 'Smartsheet error' });
+    }
+
+    // ── Step 2: Mirror key fields to LIVE GROUP MASTERSHEET ───────────────
+    // Build a lookup map: columnId → value from the submitted cells
+    const cells = req.body?.rows?.[0]?.cells || [];
+    const cellMap = {};
+    for (const cell of cells) {
+      cellMap[String(cell.columnId)] = cell.value;
+    }
+
+    // Intake sheet column IDs for the fields we want to mirror
+    const INTAKE = {
+      companyName:       '1061015075983236',
+      eventName:         '4438714796511108',
+      eventManagerName:  '5564614703353732',
+      eventManagerEmail: '3312814889668484',
+      arrivalDate:       '3699842982645636',
+      departureDate:     '885093215539076',
+    };
+
+    // LIVE GROUP MASTERSHEET (sheet 4820086761148292) column IDs
+    const MASTER = {
+      companyName:  5174886116134788,
+      groupName:    2923086302449540,
+      contactName:  7426685929820036,
+      contactEmail: 1797186395606916,
+      status:       6300786022977412,
+      completed:    4048986209292164,
+      startDate:    4893411139424132,
+      endDate:      2641611325738884,
+    };
+
+    const masterCells = [
+      { columnId: MASTER.companyName,  value: cellMap[INTAKE.companyName]       || '' },
+      { columnId: MASTER.groupName,    value: cellMap[INTAKE.eventName]          || '' },
+      { columnId: MASTER.contactName,  value: cellMap[INTAKE.eventManagerName]   || '' },
+      { columnId: MASTER.contactEmail, value: cellMap[INTAKE.eventManagerEmail]  || '' },
+      { columnId: MASTER.status,       value: 'New' },
+      { columnId: MASTER.completed,    value: false },
+    ];
+
+    if (cellMap[INTAKE.arrivalDate]) {
+      masterCells.push({ columnId: MASTER.startDate, value: cellMap[INTAKE.arrivalDate] });
+    }
+    if (cellMap[INTAKE.departureDate]) {
+      masterCells.push({ columnId: MASTER.endDate, value: cellMap[INTAKE.departureDate] });
+    }
+
+    const masterRes = await fetch('https://api.smartsheet.com/2.0/sheets/4820086761148292/rows', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ rows: [{ cells: masterCells }] })
+    });
+
+    if (!masterRes.ok) {
+      const masterErr = await masterRes.json();
+      // Don't fail the whole request — intake row is already saved
+      console.error('MASTER TRACKER write failed:', masterErr.message);
     }
 
     return res.status(200).json({ success: true });
