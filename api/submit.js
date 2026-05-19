@@ -34,33 +34,27 @@ export default async function handler(req, res) {
 
     // Intake sheet column IDs for the fields we want to mirror
     const INTAKE = {
-      companyName:       '1061015075983236',
-      eventName:         '4438714796511108',
-      eventManagerName:  '5564614703353732',
-      eventManagerEmail: '3312814889668484',
-      arrivalDate:       '3699842982645636',
-      departureDate:     '885093215539076',
+      companyName:  '1061015075983236',
+      eventName:    '4438714796511108',
+      arrivalDate:  '3699842982645636',
+      departureDate:'885093215539076',
     };
 
     // LIVE GROUP MASTERSHEET (sheet 4820086761148292) column IDs
     const MASTER = {
-      companyName:  5174886116134788,
-      groupName:    2923086302449540,
-      contactName:  7426685929820036,
-      contactEmail: 1797186395606916,
-      status:       6300786022977412,
-      completed:    4048986209292164,
-      startDate:    4893411139424132,
-      endDate:      2641611325738884,
+      companyName: 5174886116134788,
+      groupName:   2923086302449540,
+      status:      6300786022977412,
+      completed:   4048986209292164,
+      startDate:   4893411139424132,
+      endDate:     2641611325738884,
     };
 
     const masterCells = [
-      { columnId: MASTER.companyName,  value: cellMap[INTAKE.companyName]       || '' },
-      { columnId: MASTER.groupName,    value: cellMap[INTAKE.eventName]          || '' },
-      { columnId: MASTER.contactName,  value: cellMap[INTAKE.eventManagerName]   || '' },
-      { columnId: MASTER.contactEmail, value: cellMap[INTAKE.eventManagerEmail]  || '' },
-      { columnId: MASTER.status,       value: 'New' },
-      { columnId: MASTER.completed,    value: false },
+      { columnId: MASTER.companyName, value: cellMap[INTAKE.companyName] || '' },
+      { columnId: MASTER.groupName,   value: cellMap[INTAKE.eventName]   || '' },
+      { columnId: MASTER.status,      value: 'New' },
+      { columnId: MASTER.completed,   value: false },
     ];
 
     if (cellMap[INTAKE.arrivalDate]) {
