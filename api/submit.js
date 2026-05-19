@@ -70,7 +70,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ rows: [{ cells: masterCells }] })
+      body: JSON.stringify([{ cells: masterCells }])
     });
 
     if (!masterRes.ok) {
