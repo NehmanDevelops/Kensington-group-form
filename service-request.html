@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — Service Request</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #2a2a28;
+    --ink-soft: #4a4a45;
+    --ink-mute: #7d7a73;
+    --bone: #f5f1e8;
+    --paper: #fbf9f3;
+    --cream: #efe9dc;
+    --gold: #b89968;
+    --gold-deep: #8a7146;
+    --rust: #9c5a3c;
+    --accent: #6b8e7f;
+    --line: #d9d2c2;
+    --error: #b03a3a;
+    --shadow-sm: 0 1px 2px rgba(42,42,40,.04), 0 1px 3px rgba(42,42,40,.06);
+    --shadow-md: 0 4px 12px rgba(42,42,40,.06), 0 2px 4px rgba(42,42,40,.04);
+    --shadow-lg: 0 12px 40px rgba(42,42,40,.08), 0 4px 12px rgba(42,42,40,.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--paper); color: var(--ink); line-height: 1.6; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+  /* HERO */
+  .hero { position: relative; height: 420px; overflow: hidden; background: #0e1418; display: flex; align-items: center; justify-content: center; }
+  .hero-bg { position: absolute; inset: 0; z-index: 1; }
+  .hero-bg::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 20%, rgba(184,153,104,.18) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(107,142,127,.15) 0%, transparent 55%), linear-gradient(135deg, #0e1418 0%, #1c1f24 40%, #181612 100%); z-index: 2; }
+  .hero-content { position: relative; z-index: 10; text-align: center; padding: 0 2rem; }
+  .hero-eyebrow { font-family: 'Inter', sans-serif; font-size: .65rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.2rem; opacity: .9; }
+  .hero-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.4rem, 5vw, 3.6rem); font-weight: 300; color: #f5f1e8; line-height: 1.15; margin-bottom: .8rem; }
+  .hero-title em { font-style: italic; color: var(--gold); }
+  .hero-divider { width: 48px; height: 1px; background: var(--gold); margin: 1.2rem auto; opacity: .6; }
+  .hero-sub { font-size: .85rem; color: rgba(245,241,232,.6); font-weight: 300; max-width: 480px; line-height: 1.7; }
+
+  /* LOGO */
+  .logo-wrap { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: 1.8rem; }
+  .logo-icon { width: 38px; height: 38px; opacity: .9; }
+  .logo-text { font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #f5f1e8; }
+  .logo-text span { display: block; font-size: .6rem; letter-spacing: .25em; color: var(--gold); margin-top: .1rem; }
+
+  /* FORM WRAPPER */
+  .form-wrapper { max-width: 780px; margin: 0 auto; padding: 0 1.5rem 5rem; }
+  .form-intro { background: white; border: 1px solid var(--line); border-radius: 2px; padding: 2rem 2.5rem; margin: -2.5rem 0 2rem; box-shadow: var(--shadow-lg); text-align: center; }
+  .form-intro p { font-size: .85rem; color: var(--ink-soft); line-height: 1.8; margin-bottom: .5rem; }
+  .form-intro p:last-child { margin-bottom: 0; }
+  .urgency-note { font-size: .78rem; color: var(--rust); font-style: italic; }
+
+  /* SECTIONS */
+  .form-section { background: white; border: 1px solid var(--line); border-radius: 2px; padding: 2rem 2.5rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm); }
+  .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--cream); }
+  .section-num { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--gold); margin-right: .6rem; }
+  .section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 500; color: var(--ink); }
+  .section-tag { font-size: .6rem; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--ink-mute); }
+
+  /* FIELDS */
+  .field-grid { display: grid; gap: 1.25rem; }
+  .field-grid.col-2 { grid-template-columns: 1fr 1fr; }
+  .field-grid.col-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .field-group { display: flex; flex-direction: column; gap: .4rem; }
+  .field-label { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+  .required-mark { color: var(--rust); margin-left: 2px; }
+  .field-input, .field-select, .field-textarea { width: 100%; padding: .65rem .85rem; border: 1px solid var(--line); border-radius: 2px; font-family: 'Inter', sans-serif; font-size: .88rem; color: var(--ink); background: var(--paper); transition: border-color .2s, box-shadow .2s; outline: none; }
+  .field-input:focus, .field-select:focus, .field-textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,153,104,.12); background: white; }
+  .field-textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+  .field-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237d7a73' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .85rem center; padding-right: 2.2rem; cursor: pointer; }
+
+  /* URGENCY BADGES */
+  .urgency-options { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .urgency-option { display: none; }
+  .urgency-option + label { display: flex; align-items: center; gap: .5rem; padding: .55rem 1.1rem; border: 1px solid var(--line); border-radius: 2px; font-size: .82rem; cursor: pointer; transition: all .2s; color: var(--ink-soft); background: var(--paper); }
+  .urgency-option + label:hover { border-color: var(--gold); color: var(--ink); }
+  .urgency-option:checked + label { border-color: var(--gold); background: rgba(184,153,104,.08); color: var(--ink); font-weight: 500; }
+  .urgency-option[value="Urgent"]:checked + label { border-color: #c47a2a; background: rgba(196,122,42,.07); color: #8a5010; }
+  .urgency-option[value="Emergency"]:checked + label { border-color: var(--rust); background: rgba(156,90,60,.07); color: var(--rust); }
+  .urgency-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+  .urgency-option[value="Urgent"] + label .urgency-dot { background: #c47a2a; }
+  .urgency-option[value="Emergency"] + label .urgency-dot { background: var(--rust); }
+
+  /* SUBMIT */
+  .submit-section { text-align: center; padding: 1rem 0 0; }
+  .submit-btn { display: inline-flex; align-items: center; gap: .6rem; padding: .9rem 3rem; background: var(--ink); color: var(--bone); font-family: 'Inter', sans-serif; font-size: .8rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; border: none; border-radius: 2px; cursor: pointer; transition: background .2s, transform .1s; }
+  .submit-btn:hover { background: #3d3d38; }
+  .submit-btn:active { transform: scale(.98); }
+  .submit-btn.loading { opacity: .7; pointer-events: none; }
+
+  /* SUCCESS */
+  .success-card { background: white; border: 1px solid var(--line); border-radius: 2px; padding: 3.5rem 2rem; text-align: center; box-shadow: var(--shadow-lg); margin-top: 1rem; display: none; }
+  .success-icon { width: 48px; height: 48px; border: 1px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+  .success-icon svg { width: 20px; height: 20px; stroke: var(--gold); }
+  .success-title { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 400; margin-bottom: .6rem; }
+  .success-title em { font-style: italic; color: var(--gold); }
+  .success-sub { font-size: .85rem; color: var(--ink-soft); line-height: 1.8; max-width: 400px; margin: 0 auto; }
+
+  /* ERROR */
+  .error-msg { color: var(--error); font-size: .8rem; margin-top: 1rem; text-align: center; display: none; }
+
+  @media (max-width: 600px) {
+    .field-grid.col-2, .field-grid.col-3 { grid-template-columns: 1fr; }
+    .form-section { padding: 1.5rem 1.25rem; }
+    .form-intro { padding: 1.5rem 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="logo-wrap">
+      <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 4L24 12H32L26 17L28 25L20 20L12 25L14 17L8 12H16L20 4Z" stroke="#b89968" stroke-width="1" fill="none" stroke-linejoin="round"/>
+        <circle cx="20" cy="20" r="17" stroke="#b89968" stroke-width=".5" opacity=".3"/>
+      </svg>
+      <div class="logo-text">Kensington Corporate<span>Group Travel</span></div>
+    </div>
+    <div class="hero-eyebrow">Client Services</div>
+    <h1 class="hero-title">Service <em>Request</em> Form</h1>
+    <div class="hero-divider"></div>
+    <p class="hero-sub">Submit changes, cancellations, or special requests for your group booking.</p>
+  </div>
+</div>
+
+<!-- FORM -->
+<div class="form-wrapper">
+
+  <div class="form-intro">
+    <p>Use this form to request changes or additions to an existing group booking. Our team will review your request and respond within <strong>4 business hours</strong> for standard requests.</p>
+    <p class="urgency-note">For emergency requests, please also call your dedicated Group Specialist directly.</p>
+  </div>
+
+  <form id="serviceForm" novalidate>
+
+    <!-- SECTION 1: GROUP IDENTIFICATION -->
+    <div class="form-section">
+      <div class="section-header">
+        <div><span class="section-num">1.</span><span class="section-title">Group Identification</span></div>
+        <span class="section-tag">Booking Details</span>
+      </div>
+      <div class="field-grid col-2">
+        <div class="field-group">
+          <label class="field-label" for="companyName">Company Name<span class="required-mark">*</span></label>
+          <input type="text" id="companyName" name="companyName" class="field-input" placeholder="e.g. Kensington Corporate" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="groupId">Group ID / Group Name<span class="required-mark">*</span></label>
+          <input type="text" id="groupId" name="groupId" class="field-input" placeholder="e.g. N*TJHOU or Houston Party" required />
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: CONTACT INFORMATION -->
+    <div class="form-section">
+      <div class="section-header">
+        <div><span class="section-num">2.</span><span class="section-title">Contact Information</span></div>
+        <span class="section-tag">Who to Reach</span>
+      </div>
+      <div class="field-grid col-2">
+        <div class="field-group">
+          <label class="field-label" for="contactName">Contact Name<span class="required-mark">*</span></label>
+          <input type="text" id="contactName" name="contactName" class="field-input" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="contactEmail">Contact Email<span class="required-mark">*</span></label>
+          <input type="email" id="contactEmail" name="contactEmail" class="field-input" required />
+        </div>
+      </div>
+      <div class="field-grid" style="margin-top:1.25rem;">
+        <div class="field-group">
+          <label class="field-label" for="contactPhone">Contact Phone</label>
+          <input type="tel" id="contactPhone" name="contactPhone" class="field-input" placeholder="+1 (000) 000-0000" />
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: REQUEST DETAILS -->
+    <div class="form-section">
+      <div class="section-header">
+        <div><span class="section-num">3.</span><span class="section-title">Request Details</span></div>
+        <span class="section-tag">What You Need</span>
+      </div>
+
+      <div class="field-grid col-2" style="margin-bottom:1.25rem;">
+        <div class="field-group">
+          <label class="field-label" for="requestType">Request Type<span class="required-mark">*</span></label>
+          <select id="requestType" name="requestType" class="field-select" required>
+            <option value="" disabled selected>Select a request type</option>
+            <option value="Flight Change">Flight Change</option>
+            <option value="Flight Cancellation">Flight Cancellation</option>
+            <option value="Hotel Modification">Hotel Modification</option>
+            <option value="Hotel Cancellation">Hotel Cancellation</option>
+            <option value="Ground Transportation Change">Ground Transportation Change</option>
+            <option value="Special Request">Special Request</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="travellerNames">Traveller Name(s) Affected</label>
+          <input type="text" id="travellerNames" name="travellerNames" class="field-input" placeholder="e.g. John Smith, Jane Doe" />
+        </div>
+      </div>
+
+      <div class="field-grid" style="margin-bottom:1.25rem;">
+        <div class="field-group">
+          <label class="field-label" for="currentBooking">Current Booking Details<span class="required-mark">*</span></label>
+          <textarea id="currentBooking" name="currentBooking" class="field-textarea" placeholder="Describe what is currently booked (flights, hotel, dates, confirmation numbers, etc.)" required></textarea>
+        </div>
+      </div>
+
+      <div class="field-grid" style="margin-bottom:1.25rem;">
+        <div class="field-group">
+          <label class="field-label" for="requestedChange">Requested Change<span class="required-mark">*</span></label>
+          <textarea id="requestedChange" name="requestedChange" class="field-textarea" placeholder="Describe exactly what you'd like changed or added" required></textarea>
+        </div>
+      </div>
+
+      <div class="field-grid col-2">
+        <div class="field-group">
+          <label class="field-label" for="reason">Reason for Change</label>
+          <input type="text" id="reason" name="reason" class="field-input" placeholder="e.g. Schedule conflict, medical, preference" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="resolutionDate">Preferred Resolution Date</label>
+          <input type="date" id="resolutionDate" name="resolutionDate" class="field-input" />
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: URGENCY -->
+    <div class="form-section">
+      <div class="section-header">
+        <div><span class="section-num">4.</span><span class="section-title">Urgency</span></div>
+        <span class="section-tag">Priority Level</span>
+      </div>
+      <div class="urgency-options">
+        <input type="radio" name="urgency" id="urgNormal" value="Normal" class="urgency-option" checked />
+        <label for="urgNormal"><span class="urgency-dot"></span> Normal</label>
+
+        <input type="radio" name="urgency" id="urgUrgent" value="Urgent" class="urgency-option" />
+        <label for="urgUrgent"><span class="urgency-dot"></span> Urgent</label>
+
+        <input type="radio" name="urgency" id="urgEmergency" value="Emergency" class="urgency-option" />
+        <label for="urgEmergency"><span class="urgency-dot"></span> Emergency</label>
+      </div>
+    </div>
+
+    <!-- SECTION 5: ADDITIONAL NOTES -->
+    <div class="form-section">
+      <div class="section-header">
+        <div><span class="section-num">5.</span><span class="section-title">Additional Notes</span></div>
+        <span class="section-tag">Anything Else</span>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="additionalNotes">Notes</label>
+        <textarea id="additionalNotes" name="additionalNotes" class="field-textarea" placeholder="Any other information that may help us process your request"></textarea>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="submit-section">
+      <button type="submit" class="submit-btn" id="submitBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+        Submit Request
+      </button>
+      <div class="error-msg" id="errorMsg">Something went wrong. Please try again or contact your Group Specialist.</div>
+    </div>
+
+  </form>
+
+  <!-- SUCCESS -->
+  <div class="success-card" id="successCard">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2 class="success-title">Request <em>Received</em></h2>
+    <p class="success-sub">Your service request has been submitted. A member of our team will be in touch within 4 business hours to confirm next steps.</p>
+  </div>
+
+</div>
+
+<script>
+  document.getElementById('serviceForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const btn = document.getElementById('submitBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    btn.classList.add('loading');
+    btn.textContent = 'Submitting…';
+    errorMsg.style.display = 'none';
+
+    const v = (id) => (document.getElementById(id)?.value || '').trim();
+    const urgency = document.querySelector('input[name="urgency"]:checked')?.value || 'Normal';
+    const today = new Date().toISOString().split('T')[0];
+    const resDate = v('resolutionDate');
+
+    const cells = [
+      { columnId: 3134924290035588, value: v('companyName') },
+      { columnId: 7638523917406084, value: v('groupId') },
+      { columnId: 2009024383192964, value: v('contactName') },
+      { columnId: 4260824196878212, value: v('contactPhone') },
+      { columnId: 8764423824248708, value: v('requestType') },
+      { columnId: 179437034573700,  value: urgency },
+      { columnId: 4683036661944196, value: v('travellerNames') },
+      { columnId: 2431236848258948, value: v('currentBooking') },
+      { columnId: 6934836475629444, value: v('requestedChange') },
+      { columnId: 1305336941416324, value: v('reason') },
+      { columnId: 3557136755101572, value: v('additionalNotes') },
+      { columnId: 8060736382472068, value: 'New' },
+      { columnId: 742386987995012,  value: today },
+    ].filter(c => c.value !== '' && c.value !== null && c.value !== undefined);
+
+    if (resDate) cells.push({ columnId: 5808936568786820, value: resDate });
+
+    try {
+      const resp = await fetch('/api/submit-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cells })
+      });
+
+      if (!resp.ok) throw new Error('Submission failed');
+
+      document.getElementById('serviceForm').style.display = 'none';
+      document.getElementById('successCard').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (err) {
+      errorMsg.style.display = 'block';
+      btn.classList.remove('loading');
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg> Submit Request';
+    }
+  });
+</script>
+</body>
+</html>
