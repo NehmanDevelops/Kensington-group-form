@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
     // ── Step 2: Mirror key fields to LIVE GROUP MASTERSHEET ───────────────
     // Build a lookup map: columnId → value from the submitted cells
-    const cells = req.body?.rows?.[0]?.cells || [];
+    const cells = req.body?.cells || [];
     const cellMap = {};
     for (const cell of cells) {
       cellMap[String(cell.columnId)] = cell.value;
