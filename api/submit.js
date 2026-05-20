@@ -42,19 +42,23 @@ export default async function handler(req, res) {
 
     // LIVE GROUP MASTERSHEET (sheet 4820086761148292) column IDs
     const MASTER = {
-      companyName: 5174886116134788,
-      groupName:   2923086302449540,
-      status:      6300786022977412,
-      completed:   4048986209292164,
-      startDate:   4893411139424132,
-      endDate:     2641611325738884,
+      companyName:   5174886116134788,
+      groupName:     2923086302449540,
+      status:        6300786022977412,
+      completed:     4048986209292164,
+      startDate:     4893411139424132,
+      endDate:       2641611325738884,
+      dateSubmitted: 5684353123520388,
     };
 
+    const today = new Date().toISOString().split('T')[0];
+
     const masterCells = [
-      { columnId: MASTER.companyName, value: cellMap[INTAKE.companyName] || '' },
-      { columnId: MASTER.groupName,   value: cellMap[INTAKE.eventName]   || '' },
-      { columnId: MASTER.status,      value: 'New' },
-      { columnId: MASTER.completed,   value: false },
+      { columnId: MASTER.companyName,   value: cellMap[INTAKE.companyName] || '' },
+      { columnId: MASTER.groupName,     value: cellMap[INTAKE.eventName]   || '' },
+      { columnId: MASTER.status,        value: 'New' },
+      { columnId: MASTER.completed,     value: false },
+      { columnId: MASTER.dateSubmitted, value: today },
     ];
 
     if (cellMap[INTAKE.arrivalDate]) {
