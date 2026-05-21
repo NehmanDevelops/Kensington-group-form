@@ -1302,20 +1302,50 @@
       </div>
 
       <div class="field">
-        <label class="field-label">What type of cabin class will we be booking?<span class="required-mark">*</span></label>
-        <div class="checkbox-group">
-          <label class="checkbox-item">
-            <input type="radio" name="cabinClass" value="Economy" />
-            <span>Economy</span>
-          </label>
-          <label class="checkbox-item">
-            <input type="radio" name="cabinClass" value="Premium Economy" />
-            <span>Premium Economy</span>
-          </label>
-          <label class="checkbox-item">
-            <input type="radio" name="cabinClass" value="Business Class" />
-            <span>Business Class</span>
-          </label>
+        <label class="field-label">Approximate Number of Passengers <span class="required-mark">*</span></label>
+        <input type="number" id="approximatePassengers" name="approximatePassengers" class="field-input" placeholder="e.g. 25" min="1" required />
+      </div>
+
+      <div class="field">
+        <label class="field-label">What type of cabin class will we be booking? <span class="required-mark">*</span></label>
+        <p style="font-size:12px;color:var(--ink-mute);margin:-8px 0 12px;">Select all that apply and enter approximate number of seats for each</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="cabin-option">
+            <label class="checkbox-item">
+              <input type="checkbox" name="cabinClass" value="Economy" id="grp-cabin-economy" />
+              <span>Economy</span>
+            </label>
+            <div id="grp-seats-economy" class="hidden" style="margin-top:8px;padding-left:28px;">
+              <input type="number" name="economySeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+            </div>
+          </div>
+          <div class="cabin-option">
+            <label class="checkbox-item">
+              <input type="checkbox" name="cabinClass" value="Premium Economy" id="grp-cabin-premium" />
+              <span>Premium Economy</span>
+            </label>
+            <div id="grp-seats-premium" class="hidden" style="margin-top:8px;padding-left:28px;">
+              <input type="number" name="premiumEconomySeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+            </div>
+          </div>
+          <div class="cabin-option">
+            <label class="checkbox-item">
+              <input type="checkbox" name="cabinClass" value="Business Class" id="grp-cabin-business" />
+              <span>Business Class</span>
+            </label>
+            <div id="grp-seats-business" class="hidden" style="margin-top:8px;padding-left:28px;">
+              <input type="number" name="businessClassSeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+            </div>
+          </div>
+          <div class="cabin-option">
+            <label class="checkbox-item">
+              <input type="checkbox" name="cabinClass" value="First Class" id="grp-cabin-first" />
+              <span>First Class</span>
+            </label>
+            <div id="grp-seats-first" class="hidden" style="margin-top:8px;padding-left:28px;">
+              <input type="number" name="firstClassSeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1527,7 +1557,7 @@
       </svg>
     </div>
     <h2 class="success-title">Thank <em>you</em></h2>
-    <p class="success-text">Your dedicated Group travel manager will be in contact within 24 business hours to finalize the details of your bespoke group journey.</p>
+    <p class="success-text">Your dedicated Group travel manager will be in contact within 24 business hours to finalize the details.</p>
   </div>
 </div>
 
@@ -1651,6 +1681,18 @@
       e.target.value === 'Yes' ? show('transfersNote') : hide('transfersNote');
     });
 
+    // Cabin class checkboxes — toggle seat sub-inputs
+    document.querySelectorAll('input[id^="grp-cabin-"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = cb.id.replace('grp-cabin-', '');
+        const wrap = document.getElementById('grp-seats-' + id);
+        if (wrap) {
+          if (cb.checked) wrap.classList.remove('hidden');
+          else wrap.classList.add('hidden');
+        }
+      });
+    });
+
     // ============================================================
     // FORM SUBMISSION — Smartsheet API Integration
     // Sheet: Group Travel Form Sheet -- Kensington Corporate
@@ -1720,7 +1762,12 @@
         { columnId: 8203442610016132, value: v('arrivalTime') },
         { columnId: 885093215539076,  value: v('departureDate') || null },
         { columnId: 5388692842909572, value: v('departureTime') },
-        { columnId: 3136893029224324, value: v('cabinClass') },
+        { columnId: 3136893029224324, value: arr('cabinClass') },
+        { columnId: 6565385116880772, value: v('economySeats') },
+        { columnId: 2800086341160836, value: v('premiumEconomySeats') },
+        { columnId: 3424333530959748, value: v('businessClassSeats') },
+        { columnId: 8062704964546436, value: v('firstClassSeats') },
+        { columnId: 6037312193728388, value: v('approximatePassengers') },
         { columnId: 7640492656594820, value: v('checkedBag') },
         { columnId: 2010993122381700, value: v('prepaidSeats') },
         { columnId: 6514592749752196, value: v('prepaidSeatsOther') },
