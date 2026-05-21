@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 export default async function handler(req, res) {
   // Allow CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -91,16 +93,16 @@ export default async function handler(req, res) {
       console.error('MASTER TRACKER write failed:', masterErr.message);
     }
 
-    // ── Step 3: Send recap email via Resend ───────────────────────────────
+    // ── Step 3: Send recap email via Microsoft 365 SMTP ──────────────────
     const recipientEmail = cellMap[INTAKE.eventManagerEmail];
-    if (recipientEmail && process.env.RESEND_API_KEY) {
-      const managerName  = cellMap[INTAKE.eventManagerName] || 'there';
-      const eventName    = cellMap[INTAKE.eventName]        || '—';
-      const companyName  = cellMap[INTAKE.companyName]      || '—';
-      const arrivalDate  = cellMap[INTAKE.arrivalDate]      || '—';
-      const departureDate= cellMap[INTAKE.departureDate]    || '—';
-      const cabin        = cellMap[INTAKE.cabinClass]       || '—';
-      const passengers   = cellMap[INTAKE.approximatePassengers] || '—';
+    if (recipientEmail && process.env.SMTP_PASS) {
+      const managerName   = cellMap[INTAKE.eventManagerName] || 'there';
+      const eventName     = cellMap[INTAKE.eventName]        || '—';
+      const companyName   = cellMap[INTAKE.companyName]      || '—';
+      const arrivalDate   = cellMap[INTAKE.arrivalDate]      || '—';
+      const departureDate = cellMap[INTAKE.departureDate]    || '—';
+      const cabin         = cellMap[INTAKE.cabinClass]       || '—';
+      const passengers    = cellMap[INTAKE.approximatePassengers] || '—';
 
       const cabinSummary = [];
       if (cellMap[INTAKE.economySeats])        cabinSummary.push(`Economy (${cellMap[INTAKE.economySeats]} seats)`);
@@ -144,19 +146,27 @@ export default async function handler(req, res) {
 </body>
 </html>`;
 
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'Kensington Corporate <onboarding@resend.dev>',
-          to: [recipientEmail],
+      try {
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.office365.com',
+          port: 587,
+          secureConnection: false,
+          tls: { ciphers: 'SSLv3' },
+          auth: {
+            user: 'groups@kensingtoncorporate.com',
+            pass: process.env.SMTP_PASS
+          }
+        });
+
+        await transporter.sendMail({
+          from: '"Kensington Corporate" <groups@kensingtoncorporate.com>',
+          to: recipientEmail,
           subject: `Group Travel Request Received — ${eventName}`,
           html: emailHtml
-        })
-      }).catch(err => console.error('Email send failed:', err.message));
+        });
+      } catch (emailErr) {
+        console.error('Email send failed:', emailErr.message);
+      }
     }
 
     return res.status(200).json({ success: true });

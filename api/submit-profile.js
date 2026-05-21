@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -68,7 +70,7 @@ export default async function handler(req, res) {
 
     // ── Send recap email via Resend ──
     const recipientEmail = d.emailAddress;
-    if (recipientEmail && process.env.RESEND_API_KEY) {
+    if (recipientEmail && process.env.SMTP_PASS) {
       const cabinSummary = [];
       if (d.economySeats)        cabinSummary.push(`Economy (${d.economySeats} seats)`);
       if (d.premiumEconomySeats) cabinSummary.push(`Premium Economy (${d.premiumEconomySeats} seats)`);
@@ -117,19 +119,27 @@ export default async function handler(req, res) {
 </body>
 </html>`;
 
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'Kensington Corporate <onboarding@resend.dev>',
-          to: [recipientEmail],
+      try {
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.office365.com',
+          port: 587,
+          secureConnection: false,
+          tls: { ciphers: 'SSLv3' },
+          auth: {
+            user: 'groups@kensingtoncorporate.com',
+            pass: process.env.SMTP_PASS
+          }
+        });
+
+        await transporter.sendMail({
+          from: '"Kensington Corporate" <groups@kensingtoncorporate.com>',
+          to: recipientEmail,
           subject: `Traveller Profile Received — Group ${d.groupId || ''}`,
           html: emailHtml
-        })
-      }).catch(err => console.error('Email send failed:', err.message));
+        });
+      } catch (emailErr) {
+        console.error('Email send failed:', emailErr.message);
+      }
     }
 
     return res.status(200).json({ success: true });
