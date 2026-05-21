@@ -1138,14 +1138,51 @@
         </div>
 
         <div class="field">
-          <label class="field-label" for="cabinPreference">Preferred Cabin Class</label>
-          <select id="cabinPreference" name="cabinPreference" class="field-select">
-            <option value="">Select...</option>
-            <option value="Economy">Economy</option>
-            <option value="Premium Economy">Premium Economy</option>
-            <option value="Business Class">Business Class</option>
-            <option value="First Class">First Class</option>
-          </select>
+          <label class="field-label">Approximate Number of Passengers <span style="color:var(--error)">*</span></label>
+          <input type="number" id="approximatePassengers" name="approximatePassengers" class="field-input" placeholder="e.g. 25" min="1" required />
+        </div>
+
+        <div class="field">
+          <label class="field-label">Preferred Cabin Class <span style="color:var(--error)">*</span></label>
+          <p style="font-size:12px;color:var(--ink-mute);margin:-8px 0 12px;">Select all that apply and enter approximate number of seats for each</p>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="cabin-option">
+              <label class="checkbox-item">
+                <input type="checkbox" name="cabinClass" value="Economy" id="cabin-economy" />
+                <span>Economy</span>
+              </label>
+              <div id="seats-economy" class="hidden" style="margin-top:8px;padding-left:28px;">
+                <input type="number" name="economySeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+              </div>
+            </div>
+            <div class="cabin-option">
+              <label class="checkbox-item">
+                <input type="checkbox" name="cabinClass" value="Premium Economy" id="cabin-premium" />
+                <span>Premium Economy</span>
+              </label>
+              <div id="seats-premium" class="hidden" style="margin-top:8px;padding-left:28px;">
+                <input type="number" name="premiumEconomySeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+              </div>
+            </div>
+            <div class="cabin-option">
+              <label class="checkbox-item">
+                <input type="checkbox" name="cabinClass" value="Business Class" id="cabin-business" />
+                <span>Business Class</span>
+              </label>
+              <div id="seats-business" class="hidden" style="margin-top:8px;padding-left:28px;">
+                <input type="number" name="businessClassSeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+              </div>
+            </div>
+            <div class="cabin-option">
+              <label class="checkbox-item">
+                <input type="checkbox" name="cabinClass" value="First Class" id="cabin-first" />
+                <span>First Class</span>
+              </label>
+              <div id="seats-first" class="hidden" style="margin-top:8px;padding-left:28px;">
+                <input type="number" name="firstClassSeats" class="field-input" placeholder="Approx. # of seats" min="1" style="max-width:200px;" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="field">
@@ -1346,7 +1383,7 @@
       </svg>
     </div>
     <h2 class="success-title">Thank <em>you</em></h2>
-    <p class="success-text">Your traveller profile has been received. Your Kensington travel manager will be in touch to confirm the details of your upcoming journey.</p>
+    <p class="success-text">Your traveller profile has been received. A recap has been sent to your email. Your Kensington travel manager will be in touch shortly to confirm your details.</p>
   </div>
 </div>
 
@@ -1420,29 +1457,59 @@
     showHide('specialAssistance', 'assistanceOtherWrap', ['Other']);
     showHide('travelInsurance', 'insuranceDetailsWrap', ['Yes', 'Need to obtain']);
 
-    // ===== FORM SUBMIT (placeholder — Smartsheet wiring TBD) =====
-    document.getElementById('profileForm').addEventListener('submit', (e) => {
-      e.preventDefault();
+    // ===== CABIN CLASS CHECKBOX TOGGLE =====
+    document.querySelectorAll('input[name="cabinClass"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = cb.id.replace('cabin-', '');
+        const wrap = document.getElementById('seats-' + id);
+        if (wrap) {
+          if (cb.checked) wrap.classList.remove('hidden');
+          else wrap.classList.add('hidden');
+        }
+      });
+    });
 
+    // ===== FORM SUBMIT =====
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
       const form = e.target;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
+
+      const fd = new FormData(form);
       const data = {};
-      new FormData(form).forEach((value, key) => {
-        if (data[key]) {
+      const cabinClasses = [];
+      fd.forEach((value, key) => {
+        if (key === 'cabinClass') {
+          cabinClasses.push(value);
+        } else if (data[key]) {
           if (!Array.isArray(data[key])) data[key] = [data[key]];
           data[key].push(value);
         } else {
           data[key] = value;
         }
       });
+      data.cabinClass = cabinClasses;
       data.groupId = groupIdInput.value.trim().toUpperCase();
 
-      console.log('Traveller profile data:', data);
+      try {
+        const res = await fetch('/api/submit-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Submission failed');
 
-      // TODO: Wire to Smartsheet via /api/submit-profile
-
-      form.style.display = 'none';
-      document.getElementById('successScreen').classList.add('show');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+        form.style.display = 'none';
+        document.getElementById('successScreen').classList.add('show');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Profile';
+        alert('Submission failed: ' + err.message + '. Please try again.');
+      }
     });
   });
 
