@@ -113,7 +113,7 @@ export default async function handler(req, res) {
       <p style="color:#7d7a73;font-size:12px;line-height:1.6;margin:0;">If you need to make any changes, please contact your travel manager.</p>
     </div>
     <div style="background:#f5f1e8;padding:24px;text-align:center;border-top:1px solid #d9d2c2;">
-      <p style="color:#7d7a73;font-size:12px;margin:0;">Kensington Corporate &nbsp;·&nbsp; groups@kensingtoncorporate.com</p>
+      <p style="color:#7d7a73;font-size:12px;margin:0;">Kensington Corporate &nbsp;·&nbsp; nehman.rahimi@kensingtoncorporate.com</p>
     </div>
   </div>
 </body>
@@ -126,13 +126,13 @@ export default async function handler(req, res) {
           secureConnection: false,
           tls: { ciphers: 'SSLv3' },
           auth: {
-            user: 'groups@kensingtoncorporate.com',
+            user: 'nehman.rahimi@kensingtoncorporate.com',
             pass: process.env.SMTP_PASS
           }
         });
 
         await transporter.sendMail({
-          from: '"Kensington Corporate" <groups@kensingtoncorporate.com>',
+          from: '"Kensington Corporate" <nehman.rahimi@kensingtoncorporate.com>',
           to: recipientEmail,
           subject: `Traveller Profile Received — Group ${d.groupId || ''}`,
           html: emailHtml
