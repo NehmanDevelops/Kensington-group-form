@@ -207,19 +207,18 @@
     opacity: 0.3;
     animation: fly1 55s linear infinite;
     animation-delay: 15s;
-    transform: scale(0.7);
   }
 
   @keyframes fly1 {
-    0% { transform: translateX(0) translateY(0) rotate(-5deg); }
-    50% { transform: translateX(50vw) translateY(-40px) rotate(-5deg); }
-    100% { transform: translateX(calc(100vw + 150px)) translateY(0) rotate(-5deg); }
+    0% { transform: translateX(0) translateY(0) scaleX(-1) rotate(5deg); }
+    50% { transform: translateX(50vw) translateY(-40px) scaleX(-1) rotate(5deg); }
+    100% { transform: translateX(calc(100vw + 150px)) translateY(0) scaleX(-1) rotate(5deg); }
   }
 
   @keyframes fly2 {
-    0% { transform: translateX(0) translateY(0) rotate(185deg); }
-    50% { transform: translateX(-50vw) translateY(-30px) rotate(185deg); }
-    100% { transform: translateX(calc(-100vw - 150px)) translateY(0) rotate(185deg); }
+    0% { transform: translateX(0) translateY(0) rotate(3deg); }
+    50% { transform: translateX(-50vw) translateY(-30px) rotate(3deg); }
+    100% { transform: translateX(calc(-100vw - 150px)) translateY(0) rotate(3deg); }
   }
 
   /* Grid overlay */
