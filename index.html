@@ -210,9 +210,9 @@
   }
 
   @keyframes fly1 {
-    0% { transform: translateX(0) translateY(0) scaleX(-1) rotate(5deg); }
-    50% { transform: translateX(50vw) translateY(-40px) scaleX(-1) rotate(5deg); }
-    100% { transform: translateX(calc(100vw + 150px)) translateY(0) scaleX(-1) rotate(5deg); }
+    0% { transform: translateX(0) translateY(0) rotate(-5deg); }
+    50% { transform: translateX(50vw) translateY(-40px) rotate(-5deg); }
+    100% { transform: translateX(calc(100vw + 150px)) translateY(0) rotate(-5deg); }
   }
 
   @keyframes fly2 {
@@ -933,16 +933,19 @@
   <div class="cloud cloud-3"></div>
 
   <!-- Multiple animated planes -->
+  <!-- plane-1 and plane-3: nose points RIGHT (mirrored path), fly left→right -->
   <svg class="plane plane-1" width="60" height="30" viewBox="0 0 80 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5 20 L25 18 L40 5 L45 5 L38 18 L60 16 L65 10 L70 10 L68 18 L75 18 L75 22 L68 22 L70 30 L65 30 L60 24 L38 22 L45 35 L40 35 L25 22 L5 20 Z" fill="currentColor"/>
+    <path d="M75 20 L55 18 L40 5 L35 5 L42 18 L20 16 L15 10 L10 10 L12 18 L5 18 L5 22 L12 22 L10 30 L15 30 L20 24 L42 22 L35 35 L40 35 L55 22 L75 20 Z" fill="currentColor"/>
   </svg>
 
+  <!-- plane-2: nose points LEFT (original path), flies right→left -->
   <svg class="plane plane-2" width="48" height="24" viewBox="0 0 80 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M5 20 L25 18 L40 5 L45 5 L38 18 L60 16 L65 10 L70 10 L68 18 L75 18 L75 22 L68 22 L70 30 L65 30 L60 24 L38 22 L45 35 L40 35 L25 22 L5 20 Z" fill="currentColor"/>
   </svg>
 
+  <!-- plane-3: nose points RIGHT (mirrored path), fly left→right -->
   <svg class="plane plane-3" width="40" height="20" viewBox="0 0 80 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5 20 L25 18 L40 5 L45 5 L38 18 L60 16 L65 10 L70 10 L68 18 L75 18 L75 22 L68 22 L70 30 L65 30 L60 24 L38 22 L45 35 L40 35 L25 22 L5 20 Z" fill="currentColor"/>
+    <path d="M75 20 L55 18 L40 5 L35 5 L42 18 L20 16 L15 10 L10 10 L12 18 L5 18 L5 22 L12 22 L10 30 L15 30 L20 24 L42 22 L35 35 L40 35 L55 22 L75 20 Z" fill="currentColor"/>
   </svg>
 
   <!-- Grid texture -->
