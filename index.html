@@ -739,43 +739,6 @@
     font-weight: 500;
   }
 
-  .email-copy-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 28px;
-    font-size: 13px;
-    color: var(--ink-soft);
-  }
-
-  .email-copy-row input[type="checkbox"] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border: 1.5px solid var(--ink-mute);
-    background: #fff;
-    cursor: pointer;
-    position: relative;
-  }
-
-  .email-copy-row input[type="checkbox"]:checked {
-    background: var(--gold);
-    border-color: var(--gold);
-  }
-
-  .email-copy-row input[type="checkbox"]:checked::after {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 0;
-    width: 5px;
-    height: 10px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-  }
 
   .submit-btn {
     display: inline-block;
@@ -1538,11 +1501,6 @@
     <!-- ============ FOOTER / SUBMIT ============ -->
     <div class="form-footer">
       <p class="footer-message">Your dedicated Group travel manager will be in contact for full details. <strong>Please do not enter credit card numbers in this form.</strong><br/>Thank you for choosing Kensington for your Group Travel.</p>
-
-      <label class="email-copy-row">
-        <input type="checkbox" id="sendCopy" name="sendCopy" />
-        <span>Send me a copy of my responses</span>
-      </label>
 
       <button type="submit" class="submit-btn">Submit Request</button>
     </div>
