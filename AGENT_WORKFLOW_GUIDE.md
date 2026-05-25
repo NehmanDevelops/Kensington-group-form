@@ -127,6 +127,7 @@ This moves the group out of the active dashboard and into the archive.
 |---|---|
 | **New** | Just submitted, not yet picked up |
 | **In Progress** | Agent assigned, actively working |
+| **On Hold** | Paused — waiting on client decision, payment, or other blocker |
 | **Complete** | All travellers ticketed, group closed |
 
 ### Traveller Status (on Traveller Profile + CVENT sheets)
