@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       eventManagerName:   '5564614703353732',
       eventManagerEmail:  '3312814889668484',
       cabinClass:         '3136893029224324',
-      approximatePassengers: '6037312193728388',
+      approximatePassengers: '2782628976824196',
       economySeats:       '6565385116880772',
       premiumEconomySeats:'2800086341160836',
       businessClassSeats: '3424333530959748',
