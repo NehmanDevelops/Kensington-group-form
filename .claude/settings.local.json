@@ -84,7 +84,9 @@
       "Bash(curl -s -H 'Authorization: Bearer QhGjYt6doLeYjJrlAWyjmvK1EWwJUPDve8B5c' https://api.smartsheet.com/2.0/sheets/4820086761148292/rows/3769183978323844)",
       "Bash(curl -s -H 'Authorization: Bearer QhGjYt6doLeYjJrlAWyjmvK1EWwJUPDve8B5c' 'https://api.smartsheet.com/2.0/sheets/4820086761148292?include=rows')",
       "Bash(curl -s -H 'Authorization: Bearer QhGjYt6doLeYjJrlAWyjmvK1EWwJUPDve8B5c' https://api.smartsheet.com/2.0/sheets/4820086761148292)",
-      "Bash(curl -s -H 'Authorization: Bearer QhGjYt6doLeYjJrlAWyjmvK1EWwJUPDve8B5c' 'https://api.smartsheet.com/2.0/sheets/4820086761148292/rows?include=cells&rowNumbers=12,13')"
+      "Bash(curl -s -H 'Authorization: Bearer QhGjYt6doLeYjJrlAWyjmvK1EWwJUPDve8B5c' 'https://api.smartsheet.com/2.0/sheets/4820086761148292/rows?include=cells&rowNumbers=12,13')",
+      "Bash(git rebase *)",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
     ]
   }
 }

@@ -91,7 +91,7 @@ export default async function handler(req, res) {
     </div>
     <div style="padding:40px 48px;">
       <p style="color:#2a2a28;font-size:15px;margin:0 0 24px;">Hi ${d.firstName || 'Traveller'},</p>
-      <p style="color:#4a4a45;font-size:14px;line-height:1.7;margin:0 0 32px;">Your traveller profile has been received. Your Kensington travel manager will be in touch shortly to confirm your details.</p>
+      <p style="color:#4a4a45;font-size:14px;line-height:1.7;margin:0 0 32px;">Your traveller profile has been received. Your Kensington travel agent will be in touch shortly to confirm your details.</p>
 
       <div style="border:1px solid #d9d2c2;padding:24px;margin-bottom:32px;">
         <p style="font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#b89968;margin:0 0 16px;">Profile Summary</p>
@@ -108,7 +108,7 @@ export default async function handler(req, res) {
         </table>
       </div>
 
-      <p style="color:#7d7a73;font-size:12px;line-height:1.6;margin:0;">If you need to make any changes, please contact your travel manager.</p>
+      <p style="color:#7d7a73;font-size:12px;line-height:1.6;margin:0;">If you need to make any changes, please contact your travel agent.</p>
     </div>
     <div style="background:#f5f1e8;padding:24px;text-align:center;border-top:1px solid #d9d2c2;">
       <p style="color:#7d7a73;font-size:12px;margin:0;">Kensington Corporate &nbsp;·&nbsp; nehman.rahimi@kensingtoncorporate.com</p>
