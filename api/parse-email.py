@@ -2,6 +2,8 @@ from http.server import BaseHTTPRequestHandler
 import json
 import re
 import html
+import os
+from urllib.request import Request, urlopen
 
 # ===========================================================================
 # FIELD ALIASES — what to look for as labels in emails
@@ -628,6 +630,86 @@ def parse_email(html_email_body, email_subject=''):
     return output
 
 
+CVENT_SHEET_ID = '1658234917048196'
+CVENT_COLUMN_MAP = {
+    'prefix':                   991891301896068,
+    'first_name':               5495490929266564,
+    'middle_name':              3243691115581316,
+    'last_name':                7747290742951812,
+    'date_of_birth':            2117791208738692,
+    'email_address':            6621390836109188,
+    'cc_email_address':         4369591022423940,
+    'company':                  8873190649794436,
+    'title':                    77097627586436,
+    'work_phone':               4580697254956932,
+    'home_phone':               2328897441271684,
+    'mobile_phone':             6832497068642180,
+    'passport_nationality':     1202997534429060,
+    'passport_number':          5706597161799556,
+    'passport_expiration_date': 7958396975484804,
+    'guest_email':              640047581007748,
+    'guest_mobile_phone':       5143647208378244,
+    'event_code':               2891847394692996,
+    'event_title':              7395447022063492,
+    'event_date':               1765947487850372,
+    'event_time':               6269547115220868,
+    'request_name':             4017747301535620,
+    'request_date':             8521346928906116,
+    'full_name':                358572604297092,
+    'gender':                   4862172231667588,
+    'redress_number':           2610372417982340,
+    'departure_time':           1484472511139716,
+    'departure_trip':           5988072138510212,
+    'return_time':              3736272324824964,
+    'return_trip':              8239871952195460,
+    'ticket_type':              921522557718404,
+    'seating':                  5425122185088900,
+    'age_category':             3173322371403652,
+    'food_preferences':         7676921998774148,
+    'special_requests':         2047422464561028,
+    'reservation_status':       6551022091931524,
+    'airline_preference_1':     4299222278246276,
+    'frequent_flyer_number_1':  8802821905616772,
+    'airline_preference_2':     217835115941764,
+    'frequent_flyer_number_2':  4721434743312260,
+    'airline_preference_3':     2469634929627012,
+    'frequent_flyer_number_3':  6973234556997508,
+    'source_form':              1906684976205700,
+    'confidence_score':         6410284603576196,
+}
+
+
+def write_to_smartsheet(parsed):
+    token = os.environ.get('SMARTSHEET_API_TOKEN', '')
+    if not token:
+        return {'smartsheet': 'skipped — no token'}
+
+    cells = []
+    for field, col_id in CVENT_COLUMN_MAP.items():
+        val = parsed.get(field, '')
+        if val != '' and val is not None:
+            cells.append({'columnId': col_id, 'value': val})
+
+    if not cells:
+        return {'smartsheet': 'skipped — no data'}
+
+    payload = json.dumps([{'toTop': True, 'cells': cells}]).encode()
+    req = Request(
+        f'https://api.smartsheet.com/2.0/sheets/{CVENT_SHEET_ID}/rows',
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        resp = urlopen(req)
+        return {'smartsheet': 'ok', 'status': resp.status}
+    except Exception as e:
+        return {'smartsheet': f'error: {str(e)}'}
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -646,6 +728,10 @@ class handler(BaseHTTPRequestHandler):
             email_subject = data.get('email_subject', '')
 
             result = parse_email(html_email_body, email_subject)
+
+            if result.get('should_process'):
+                ss_result = write_to_smartsheet(result)
+                result['smartsheet_write'] = ss_result
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
