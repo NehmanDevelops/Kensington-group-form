@@ -1045,22 +1045,14 @@
       </div>
 
       <div class="field">
-        <label class="field-label">If applicable, please indicate preferred reporting</label>
-        <div class="field-subtitle">Charges could apply depending on requirement — select all that apply</div>
-        <div class="checkbox-group" id="reportingGroup">
-          <label class="checkbox-item">
-            <input type="checkbox" name="reporting" value="Arrival/departure manifests" />
-            <span>Arrival/departure manifests</span>
-          </label>
-          <label class="checkbox-item">
-            <input type="checkbox" name="reporting" value="Credit card reconciliation" />
-            <span>Credit card reconciliation</span>
-          </label>
-          <label class="checkbox-item">
-            <input type="checkbox" name="reporting" value="Other" id="reportingOther" />
-            <span>Other</span>
-          </label>
-        </div>
+        <label class="field-label" for="reporting">If applicable, please indicate preferred reporting</label>
+        <div class="field-subtitle">Charges could apply depending on requirement</div>
+        <select id="reporting" name="reporting" class="field-select">
+          <option value="">Select an option</option>
+          <option value="Arrival/departure manifests">Arrival/departure manifests</option>
+          <option value="Credit card reconciliation">Credit card reconciliation</option>
+          <option value="Other">Other</option>
+        </select>
         <div class="conditional-field hidden" id="reportingOtherWrap">
           <div class="field">
             <label class="field-label" for="reportingOtherText">Please specify report type</label>
@@ -1070,22 +1062,13 @@
       </div>
 
       <div class="field hidden" id="reportingScheduleWrap">
-        <label class="field-label">If applicable, please indicate your preferred reporting schedule</label>
-        <div class="field-subtitle">Select all that apply</div>
-        <div class="checkbox-group" id="reportingScheduleGroup">
-          <label class="checkbox-item">
-            <input type="checkbox" name="reportingSchedule" value="Weekly" />
-            <span>Weekly</span>
-          </label>
-          <label class="checkbox-item">
-            <input type="checkbox" name="reportingSchedule" value="Monthly" />
-            <span>Monthly</span>
-          </label>
-          <label class="checkbox-item">
-            <input type="checkbox" name="reportingSchedule" value="Other" id="reportingScheduleOther" />
-            <span>Other</span>
-          </label>
-        </div>
+        <label class="field-label" for="reportingSchedule">If applicable, please indicate your preferred reporting schedule</label>
+        <select id="reportingSchedule" name="reportingSchedule" class="field-select">
+          <option value="">Select an option</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Other">Other</option>
+        </select>
         <div class="conditional-field hidden" id="reportingScheduleOtherWrap">
           <div class="field">
             <label class="field-label" for="reportingScheduleOtherText">Please specify reporting schedule</label>
@@ -1122,18 +1105,7 @@
       <div class="field">
         <label class="field-label" for="expenses">Will expenses be covered by Employer or passenger?<span class="required-mark">*</span></label>
         <div class="field-subtitle">Please do not list credit card numbers in this form — Group Agent will follow up</div>
-        <select id="expenses" name="expenses" class="field-select" required>
-          <option value="">Select an option</option>
-          <option value="Employer">Employer</option>
-          <option value="Traveller">Traveller</option>
-          <option value="Other">Other</option>
-        </select>
-        <div class="conditional-field hidden" id="expensesOtherWrap">
-          <div class="field">
-            <label class="field-label" for="expensesOther">Please specify — cost coverage</label>
-            <input type="text" id="expensesOther" name="expensesOther" class="field-input" />
-          </div>
-        </div>
+        <input type="text" id="expenses" name="expenses" class="field-input" required placeholder="e.g. Employer, Passenger, Split, etc." />
       </div>
 
       <div class="field">
@@ -1165,21 +1137,14 @@
 
       <div class="field">
         <label class="field-label" for="deviations">Will you be allowing deviations outside of travel dates?</label>
-        <select id="deviations" name="deviations" class="field-select">
-          <option value="">Select an option</option>
-          <option value="Yes">Yes</option>
-          <option value="No">No</option>
-        </select>
-        <div class="conditional-field hidden" id="deviationsYesWrap">
-          <div class="field">
-            <label class="field-label" for="deviationCovered">Deviation expense — covered by:</label>
-            <select id="deviationCovered" name="deviationCovered" class="field-select">
-              <option value="">Select an option</option>
-              <option value="Employer">Employer</option>
-              <option value="Passenger">Passenger</option>
-            </select>
-          </div>
-        </div>
+        <div class="field-subtitle" style="font-style:italic;">Please specify who will be covering those costs</div>
+        <input type="text" id="deviations" name="deviations" class="field-input" placeholder="e.g. Yes — covered by Employer" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="upgradesAllowed">Will upgrades be allowed?</label>
+        <div class="field-subtitle" style="font-style:italic;">If applicable, who will be covering these costs?</div>
+        <input type="text" id="upgradesAllowed" name="upgradesAllowed" class="field-input" placeholder="e.g. Yes — covered by Passenger" />
       </div>
     </section>
 
@@ -1559,26 +1524,15 @@
       e.target.value === 'Other' ? show('groupTypeOtherWrap') : hide('groupTypeOtherWrap');
     });
 
-    // ---- Reporting checkboxes -> reveal schedule + "Other" specify ----
-    const reportingCheckboxes = document.querySelectorAll('input[name="reporting"]');
-    reportingCheckboxes.forEach(cb => {
-      cb.addEventListener('change', () => {
-        const anyChecked = Array.from(reportingCheckboxes).some(c => c.checked);
-        anyChecked ? show('reportingScheduleWrap') : hide('reportingScheduleWrap');
-        document.getElementById('reportingOther').checked
-          ? show('reportingOtherWrap')
-          : hide('reportingOtherWrap');
-      });
+    // ---- Reporting dropdown -> reveal schedule + "Other" specify ----
+    document.getElementById('reporting').addEventListener('change', (e) => {
+      e.target.value ? show('reportingScheduleWrap') : hide('reportingScheduleWrap');
+      e.target.value === 'Other' ? show('reportingOtherWrap') : hide('reportingOtherWrap');
     });
 
     // ---- Reporting schedule "Other" specify ----
-    document.getElementById('reportingScheduleOther').addEventListener('change', (e) => {
-      e.target.checked ? show('reportingScheduleOtherWrap') : hide('reportingScheduleOtherWrap');
-    });
-
-    // ---- Expenses "Other" ----
-    document.getElementById('expenses').addEventListener('change', (e) => {
-      e.target.value === 'Other' ? show('expensesOtherWrap') : hide('expensesOtherWrap');
+    document.getElementById('reportingSchedule').addEventListener('change', (e) => {
+      e.target.value === 'Other' ? show('reportingScheduleOtherWrap') : hide('reportingScheduleOtherWrap');
     });
 
     // ---- Air section toggle ----
@@ -1594,11 +1548,6 @@
     // ---- Ground section toggle ----
     document.getElementById('needGround').addEventListener('change', (e) => {
       e.target.value === 'Yes' ? show('sectionGround') : hide('sectionGround');
-    });
-
-    // ---- Deviations "Yes" reveal ----
-    document.getElementById('deviations').addEventListener('change', (e) => {
-      e.target.value === 'Yes' ? show('deviationsYesWrap') : hide('deviationsYesWrap');
     });
 
     // ---- Same gateway "Yes" reveal ----
@@ -1688,20 +1637,19 @@
         { columnId: 8942314423881604, value: v('eventDate') || null },
         { columnId: 40668285407108,   value: v('eventAddress') },
         { columnId: 4544267912777604, value: v('eventCode') },
-        { columnId: 2292468099092356, value: arr('reporting') },
+        { columnId: 2292468099092356, value: v('reporting') },
         { columnId: 6796067726462852, value: v('reportingOtherText') },
-        { columnId: 1166568192249732, value: arr('reportingSchedule') },
+        { columnId: 1166568192249732, value: v('reportingSchedule') },
         { columnId: 5670167819620228, value: v('reportingScheduleOtherText') },
         { columnId: 3418368005934980, value: v('numAttendees') },
         { columnId: 7921967633305476, value: v('approvedList') },
         { columnId: 603618238828420,  value: v('registrationLink') },
         { columnId: 5107217866198916, value: v('expenses') },
-        { columnId: 2855418052513668, value: v('expensesOther') },
         { columnId: 7359017679884164, value: v('needAir') },
         { columnId: 1729518145671044, value: v('needHotel') },
         { columnId: 6233117773041540, value: v('needGround') },
         { columnId: 3981317959356292, value: v('deviations') },
-        { columnId: 8484917586726788, value: v('deviationCovered') },
+        { columnId: 8484917586726788, value: v('upgradesAllowed') },
 
         // ── AIRFARE ──
         { columnId: 2573943075803012, value: v('arrivalAirport') },
