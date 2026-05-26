@@ -724,8 +724,8 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             data = json.loads(body)
-            html_email_body = data.get('html_email_body', '')
-            email_subject = data.get('email_subject', '')
+            html_email_body = data.get('html_email_body', '') or data.get('body', '') or data.get('Body', '')
+            email_subject = data.get('email_subject', '') or data.get('subject', '') or data.get('Subject', '')
 
             result = parse_email(html_email_body, email_subject)
 
