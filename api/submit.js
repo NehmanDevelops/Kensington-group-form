@@ -57,6 +57,7 @@ export default async function handler(req, res) {
     };
 
     // LIVE GROUP MASTERSHEET (sheet 4820086761148292) column IDs
+    const MASTER_SHEET_ID = '4820086761148292';
     const MASTER = {
       companyName:   5174886116134788,
       groupName:     2923086302449540,
@@ -86,13 +87,37 @@ export default async function handler(req, res) {
       masterCells.push({ columnId: MASTER.endDate, value: cellMap[INTAKE.departureDate] });
     }
 
-    const masterRes = await fetch('https://api.smartsheet.com/2.0/sheets/4820086761148292/rows', {
+    // ── Find the last row WITH DATA so we can insert right after it ──────
+    // (avoids placing the new row at the bottom past empty placeholder rows)
+    let insertPayload = [{ toBottom: true, cells: masterCells }];
+
+    try {
+      const sheetRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${MASTER_SHEET_ID}`, {
+        headers: { 'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}` }
+      });
+      if (sheetRes.ok) {
+        const sheetData = await sheetRes.json();
+        // Find the last row where any cell has a non-empty value
+        let lastDataRowId = null;
+        for (const row of sheetData.rows) {
+          const hasData = row.cells?.some(c => c.value !== undefined && c.value !== null && c.value !== '');
+          if (hasData) lastDataRowId = row.id;
+        }
+        if (lastDataRowId) {
+          insertPayload = [{ siblingId: lastDataRowId, cells: masterCells }];
+        }
+      }
+    } catch (lookupErr) {
+      console.error('Master row position lookup failed, falling back to toBottom:', lookupErr.message);
+    }
+
+    const masterRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${MASTER_SHEET_ID}/rows`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify([{ toBottom: true, cells: masterCells }])
+      body: JSON.stringify(insertPayload)
     });
 
     if (!masterRes.ok) {
