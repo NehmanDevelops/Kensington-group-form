@@ -101,9 +101,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify([{ toTop: true, cells: masterCells }])
     });
+    const masterData = await masterRes.json();
     if (!masterRes.ok) {
-      const masterErr = await masterRes.json();
-      console.error('Master sheet write failed:', masterErr.message);
+      console.error('Master sheet write failed:', masterData.message);
     }
 
     // ── Send recap email via Resend ──
@@ -172,7 +172,7 @@ export default async function handler(req, res) {
       }).catch(err => console.error('Email send failed:', err.message));
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, masterSheet: masterData });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
