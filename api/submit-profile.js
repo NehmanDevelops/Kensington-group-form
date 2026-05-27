@@ -66,6 +66,46 @@ export default async function handler(req, res) {
     const ssData = await ssRes.json();
     if (!ssRes.ok) return res.status(ssRes.status).json({ error: ssData.message || 'Smartsheet error' });
 
+    // ── Mirror to Traveller Profile MasterSheet ──
+    const masterCells = [
+      { columnId: 5029597388509060, value: d.groupId || '' },
+      { columnId: 6155241207926660, value: 'Traveller Profile Form' },
+      { columnId: 5726513277472644, value: d.firstName || '' },
+      { columnId: 3474713463787396, value: d.middleName || '' },
+      { columnId: 7978313091157892, value: d.lastName || '' },
+      { columnId: 659963696680836,  value: d.dateOfBirth || '' },
+      { columnId: 5163563324051332, value: d.gender || '' },
+      { columnId: 2911763510366084, value: d.nationality || '' },
+      { columnId: 7415363137736580, value: d.emailAddress || '' },
+      { columnId: 1785863603523460, value: d.phoneNumber || '' },
+      { columnId: 6289463230893956, value: d.companyName || '' },
+      { columnId: 4037663417208708, value: d.passportNumber || '' },
+      { columnId: 8541263044579204, value: d.passportExpiryDate || '' },
+      { columnId: 378488719970180,  value: d.passportCountryOfIssue || '' },
+      { columnId: 4882088347340676, value: d.departureCity || '' },
+      { columnId: 2630288533655428, value: d.seatPreference || '' },
+      { columnId: 7133888161025924, value: d.mealPreference || '' },
+      { columnId: 1504388626812804, value: d.specialAssistance || '' },
+      { columnId: 6007988254183300, value: d.airlineLoyaltyPrograms || '' },
+      { columnId: 3756188440498052, value: d.redressNumber || '' },
+      { columnId: 8259788067868548, value: d.knownTravellerNumber || '' },
+      { columnId: 7696838114447236, value: d.additionalNotes || '' },
+      { columnId: 2067338580234116, value: today },
+    ].filter(c => c.value !== '');
+
+    const masterRes = await fetch('https://api.smartsheet.com/2.0/sheets/8780932377956228/rows', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify([{ toTop: true, cells: masterCells }])
+    });
+    if (!masterRes.ok) {
+      const masterErr = await masterRes.json();
+      console.error('Master sheet write failed:', masterErr.message);
+    }
+
     // ── Send recap email via Resend ──
     const recipientEmail = d.emailAddress;
     if (recipientEmail && process.env.RESEND_API_KEY) {

@@ -689,23 +689,68 @@ CVENT_COLUMN_MAP = {
 }
 
 
-def write_to_smartsheet(parsed):
-    token = os.environ.get('SMARTSHEET_API_TOKEN', '')
-    if not token:
-        return {'smartsheet': 'skipped — no token'}
+MASTER_SHEET_ID = '8780932377956228'
+MASTER_COLUMN_MAP = {
+    'first_name':               5726513277472644,
+    'middle_name':              3474713463787396,
+    'last_name':                7978313091157892,
+    'date_of_birth':            659963696680836,
+    'gender':                   5163563324051332,
+    'nationality':              2911763510366084,
+    'email_address':            7415363137736580,
+    'cc_email_address':         8662414441877380,
+    'mobile_phone':             1625540024110980,
+    'work_phone':               2751439930953604,
+    'home_phone':               7255039558324100,
+    'company':                  499640117268356,
+    'title':                    5003239744638852,
+    'passport_number':          4037663417208708,
+    'passport_expiration_date': 8541263044579204,
+    'passport_nationality':     6129139651481476,
+    'guest_email':              5566189698060164,
+    'guest_mobile_phone':       3314389884374916,
+    'event_code':               7817989511745412,
+    'event_title':              2188489977532292,
+    'event_date':               6692089604902788,
+    'event_time':               4440289791217540,
+    'request_name':             8943889418588036,
+    'request_date':             42243280113540,
+    'full_name':                4545842907484036,
+    'redress_number':           3756188440498052,
+    'departure_time':           6797642721169284,
+    'departure_trip':           1168143186956164,
+    'return_time':              5671742814326660,
+    'return_trip':              3419943000641412,
+    'ticket_type':              7923542628011908,
+    'seating':                  605193233534852,
+    'age_category':             5108792860905348,
+    'food_preferences':         2856993047220100,
+    'special_requests':         7360592674590596,
+    'reservation_status':       1731093140377476,
+    'airline_preference_1':     6234692767747972,
+    'frequent_flyer_number_1':  3982892954062724,
+    'airline_preference_2':     8486492581433220,
+    'frequent_flyer_number_2':  323718256824196,
+    'airline_preference_3':     4827317884194692,
+    'frequent_flyer_number_3':  2575518070509444,
+    'source_form':              3138468023930756,
+    'confidence_score':         7642067651301252,
+}
 
+
+def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     cells = []
-    for field, col_id in CVENT_COLUMN_MAP.items():
+    for field, col_id in column_map.items():
         val = parsed.get(field, '')
         if val != '' and val is not None:
             cells.append({'columnId': col_id, 'value': val})
-
+    if extra_cells:
+        cells.extend(extra_cells)
     if not cells:
-        return {'smartsheet': 'skipped — no data'}
-
+        return 'skipped — no data'
     payload = json.dumps([{'toTop': True, 'cells': cells}]).encode()
     req = Request(
-        f'https://api.smartsheet.com/2.0/sheets/{CVENT_SHEET_ID}/rows',
+        f'https://api.smartsheet.com/2.0/sheets/{sheet_id}/rows',
         data=payload,
         headers={
             'Authorization': f'Bearer {token}',
@@ -715,9 +760,24 @@ def write_to_smartsheet(parsed):
     )
     try:
         resp = urlopen(req)
-        return {'smartsheet': 'ok', 'status': resp.status}
+        return f'ok ({resp.status})'
     except Exception as e:
-        return {'smartsheet': f'error: {str(e)}'}
+        return f'error: {str(e)}'
+
+
+def write_to_smartsheet(parsed):
+    token = os.environ.get('SMARTSHEET_API_TOKEN', '')
+    if not token:
+        return {'cvent_sheet': 'skipped — no token', 'master_sheet': 'skipped — no token'}
+
+    cvent_result = _write_rows(token, CVENT_SHEET_ID, CVENT_COLUMN_MAP, parsed)
+
+    master_extra = [
+        {'columnId': 6155241207926660, 'value': 'CVENT'},
+    ]
+    master_result = _write_rows(token, MASTER_SHEET_ID, MASTER_COLUMN_MAP, parsed, master_extra)
+
+    return {'cvent_sheet': cvent_result, 'master_sheet': master_result}
 
 
 class handler(BaseHTTPRequestHandler):
