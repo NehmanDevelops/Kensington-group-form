@@ -823,6 +823,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
             self.end_headers()
             self.wfile.write(json.dumps(result).encode())
 
@@ -830,5 +831,6 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
             self.end_headers()
             self.wfile.write(json.dumps({'error': str(e)}).encode())
