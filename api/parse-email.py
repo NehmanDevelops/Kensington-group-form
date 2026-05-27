@@ -779,7 +779,13 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
         resp = urlopen(req)
         return f'ok ({resp.status})'
     except Exception as e:
-        return f'error: {str(e)}'
+        detail = ''
+        if hasattr(e, 'read'):
+            try:
+                detail = e.read().decode()
+            except Exception:
+                pass
+        return f'error: {str(e)} | {detail}'
 
 
 def write_to_smartsheet(parsed):
