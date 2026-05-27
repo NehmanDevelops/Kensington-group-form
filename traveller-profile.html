@@ -1500,8 +1500,6 @@
           body: JSON.stringify(data)
         });
         const result = await res.json();
-        console.log('SUBMIT RESPONSE:', JSON.stringify(result));
-        alert('API version: ' + (result.v || 'OLD') + ' | Master OK: ' + result.masterOk);
         if (!res.ok) throw new Error(result.error || 'Submission failed');
 
         form.style.display = 'none';
