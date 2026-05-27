@@ -738,11 +738,28 @@ MASTER_COLUMN_MAP = {
 }
 
 
+DATE_COLUMNS = {659963696680836, 8541263044579204, 2067338580234116}
+
+def _normalize_date_for_smartsheet(val):
+    if not val:
+        return val
+    for fmt in ('%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d', '%m-%d-%Y', '%d-%m-%Y',
+                '%b %d, %Y', '%B %d, %Y', '%d %b %Y', '%d %B %Y'):
+        try:
+            from datetime import datetime
+            dt = datetime.strptime(val.strip(), fmt)
+            return dt.strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    return val
+
 def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     cells = []
     for field, col_id in column_map.items():
         val = parsed.get(field, '')
         if val != '' and val is not None:
+            if col_id in DATE_COLUMNS:
+                val = _normalize_date_for_smartsheet(val)
             cells.append({'columnId': col_id, 'value': val})
     if extra_cells:
         cells.extend(extra_cells)
