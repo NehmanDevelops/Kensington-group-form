@@ -97,11 +97,17 @@ export default async function handler(req, res) {
       });
       if (sheetRes.ok) {
         const sheetData = await sheetRes.json();
-        // Find the last row where any cell has a non-empty value
+        // Find the last row that has a real GROUP ID (the primary identifier).
+        // Ignore formula columns (# Signed Up, etc.) which return 0 for every row
+        // including empty ones, and which would otherwise mark every row as "has data."
+        const GROUP_ID_COL = 671286488764292;
         let lastDataRowId = null;
         for (const row of sheetData.rows) {
-          const hasData = row.cells?.some(c => c.value !== undefined && c.value !== null && c.value !== '');
-          if (hasData) lastDataRowId = row.id;
+          const groupIdCell = row.cells?.find(c => c.columnId === GROUP_ID_COL);
+          const hasGroupId = groupIdCell && groupIdCell.value !== undefined && groupIdCell.value !== null && String(groupIdCell.value).trim() !== '';
+          // Also accept rows where any non-formula cell has a manually-entered value
+          const hasManualData = row.cells?.some(c => !c.formula && c.value !== undefined && c.value !== null && c.value !== '');
+          if (hasGroupId || hasManualData) lastDataRowId = row.id;
         }
         if (lastDataRowId) {
           insertPayload = [{ siblingId: lastDataRowId, cells: masterCells }];
