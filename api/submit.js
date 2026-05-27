@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 
     // ── Step 2: Mirror key fields to LIVE GROUP MASTERSHEET ───────────────
     // Build a lookup map: columnId → value from the submitted cells
-    const cells = req.body?.cells || [];
+    const cells = smartsheetPayload.cells || [];
     const cellMap = {};
     for (const cell of cells) {
       cellMap[String(cell.columnId)] = cell.value;
@@ -41,39 +41,42 @@ export default async function handler(req, res) {
 
     // Intake sheet column IDs for the fields we want to mirror
     const INTAKE = {
-      companyName:        '1061015075983236',
-      eventName:          '4438714796511108',
-      arrivalDate:        '3699842982645636',
-      departureDate:      '885093215539076',
-      eventManagerName:   '5564614703353732',
-      eventManagerEmail:  '3312814889668484',
-      cabinClass:         '3136893029224324',
+      companyName:           '1061015075983236',
+      eventName:             '4438714796511108',
+      arrivalDate:           '3699842982645636',
+      departureDate:         '885093215539076',
+      eventManagerName:      '5564614703353732',
+      eventManagerEmail:     '3312814889668484',
+      eventManagerPhone:     '7816414517038980',
+      cabinClass:            '3136893029224324',
       approximatePassengers: '2782628976824196',
-      economySeats:       '6565385116880772',
-      premiumEconomySeats:'2800086341160836',
-      businessClassSeats: '3424333530959748',
-      firstClassSeats:    '8062704964546436',
+      economySeats:          '6565385116880772',
+      premiumEconomySeats:   '2800086341160836',
+      businessClassSeats:    '3424333530959748',
+      firstClassSeats:       '8062704964546436',
     };
 
     // LIVE GROUP MASTERSHEET (sheet 4820086761148292) column IDs
     const MASTER = {
       companyName:   5174886116134788,
       groupName:     2923086302449540,
+      contactName:   7426685929820036,
+      contactEmail:  1797186395606916,
+      contactPhone:  2157300629671812,
       status:        6300786022977412,
       completed:     4048986209292164,
       startDate:     4893411139424132,
       endDate:       2641611325738884,
-      dateSubmitted: 5684353123520388,
     };
 
-    const today = new Date().toISOString().split('T')[0];
-
     const masterCells = [
-      { columnId: MASTER.companyName,   value: cellMap[INTAKE.companyName] || '' },
-      { columnId: MASTER.groupName,     value: cellMap[INTAKE.eventName]   || '' },
-      { columnId: MASTER.status,        value: 'New' },
-      { columnId: MASTER.completed,     value: false },
-      { columnId: MASTER.dateSubmitted, value: today },
+      { columnId: MASTER.companyName,  value: cellMap[INTAKE.companyName]      || '' },
+      { columnId: MASTER.groupName,    value: cellMap[INTAKE.eventName]        || '' },
+      { columnId: MASTER.contactName,  value: cellMap[INTAKE.eventManagerName] || '' },
+      { columnId: MASTER.contactEmail, value: cellMap[INTAKE.eventManagerEmail]|| '' },
+      { columnId: MASTER.contactPhone, value: cellMap[INTAKE.eventManagerPhone]|| '' },
+      { columnId: MASTER.status,       value: 'New' },
+      { columnId: MASTER.completed,    value: false },
     ];
 
     if (cellMap[INTAKE.arrivalDate]) {
@@ -89,7 +92,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify([{ cells: masterCells }])
+      body: JSON.stringify([{ toBottom: true, cells: masterCells }])
     });
 
     if (!masterRes.ok) {
