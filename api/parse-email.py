@@ -19,7 +19,8 @@ FIELD_ALIASES = {
                             'Attendee Last Name', 'Registrant Last Name', 'Traveler Last Name'],
     'full_name':           ['Full Name', 'Traveler Name', 'Passenger Name', 'Complete Name',
                             'Guest Name', 'Client Name', 'Lead Passenger', 'Primary Traveler',
-                            'Attendee Name', 'Registrant Name', 'Name'],
+                            'Attendee Name', 'Registrant Name', 'Name as per Passport',
+                            'Name as per passport', 'Passport Name', 'Legal Name', 'Name'],
     'email_address':       ['Email Address', 'E-mail Address', 'E-mail', 'E mail', 'Email ID',
                             'Contact Email', 'Primary Email', 'Attendee Email', 'Registrant Email',
                             'Traveler Email', 'Email'],
@@ -187,15 +188,16 @@ FORM_PLATFORM_INDICATORS = [
 
 CONTACT_TABLE_SIGNALS = [
     'prefix:', 'first name:', 'middle name:', 'last name:',
-    'email address:', 'mobile phone:', 'work phone:', 'home phone:',
+    'email address:', 'email:', 'mobile phone:', 'work phone:', 'home phone:',
     'passport no.:', 'passport number:', 'passport nationality:',
-    'guest email', 'guest passport', 'date of birth:', 'gender:',
+    'guest email', 'guest passport', 'date of birth:', 'dob:', 'gender:',
     'reservation status:', 'departure trip:', 'return trip:',
     'airline preference', 'ticket type:', 'seating:',
     'company:', 'job title:', 'full name:', 'traveler name:',
+    'name as per passport:', 'passport name:', 'legal name:',
     'event code:', 'event title:', 'event date:',
     'request name:', 'request date:',
-    'nationality:', 'citizenship:',
+    'nationality:', 'citizenship:', 'phone:', 'name:',
 ]
 
 HARD_NEGATIVE_PATTERNS = [
@@ -235,6 +237,13 @@ def is_registration_email(email_text, email_subject=''):
 
     if table_hits >= 5:
         return (True, f'strong_table_structure:{table_hits}', 7)
+
+    identity_signals = ['name:', 'first name:', 'last name:', 'full name:',
+                        'name as per passport:', 'email:', 'email address:',
+                        'date of birth:', 'dob:', 'passport']
+    identity_hits = sum(1 for s in identity_signals if s in lower)
+    if identity_hits >= 2:
+        return (True, f'plain_text_identity:{identity_hits}', 5)
 
     return (False, f'no_strong_signals (table:{table_hits}, subject:{subject_hits})', 0)
 
@@ -286,6 +295,7 @@ def cut_signature(text):
         r'Reservation Details', r'Registration Details', r'Attendee Information',
         r'Prefix\s*:', r'First Name\s*:', r'Last Name\s*:',
         r'Email Address\s*:', r'Full Name\s*:', r'Traveler Name\s*:',
+        r'Name as per [Pp]assport\s*:', r'Name\s*:',
     ]
 
     data_start = 0
