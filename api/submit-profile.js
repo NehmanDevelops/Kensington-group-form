@@ -12,6 +12,8 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().split('T')[0];
 
     const cells = [
+      { columnId: 394870060781444,  value: d.travellerType || '' },
+      { columnId: 8527652091891588, value: d.hostName || '' },
       { columnId: 2862616417701764, value: d.groupId || '' },
       { columnId: 7366216045072260, value: d.firstName || '' },
       { columnId: 820513382633348,  value: d.middleName || '' },

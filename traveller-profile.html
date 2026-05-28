@@ -845,10 +845,42 @@
         </div>
       </div>
 
-      <!-- SECTION 1: PERSONAL INFORMATION -->
+      <!-- TRAVELLER TYPE -->
       <section class="section">
         <div class="section-header">
           <span class="section-number">I.</span>
+          <h2 class="section-title">Traveller Type</h2>
+          <span class="section-tag">Role</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="travellerType">Are you a guest or employee?<span class="required-mark">*</span></label>
+          <select id="travellerType" name="travellerType" class="field-select" required>
+            <option value="">Select an option</option>
+            <option value="Employee">Employee</option>
+            <option value="Guest">Guest</option>
+          </select>
+        </div>
+
+        <div class="conditional-field hidden" id="guestHostWrap">
+          <div class="field">
+            <label class="field-label" for="hostName">Please provide name of host<span class="required-mark">*</span></label>
+            <input type="text" id="hostName" name="hostName" class="field-input" />
+          </div>
+        </div>
+
+        <div class="conditional-field hidden" id="employeeExpenseWrap">
+          <div class="field">
+            <label class="field-label" for="expenseAccount">Please provide expense account, if applicable</label>
+            <input type="text" id="expenseAccount" name="expenseAccount" class="field-input" />
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: PERSONAL INFORMATION -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-number">II.</span>
           <h2 class="section-title">Personal Information</h2>
           <span class="section-tag">Identity</span>
         </div>
@@ -925,10 +957,10 @@
         </div>
       </section>
 
-      <!-- SECTION 2: CONTACT INFORMATION -->
+      <!-- SECTION 3: CONTACT INFORMATION -->
       <section class="section">
         <div class="section-header">
-          <span class="section-number">II.</span>
+          <span class="section-number">III.</span>
           <h2 class="section-title">Contact Information</h2>
           <span class="section-tag">Reach</span>
         </div>
@@ -991,10 +1023,10 @@
         </div>
       </section>
 
-      <!-- SECTION 3: EMPLOYMENT -->
+      <!-- SECTION 4: EMPLOYMENT -->
       <section class="section">
         <div class="section-header">
-          <span class="section-number">III.</span>
+          <span class="section-number">IV.</span>
           <h2 class="section-title">Employment Details</h2>
           <span class="section-tag">Affiliation</span>
         </div>
@@ -1022,10 +1054,10 @@
         </div>
       </section>
 
-      <!-- SECTION 4: TRAVEL DOCUMENTS -->
+      <!-- SECTION 5: TRAVEL DOCUMENTS -->
       <section class="section">
         <div class="section-header">
-          <span class="section-number">IV.</span>
+          <span class="section-number">V.</span>
           <h2 class="section-title">Travel Documents</h2>
           <span class="section-tag">Passport &amp; ID</span>
         </div>
@@ -1079,10 +1111,10 @@
         </div>
       </section>
 
-      <!-- SECTION 5: FLIGHT PREFERENCES -->
+      <!-- SECTION 6: FLIGHT PREFERENCES -->
       <section class="section">
         <div class="section-header">
-          <span class="section-number">V.</span>
+          <span class="section-number">VI.</span>
           <h2 class="section-title">Flight Preferences</h2>
           <span class="section-tag">In the Air</span>
         </div>
@@ -1231,10 +1263,10 @@
         </div>
       </section>
 
-      <!-- SECTION 6: LOYALTY PROGRAMS -->
+      <!-- SECTION 7: LOYALTY PROGRAMS -->
       <section class="section">
         <div class="section-header">
-          <span class="section-number">VI.</span>
+          <span class="section-number">VII.</span>
           <h2 class="section-title">Loyalty Programs</h2>
           <span class="section-tag">Rewards</span>
         </div>
@@ -1278,10 +1310,10 @@
         </div>
       </section>
 
-      <!-- SECTION 7: EMERGENCY CONTACT -->
+      <!-- SECTION 8: EMERGENCY CONTACT -->
       <section class="section">
         <div class="section-header">
-          <span class="section-number">VII.</span>
+          <span class="section-number">VIII.</span>
           <h2 class="section-title">Emergency Contact</h2>
           <span class="section-tag">In Case of Need</span>
         </div>
@@ -1319,10 +1351,10 @@
         </div>
       </section>
 
-      <!-- SECTION 8: ADDITIONAL INFO -->
+      <!-- SECTION 9: ADDITIONAL INFO -->
       <section class="section">
         <div class="section-header">
-          <span class="section-number">VIII.</span>
+          <span class="section-number">IX.</span>
           <h2 class="section-title">Additional Information</h2>
           <span class="section-tag">Notes</span>
         </div>
@@ -1451,6 +1483,17 @@
       select.addEventListener('change', update);
       update();
     };
+
+    // Traveller type: Guest → show host name, Employee → show expense account
+    const travellerType = document.getElementById('travellerType');
+    const guestWrap = document.getElementById('guestHostWrap');
+    const employeeWrap = document.getElementById('employeeExpenseWrap');
+    if (travellerType && guestWrap && employeeWrap) {
+      travellerType.addEventListener('change', () => {
+        guestWrap.classList.toggle('hidden', travellerType.value !== 'Guest');
+        employeeWrap.classList.toggle('hidden', travellerType.value !== 'Employee');
+      });
+    }
 
     showHide('hasVisa', 'visaDetailsWrap', ['Yes']);
     showHide('mealPreference', 'mealOtherWrap', ['Other']);
