@@ -744,7 +744,8 @@ def _normalize_date_for_smartsheet(val):
     if not val:
         return val
     for fmt in ('%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d', '%m-%d-%Y', '%d-%m-%Y',
-                '%b %d, %Y', '%B %d, %Y', '%d %b %Y', '%d %B %Y'):
+                '%b %d, %Y', '%B %d, %Y', '%d %b %Y', '%d %B %Y',
+                '%d-%b-%Y', '%d-%B-%Y', '%b-%d-%Y', '%B-%d-%Y'):
         try:
             from datetime import datetime
             dt = datetime.strptime(val.strip(), fmt)
