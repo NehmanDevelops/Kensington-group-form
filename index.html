@@ -1035,8 +1035,8 @@
 
       <div class="field-row">
         <div class="field">
-          <label class="field-label" for="eventDate">Date of Event</label>
-          <input type="date" id="eventDate" name="eventDate" class="field-input" />
+          <label class="field-label" for="eventDate">Date of Event<span class="required-mark">*</span></label>
+          <input type="date" id="eventDate" name="eventDate" class="field-input" required />
         </div>
         <div class="field">
           <label class="field-label" for="eventAddress">Address of Event</label>
@@ -1143,15 +1143,15 @@
       </div>
 
       <div class="field">
-        <label class="field-label" for="deviations">Will you be allowing deviations outside of travel dates?</label>
+        <label class="field-label" for="deviations">Will you be allowing deviations outside of travel dates?<span class="required-mark">*</span></label>
         <div class="field-subtitle" style="font-style:italic;">Please specify who will be covering those costs</div>
-        <input type="text" id="deviations" name="deviations" class="field-input" placeholder="e.g. Yes — covered by Employer" />
+        <input type="text" id="deviations" name="deviations" class="field-input" required placeholder="e.g. Yes — covered by Employer" />
       </div>
 
       <div class="field">
-        <label class="field-label" for="upgradesAllowed">Will upgrades be allowed?</label>
+        <label class="field-label" for="upgradesAllowed">Will upgrades be allowed?<span class="required-mark">*</span></label>
         <div class="field-subtitle" style="font-style:italic;">If applicable, who will be covering these costs?</div>
-        <input type="text" id="upgradesAllowed" name="upgradesAllowed" class="field-input" placeholder="e.g. Yes — covered by Passenger" />
+        <input type="text" id="upgradesAllowed" name="upgradesAllowed" class="field-input" required placeholder="e.g. Yes — covered by Passenger" />
       </div>
     </section>
 
@@ -1206,8 +1206,8 @@
 
       <div class="field-row">
         <div class="field">
-          <label class="field-label" for="departureDate">Departure Date</label>
-          <input type="date" id="departureDate" name="departureDate" class="field-input" />
+          <label class="field-label" for="departureDate">Departure Date<span class="required-mark">*</span></label>
+          <input type="date" id="departureDate" name="departureDate" class="field-input" required />
         </div>
         <div class="field">
           <label class="field-label" for="departureTime">Earliest acceptable departure time, if applicable:</label>
@@ -1215,11 +1215,6 @@
             <option value="">Select a time</option>
           </select>
         </div>
-      </div>
-
-      <div class="field">
-        <label class="field-label">Approximate Number of Passengers <span class="required-mark">*</span></label>
-        <input type="number" id="approximatePassengers" name="approximatePassengers" class="field-input" placeholder="e.g. 25" min="1" required />
       </div>
 
       <div class="field">
@@ -1275,8 +1270,8 @@
       </div>
 
       <div class="field">
-        <label class="field-label" for="prepaidSeats">Will prepaid seats be allowed?</label>
-        <select id="prepaidSeats" name="prepaidSeats" class="field-select">
+        <label class="field-label" for="prepaidSeats">Will prepaid seats be allowed?<span class="required-mark">*</span></label>
+        <select id="prepaidSeats" name="prepaidSeats" class="field-select" required>
           <option value="">Select an option</option>
           <option value="Yes">Yes</option>
           <option value="No">No</option>
@@ -1291,9 +1286,9 @@
       </div>
 
       <div class="field">
-        <label class="field-label" for="upgradedSeats">Are upgraded seats allowed?</label>
+        <label class="field-label" for="upgradedSeats">Are upgraded seats allowed?<span class="required-mark">*</span></label>
         <div class="field-subtitle">E.g. Extra Legroom, Bulkhead, Emergency Row, etc.</div>
-        <select id="upgradedSeats" name="upgradedSeats" class="field-select">
+        <select id="upgradedSeats" name="upgradedSeats" class="field-select" required>
           <option value="">Select an option</option>
           <option value="Yes">Yes</option>
           <option value="No">No</option>
@@ -1464,6 +1459,11 @@
       <label class="email-copy-row">
         <input type="checkbox" id="sendCopy" name="sendCopy" />
         <span>Send me a copy of my responses</span>
+      </label>
+
+      <label class="email-copy-row">
+        <input type="checkbox" id="agreeTerms" name="agreeTerms" required />
+        <span>I agree to Kensington Corporate's terms and the information provided above is accurate to the best of my knowledge.<span class="required-mark">*</span></span>
       </label>
 
       <button type="submit" class="submit-btn">Submit Request</button>
@@ -1672,7 +1672,8 @@
         { columnId: 2800086341160836, value: v('premiumEconomySeats') },
         { columnId: 3424333530959748, value: v('businessClassSeats') },
         { columnId: 8062704964546436, value: v('firstClassSeats') },
-        { columnId: 2782628976824196, value: v('approximatePassengers') },
+        // approximatePassengers field removed — numAttendees in top section already covers this
+        // { columnId: 2782628976824196, value: v('approximatePassengers') },
         { columnId: 7640492656594820, value: v('checkedBag') },
         { columnId: 2010993122381700, value: v('prepaidSeats') },
         { columnId: 6514592749752196, value: v('prepaidSeatsOther') },
