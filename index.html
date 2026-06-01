@@ -521,6 +521,15 @@
     border-color: var(--ink-mute);
   }
 
+  /* Invalid required-field highlight (shown after a blocked submit) */
+  .field-error,
+  .field-input.field-error,
+  .field-select.field-error,
+  .field-textarea.field-error {
+    border-color: #c0392b !important;
+    background-color: #fdf3f1 !important;
+  }
+
   .field-textarea {
     resize: vertical;
     min-height: 100px;
@@ -1606,6 +1615,33 @@
     // ============================================================
     document.getElementById('travelForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      // ── Manual required-field validation ─────────────────────────────
+      // The form has novalidate set (because some sections start hidden),
+      // so HTML5 validation is bypassed. Check every required field
+      // ourselves — including ones inside hidden sections — and refuse
+      // to submit if any are blank.
+      const requiredFields = e.target.querySelectorAll('[required]');
+      let firstInvalid = null;
+      for (const field of requiredFields) {
+        const value = (field.type === 'checkbox') ? field.checked : (field.value || '').trim();
+        const isBlank = (field.type === 'checkbox') ? !value : value === '';
+        if (isBlank) {
+          field.classList.add('field-error');
+          if (!firstInvalid) firstInvalid = field;
+        } else {
+          field.classList.remove('field-error');
+        }
+      }
+      if (firstInvalid) {
+        // Reveal the section that contains the invalid field, if hidden
+        const section = firstInvalid.closest('section.section');
+        if (section) section.classList.remove('hidden');
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { firstInvalid.focus({ preventScroll: true }); } catch {}
+        alert('Please fill in all required fields (marked with *) before submitting.');
+        return;
+      }
 
       // Show loading state on button
       const btn = e.target.querySelector('.submit-btn');
