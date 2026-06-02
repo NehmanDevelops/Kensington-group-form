@@ -767,30 +767,29 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     if not cells:
         return 'skipped — no data'
     payload = json.dumps([{'toTop': True, 'cells': cells}]).encode()
-    last_err = ''
-    # Try twice — a single transient hiccup shouldn't silently drop a row.
-    for attempt in range(2):
-        req = Request(
-            f'https://api.smartsheet.com/2.0/sheets/{sheet_id}/rows',
-            data=payload,
-            headers={
-                'Authorization': f'Bearer {token}',
-                'Content-Type': 'application/json',
-            },
-            method='POST',
-        )
-        try:
-            resp = urlopen(req)
-            return f'ok ({resp.status})'
-        except Exception as e:
-            detail = ''
-            if hasattr(e, 'read'):
-                try:
-                    detail = e.read().decode()
-                except Exception:
-                    pass
-            last_err = f'error: {str(e)} | {detail}'
-    return last_err
+    # Single attempt only. Do NOT retry here, and do NOT raise to the caller:
+    # the parser must always return 200 to Power Automate, otherwise PA's HTTP
+    # connector auto-retries and we get duplicate rows in both sheets.
+    req = Request(
+        f'https://api.smartsheet.com/2.0/sheets/{sheet_id}/rows',
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        resp = urlopen(req)
+        return f'ok ({resp.status})'
+    except Exception as e:
+        detail = ''
+        if hasattr(e, 'read'):
+            try:
+                detail = e.read().decode()
+            except Exception:
+                pass
+        return f'error: {str(e)} | {detail}'
 
 
 def write_to_smartsheet(parsed):
@@ -833,18 +832,15 @@ class handler(BaseHTTPRequestHandler):
 
             result = parse_email(html_email_body, email_subject)
 
-            status_code = 200
             if result.get('should_process'):
                 ss_result = write_to_smartsheet(result)
                 result['smartsheet_write'] = ss_result
-                # If either sheet write failed, respond with 502 so the
-                # Power Automate run is flagged as failed (and visible) rather
-                # than the master row being dropped silently.
-                if isinstance(ss_result, dict) and not ss_result.get('ok', True):
-                    status_code = 502
-                    result['error'] = 'Smartsheet write incomplete — see smartsheet_write for details'
+                # Always return 200 — even on a partial write failure. Returning
+                # a non-200 makes Power Automate's HTTP connector auto-retry,
+                # which re-runs the parser and creates DUPLICATE rows. Failures
+                # are reported in result['smartsheet_write'] for inspection.
 
-            self.send_response(status_code)
+            self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
