@@ -767,26 +767,30 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     if not cells:
         return 'skipped — no data'
     payload = json.dumps([{'toTop': True, 'cells': cells}]).encode()
-    req = Request(
-        f'https://api.smartsheet.com/2.0/sheets/{sheet_id}/rows',
-        data=payload,
-        headers={
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json',
-        },
-        method='POST',
-    )
-    try:
-        resp = urlopen(req)
-        return f'ok ({resp.status})'
-    except Exception as e:
-        detail = ''
-        if hasattr(e, 'read'):
-            try:
-                detail = e.read().decode()
-            except Exception:
-                pass
-        return f'error: {str(e)} | {detail}'
+    last_err = ''
+    # Try twice — a single transient hiccup shouldn't silently drop a row.
+    for attempt in range(2):
+        req = Request(
+            f'https://api.smartsheet.com/2.0/sheets/{sheet_id}/rows',
+            data=payload,
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json',
+            },
+            method='POST',
+        )
+        try:
+            resp = urlopen(req)
+            return f'ok ({resp.status})'
+        except Exception as e:
+            detail = ''
+            if hasattr(e, 'read'):
+                try:
+                    detail = e.read().decode()
+                except Exception:
+                    pass
+            last_err = f'error: {str(e)} | {detail}'
+    return last_err
 
 
 def write_to_smartsheet(parsed):
@@ -801,7 +805,13 @@ def write_to_smartsheet(parsed):
     ]
     master_result = _write_rows(token, MASTER_SHEET_ID, MASTER_COLUMN_MAP, parsed, master_extra)
 
-    return {'cvent_sheet': cvent_result, 'master_sheet': master_result}
+    return {
+        'cvent_sheet': cvent_result,
+        'master_sheet': master_result,
+        # True only if BOTH sheets accepted the row. Lets the HTTP handler
+        # surface a partial failure instead of swallowing it silently.
+        'ok': str(cvent_result).startswith('ok') and str(master_result).startswith('ok'),
+    }
 
 
 class handler(BaseHTTPRequestHandler):
@@ -823,11 +833,18 @@ class handler(BaseHTTPRequestHandler):
 
             result = parse_email(html_email_body, email_subject)
 
+            status_code = 200
             if result.get('should_process'):
                 ss_result = write_to_smartsheet(result)
                 result['smartsheet_write'] = ss_result
+                # If either sheet write failed, respond with 502 so the
+                # Power Automate run is flagged as failed (and visible) rather
+                # than the master row being dropped silently.
+                if isinstance(ss_result, dict) and not ss_result.get('ok', True):
+                    status_code = 502
+                    result['error'] = 'Smartsheet write incomplete — see smartsheet_write for details'
 
-            self.send_response(200)
+            self.send_response(status_code)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
