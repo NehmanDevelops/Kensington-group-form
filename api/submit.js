@@ -15,6 +15,21 @@ export default async function handler(req, res) {
       smartsheetPayload.cells.push({ columnId: 3884169070677892, value: true });
     }
 
+    // ── Force numeric answers to be stored as TEXT in Smartsheet ──────────
+    //    Smartsheet auto-converts pure-numeric strings ("50") into numbers
+    //    (50.0). Power Automate's GetSheetData connector then rejects the whole
+    //    sheet read ("expected String but got Float"). Appending a zero-width
+    //    space keeps the value text (so it returns as a string) while staying
+    //    completely invisible in the sheet and in the recap email.
+    const ZWSP = '​';
+    if (Array.isArray(smartsheetPayload.cells)) {
+      smartsheetPayload.cells = smartsheetPayload.cells.map(c => {
+        if (c == null || typeof c.value !== 'string' && typeof c.value !== 'number') return c;
+        const s = String(c.value);
+        return /^\d+(\.\d+)?$/.test(s) ? { ...c, value: s + ZWSP } : c;
+      });
+    }
+
     // ── Step 1: Save to Group Travel intake sheet ──────────────────────────
     const intakeRes = await fetch('https://api.smartsheet.com/2.0/sheets/3569349083221892/rows', {
       method: 'POST',
