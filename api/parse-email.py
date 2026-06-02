@@ -792,6 +792,47 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
         return f'error: {str(e)} | {detail}'
 
 
+def _send_failure_alert(parsed, cvent_result, master_result):
+    """
+    Sends a Teams notification when CVENT parser fails to write to Smartsheet.
+    Set TEAMS_WEBHOOK_URL env var in Vercel to enable.
+    """
+    webhook_url = os.environ.get('TEAMS_WEBHOOK_URL', '')
+    if not webhook_url:
+        return  # alerting disabled
+
+    name = ' '.join(filter(None, [
+        parsed.get('first_name', ''),
+        parsed.get('last_name', '')
+    ])) or 'Unknown'
+    email = parsed.get('email_address', 'N/A')
+
+    # Teams Adaptive Card format
+    card = {
+        "@type": "MessageCard",
+        "@context": "https://schema.org/extensions",
+        "summary": "CVENT Parser Failure",
+        "themeColor": "FF6B6B",
+        "title": "⚠️ CVENT Parser Write Failed",
+        "sections": [{
+            "activityTitle": f"Traveller: **{name}**",
+            "activitySubtitle": f"Email: {email}",
+            "facts": [
+                {"name": "CVENT Sheet", "value": cvent_result},
+                {"name": "Master Sheet", "value": master_result},
+            ],
+            "text": "Check Vercel logs and Power Automate run history for details."
+        }]
+    }
+
+    try:
+        req = Request(webhook_url, data=json.dumps(card).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req, timeout=5)
+    except Exception as e:
+        # Don't crash the whole parser if alerting fails
+        print(f'Teams alert failed: {e}')
+
+
 def write_to_smartsheet(parsed):
     token = os.environ.get('SMARTSHEET_API_TOKEN', '')
     if not token:
@@ -804,12 +845,18 @@ def write_to_smartsheet(parsed):
     ]
     master_result = _write_rows(token, MASTER_SHEET_ID, MASTER_COLUMN_MAP, parsed, master_extra)
 
+    ok = str(cvent_result).startswith('ok') and str(master_result).startswith('ok')
+
+    # Alert on failure
+    if not ok:
+        _send_failure_alert(parsed, cvent_result, master_result)
+
     return {
         'cvent_sheet': cvent_result,
         'master_sheet': master_result,
         # True only if BOTH sheets accepted the row. Lets the HTTP handler
         # surface a partial failure instead of swallowing it silently.
-        'ok': str(cvent_result).startswith('ok') and str(master_result).startswith('ok'),
+        'ok': ok,
     }
 
 
