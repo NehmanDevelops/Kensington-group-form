@@ -702,7 +702,7 @@ MASTER_COLUMN_MAP = {
     'mobile_phone':             1625540024110980,
     'work_phone':               2751439930953604,
     'home_phone':               7255039558324100,
-    'company':                  499640117268356,
+    'company':                  6289463230893956,
     'title':                    5003239744638852,
     'passport_number':          4037663417208708,
     'passport_expiration_date': 8541263044579204,
