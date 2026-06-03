@@ -155,6 +155,43 @@ export default async function handler(req, res) {
       console.error('MASTER TRACKER write failed:', masterErr.message);
     }
 
+    // ── Step 3: Mirror the same row into the KCG Agent copy ───────────────
+    // "Copy of LIVE GROUP MASTERSHEET" lives in the KCG Agent workspace and is
+    // an exact duplicate, but copying gave it new sheet + column IDs. We
+    // translate each master cell's columnId to the copy's equivalent (matched
+    // by column title) and write the same values. Best-effort; never blocks.
+    const GROUP_COPY_SHEET_ID = '4758210073284484';
+    const GROUP_ORIG_TO_COPY = {
+      671286488764292:  5289756757102468, // GROUP ID
+      8552585836662660: 3037956943417220, // Company Name
+      5174886116134788: 7541556570787716, // Contact Name
+      2923086302449540: 1912057036574596, // Contact E-mail
+      2157300629671812: 6415656663945092, // Contact Phone
+      6300786022977412: 4163856850259844, // Status
+      4048986209292164: 6134181687234436, // Completed
+      4893411139424132: 7260081594077060, // Travel Start Date
+      2641611325738884: 1630582059863940, // Travel End Date
+    };
+    try {
+      const copyCells = masterCells
+        .map(c => ({ columnId: GROUP_ORIG_TO_COPY[c.columnId], value: c.value }))
+        .filter(c => c.columnId);
+      const copyRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUP_COPY_SHEET_ID}/rows`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{ toBottom: true, cells: copyCells }])
+      });
+      if (!copyRes.ok) {
+        const copyErr = await copyRes.json();
+        console.error('KCG Agent group copy mirror failed:', copyErr.message);
+      }
+    } catch (copyErr) {
+      console.error('KCG Agent group copy mirror error:', copyErr.message);
+    }
+
     return res.status(200).json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });

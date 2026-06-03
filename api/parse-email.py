@@ -738,7 +738,62 @@ MASTER_COLUMN_MAP = {
 }
 
 
-DATE_COLUMNS = {659963696680836, 8541263044579204, 2067338580234116}
+# Original date columns + their KCG Agent copy equivalents (so the mirror
+# write normalizes dates too).
+DATE_COLUMNS = {659963696680836, 8541263044579204, 2067338580234116,
+                5361101532598148, 153814463451012, 7472163857928068}
+
+# "Copy of Traveller Profile MasterSheet" in the KCG Agent workspace. Copying
+# the sheet gave it new sheet + column IDs, so this maps every original master
+# column ID -> the copy's equivalent (matched by column title).
+TRAVELLER_COPY_SHEET_ID = '7213505705889668'
+TRAVELLER_ORIG_TO_COPY = {
+    5726513277472644: 2546351765491588,  # First Name
+    3474713463787396: 7049951392862084,  # Middle Name
+    7978313091157892: 1420451858648964,  # Last Name
+    659963696680836:  5361101532598148,  # Date of Birth
+    5163563324051332: 3109301718912900,  # Gender
+    2911763510366084: 7612901346283396,  # Nationality
+    7415363137736580: 1983401812070276,  # Email Address
+    8662414441877380: 1842664323714948,  # CC Email Address
+    1625540024110980: 435289440161668,   # Mobile Phone
+    2751439930953604: 4094464137400196,  # Work Phone
+    7255039558324100: 8598063764770692,  # Home Phone
+    6289463230893956: 4235201625755524,  # Company Name
+    5003239744638852: 6346263951085444,  # Title
+    4037663417208708: 8738801253126020,  # Passport Number
+    8541263044579204: 153814463451012,   # Passport Expiry Date
+    6129139651481476: 4938889067532164,  # Passport Nationality
+    5566189698060164: 6064788974374788,  # Guest Email Address
+    3314389884374916: 3812989160689540,  # Guest Mobile Phone
+    7817989511745412: 8316588788060036,  # Event Code
+    2188489977532292: 998239393582980,   # Event Title
+    6692089604902788: 5501839020953476,  # Event Date
+    4440289791217540: 3250039207268228,  # Event Time
+    8943889418588036: 7753638834638724,  # Request Name
+    42243280113540:   2124139300425604,  # Request Date
+    4545842907484036: 6627738927796100,  # Full Name
+    3756188440498052: 8035113811349380,  # Redress Number
+    6797642721169284: 8879538741481348,  # Departure Time
+    1168143186956164: 83445719273348,    # Departure Trip
+    5671742814326660: 4587045346643844,  # Return Time
+    3419943000641412: 2335245532958596,  # Return Trip
+    7923542628011908: 6838845160329092,  # Ticket Type
+    605193233534852:  1209345626115972,  # Seating
+    5108792860905348: 5712945253486468,  # Age Category
+    2856993047220100: 3461145439801220,  # Food Preferences
+    7360592674590596: 7964745067171716,  # Special Requests
+    1731093140377476: 646395672694660,   # Reservation Status
+    6234692767747972: 5149995300065156,  # Airline Preference 1
+    3982892954062724: 2898195486379908,  # Rewards Number 1
+    8486492581433220: 7401795113750404,  # Airline Preference 2
+    323718256824196:  1772295579537284,  # Rewards Number 2
+    4827317884194692: 6275895206907780,  # Airline Preference 3
+    2575518070509444: 4024095393222532,  # Rewards Number 3
+    3138468023930756: 5994420230197124,  # Source Form
+    7642067651301252: 3742620416511876,  # Confidence Score
+    6155241207926660: 8457326276415364,  # Source
+}
 
 def _normalize_date_for_smartsheet(val):
     if not val:
@@ -845,6 +900,14 @@ def write_to_smartsheet(parsed):
     ]
     master_result = _write_rows(token, MASTER_SHEET_ID, MASTER_COLUMN_MAP, parsed, master_extra)
 
+    # Mirror the master row into the KCG Agent copy (translate column IDs).
+    copy_map = {f: TRAVELLER_ORIG_TO_COPY[c] for f, c in MASTER_COLUMN_MAP.items()
+                if c in TRAVELLER_ORIG_TO_COPY}
+    copy_extra = [{'columnId': TRAVELLER_ORIG_TO_COPY[6155241207926660], 'value': 'CVENT'}]
+    copy_result = _write_rows(token, TRAVELLER_COPY_SHEET_ID, copy_map, parsed, copy_extra)
+
+    # 'ok' intentionally ignores the copy mirror: a copy hiccup must not make
+    # the parser return non-200 (which would trigger Power Automate retries).
     ok = str(cvent_result).startswith('ok') and str(master_result).startswith('ok')
 
     # Alert on failure
@@ -854,6 +917,7 @@ def write_to_smartsheet(parsed):
     return {
         'cvent_sheet': cvent_result,
         'master_sheet': master_result,
+        'copy_sheet': copy_result,
         # True only if BOTH sheets accepted the row. Lets the HTTP handler
         # surface a partial failure instead of swallowing it silently.
         'ok': ok,
