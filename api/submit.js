@@ -56,6 +56,7 @@ export default async function handler(req, res) {
 
     // Intake sheet column IDs for the fields we want to mirror
     const INTAKE = {
+      groupId:               '6412998301486980',
       companyName:           '1061015075983236',
       eventName:             '4438714796511108',
       arrivalDate:           '3699842982645636',
@@ -71,29 +72,38 @@ export default async function handler(req, res) {
       firstClassSeats:       '8062704964546436',
     };
 
-    // LIVE GROUP MASTERSHEET (sheet 4820086761148292) column IDs
+    // LIVE GROUP MASTERSHEET (sheet 4820086761148292) column IDs.
+    // VERIFIED against the live sheet schema on 2026-06-03. The previous
+    // contactName/contactEmail IDs did NOT exist on this sheet, so every
+    // master write was rejected with 400 INVALID_COLUMN_ID and silently
+    // dropped — submissions only ever reached the intake sheet.
     const MASTER_SHEET_ID = '4820086761148292';
     const MASTER = {
-      companyName:   5174886116134788,
-      groupName:     2923086302449540,
-      contactName:   7426685929820036,
-      contactEmail:  1797186395606916,
-      contactPhone:  2157300629671812,
-      status:        6300786022977412,
-      completed:     4048986209292164,
-      startDate:     4893411139424132,
-      endDate:       2641611325738884,
+      groupId:       671286488764292,    // primary "GROUP ID" column
+      companyName:   8552585836662660,   // "Company Name"
+      contactName:   5174886116134788,   // "Contact Name"
+      contactEmail:  2923086302449540,   // "Contact E-mail"
+      contactPhone:  2157300629671812,   // "Contact Phone"
+      status:        6300786022977412,   // "Status"
+      completed:     4048986209292164,   // "Completed"
+      startDate:     4893411139424132,   // "Travel Start Date"
+      endDate:       2641611325738884,   // "Travel End Date"
     };
 
     const masterCells = [
       { columnId: MASTER.companyName,  value: cellMap[INTAKE.companyName]      || '' },
-      { columnId: MASTER.groupName,    value: cellMap[INTAKE.eventName]        || '' },
       { columnId: MASTER.contactName,  value: cellMap[INTAKE.eventManagerName] || '' },
       { columnId: MASTER.contactEmail, value: cellMap[INTAKE.eventManagerEmail]|| '' },
       { columnId: MASTER.contactPhone, value: cellMap[INTAKE.eventManagerPhone]|| '' },
       { columnId: MASTER.status,       value: 'New' },
       { columnId: MASTER.completed,    value: false },
     ];
+
+    // Group ID is the master's primary column. The form doesn't always send
+    // one (it's generated on the intake sheet), so only include it if present.
+    if (cellMap[INTAKE.groupId]) {
+      masterCells.unshift({ columnId: MASTER.groupId, value: cellMap[INTAKE.groupId] });
+    }
 
     if (cellMap[INTAKE.arrivalDate]) {
       masterCells.push({ columnId: MASTER.startDate, value: cellMap[INTAKE.arrivalDate] });
