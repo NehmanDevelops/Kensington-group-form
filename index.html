@@ -958,7 +958,6 @@
   <div class="coords coords-tl">43.6532° N&nbsp;&nbsp;79.3832° W</div>
   <div class="coords coords-tr">EST. 1971</div>
   <div class="coords coords-bl">GROUP TRAVEL</div>
-  <div class="coords coords-br">BESPOKE JOURNEYS</div>
 
   <div class="hero-content">
     <!-- Logo placeholder - dev team to replace src with hosted logo URL -->
@@ -1437,8 +1436,8 @@
       <p class="disruption-note">Please note that schedule changes, missed connections, force majeure, or any other disruptions beyond the traveler's control may occur during travel.</p>
 
       <div class="field">
-        <label class="field-label" for="disruptionCovered">Should any of the above occur, who will be responsible for associated costs?</label>
-        <select id="disruptionCovered" name="disruptionCovered" class="field-select">
+        <label class="field-label" for="disruptionCovered">Should any of the above occur, who will be responsible for associated costs?<span class="required-mark">*</span></label>
+        <select id="disruptionCovered" name="disruptionCovered" class="field-select" required>
           <option value="">Select an option</option>
           <option value="Employer">Employer</option>
           <option value="Passenger">Passenger</option>
@@ -1446,9 +1445,9 @@
       </div>
 
       <div class="field">
-        <label class="field-label" for="afterHoursPaid">Should your passengers require after hours assistance, who will be responsible for associated costs?</label>
+        <label class="field-label" for="afterHoursPaid">Should your passengers require after hours assistance, who will be responsible for associated costs?<span class="required-mark">*</span></label>
         <div class="field-subtitle">Group travel agent will be in contact for full details — please do not enter credit card numbers in this form</div>
-        <select id="afterHoursPaid" name="afterHoursPaid" class="field-select">
+        <select id="afterHoursPaid" name="afterHoursPaid" class="field-select" required>
           <option value="">Select an option</option>
           <option value="Employer">Employer</option>
           <option value="Passenger">Passenger</option>
