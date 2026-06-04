@@ -161,6 +161,7 @@ export default async function handler(req, res) {
     // translate each master cell's columnId to the copy's equivalent (matched
     // by column title) and write the same values. Best-effort; never blocks.
     const GROUP_COPY_SHEET_ID = '4758210073284484';
+    const COPY_GROUP_ID_COL = 5289756757102468; // "GROUP ID" on the copy sheet
     const GROUP_ORIG_TO_COPY = {
       671286488764292:  5289756757102468, // GROUP ID
       8552585836662660: 3037956943417220, // Company Name
@@ -176,13 +177,40 @@ export default async function handler(req, res) {
       const copyCells = masterCells
         .map(c => ({ columnId: GROUP_ORIG_TO_COPY[c.columnId], value: c.value }))
         .filter(c => c.columnId);
+
+      // Position the new row the SAME way as the master (Step 2): insert right
+      // after the last row that has a real GROUP ID, instead of toBottom — which
+      // was burying new rows past ~45 empty placeholder rows at the bottom.
+      let copyPayload = [{ toTop: true, cells: copyCells }];
+      try {
+        const copySheetRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUP_COPY_SHEET_ID}`, {
+          headers: { 'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}` }
+        });
+        if (copySheetRes.ok) {
+          const copyData = await copySheetRes.json();
+          let lastCopyRowId = null;
+          for (const row of copyData.rows) {
+            const gc = row.cells?.find(c => c.columnId === COPY_GROUP_ID_COL);
+            if (gc && gc.value !== undefined && gc.value !== null && String(gc.value).trim() !== '') {
+              lastCopyRowId = row.id;
+            }
+          }
+          // After the last GROUP-ID row if one exists; otherwise top of sheet.
+          copyPayload = lastCopyRowId
+            ? [{ siblingId: lastCopyRowId, cells: copyCells }]
+            : [{ toTop: true, cells: copyCells }];
+        }
+      } catch (posErr) {
+        console.error('Copy row position lookup failed, using toTop:', posErr.message);
+      }
+
       const copyRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUP_COPY_SHEET_ID}/rows`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify([{ toBottom: true, cells: copyCells }])
+        body: JSON.stringify(copyPayload)
       });
       if (!copyRes.ok) {
         const copyErr = await copyRes.json();
