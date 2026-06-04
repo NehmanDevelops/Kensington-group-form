@@ -899,10 +899,99 @@ def _send_failure_alert(parsed, cvent_result, master_result):
         print(f'Teams alert failed: {e}')
 
 
+# ── Duplicate protection ────────────────────────────────────────────────────
+# A registration is considered the SAME person+event if the email matches and
+# the event matches. We key on email + (event_code OR event_title OR name) so
+# the same person registering for two DIFFERENT events still creates two rows,
+# but the identical registration arriving twice (e.g. from both the USA and
+# Canada inboxes, or a re-sent/forwarded confirmation) only writes once.
+_DEDUP_COLS = {
+    'email_address': 6621390836109188,
+    'event_code':    2891847394692996,
+    'event_title':   7395447022063492,
+    'full_name':     358572604297092,
+    'first_name':    5495490929266564,
+    'last_name':     7747290742951812,
+}
+
+
+def _clean_key_part(s):
+    if not s:
+        return ''
+    # strip the zero-width space the form/parser may append, plus whitespace/case
+    return str(s).replace('​', '').strip().lower()
+
+
+def _dedup_key(email, event_code, event_title, full_name, first_name, last_name):
+    email = _clean_key_part(email)
+    if not email:
+        return None  # no email → cannot dedup reliably; let it write
+    code = _clean_key_part(event_code)
+    if code:
+        return f'{email}|code:{code}'
+    title = _clean_key_part(event_title)
+    if title:
+        return f'{email}|title:{title}'
+    name = _clean_key_part(full_name) or _clean_key_part(
+        (first_name or '') + ' ' + (last_name or '')
+    )
+    return f'{email}|name:{name}'
+
+
+def _fetch_existing_dedup_keys(token, sheet_id):
+    """Return a set of dedup keys already present in the CVENT sheet.
+    Fails OPEN (returns empty set) on any error so a lookup hiccup never
+    blocks a legitimate registration from being written."""
+    col_ids = ','.join(str(c) for c in _DEDUP_COLS.values())
+    url = (f'https://api.smartsheet.com/2.0/sheets/{sheet_id}'
+           f'?columnIds={col_ids}&level=0')
+    try:
+        req = Request(url, headers={'Authorization': f'Bearer {token}'})
+        resp = urlopen(req, timeout=10)
+        data = json.loads(resp.read().decode())
+    except Exception as e:
+        print(f'Dedup lookup failed (failing open): {e}')
+        return set()
+
+    id_to_field = {v: k for k, v in _DEDUP_COLS.items()}
+    keys = set()
+    for row in data.get('rows', []):
+        vals = {}
+        for cell in row.get('cells', []):
+            field = id_to_field.get(cell.get('columnId'))
+            if field:
+                vals[field] = cell.get('value', '')
+        key = _dedup_key(
+            vals.get('email_address'), vals.get('event_code'),
+            vals.get('event_title'), vals.get('full_name'),
+            vals.get('first_name'), vals.get('last_name'),
+        )
+        if key:
+            keys.add(key)
+    return keys
+
+
 def write_to_smartsheet(parsed):
     token = os.environ.get('SMARTSHEET_API_TOKEN', '')
     if not token:
         return {'cvent_sheet': 'skipped — no token', 'master_sheet': 'skipped — no token'}
+
+    # ── Duplicate check (against the CVENT sheet, the source of truth) ──
+    new_key = _dedup_key(
+        parsed.get('email_address'), parsed.get('event_code'),
+        parsed.get('event_title'), parsed.get('full_name'),
+        parsed.get('first_name'), parsed.get('last_name'),
+    )
+    if new_key:
+        existing_keys = _fetch_existing_dedup_keys(token, CVENT_SHEET_ID)
+        if new_key in existing_keys:
+            return {
+                'cvent_sheet': 'skipped — duplicate',
+                'master_sheet': 'skipped — duplicate',
+                'copy_sheet': 'skipped — duplicate',
+                'duplicate_key': new_key,
+                'ok': True,  # a duplicate is a successful no-op, not a failure
+            }
 
     cvent_result = _write_rows(token, CVENT_SHEET_ID, CVENT_COLUMN_MAP, parsed)
 
