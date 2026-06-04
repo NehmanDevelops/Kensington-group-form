@@ -616,16 +616,27 @@ def parse_email(html_email_body, email_subject=''):
             else:
                 output[key] = cleaned
 
-    has_identity = bool(
-        output.get('first_name') or output.get('last_name') or
-        output.get('full_name') or output.get('email_address')
+    # A row is only worth writing if we have a NAME. Email alone is not
+    # enough — the fallback email extractor will happily pick up emails
+    # from quoted reply threads, footers, signatures, etc., which would
+    # otherwise spawn junk rows that have nothing but an email address.
+    has_name = bool(
+        output.get('first_name') or output.get('last_name') or output.get('full_name')
     )
+    has_email = bool(output.get('email_address'))
+    has_identity = has_name and has_email
+
     if not has_identity:
         output['should_process'] = False
         output['source_form'] = source_form if source_form != 'Unknown' else 'Empty Extraction'
         output['confidence_score'] = 0
         output['needs_review'] = True
-        output['detection_reason'] = f'{detection_reason}; no_identity_extracted'
+        if not has_name and has_email:
+            output['detection_reason'] = f'{detection_reason}; email_only_no_name'
+        elif has_name and not has_email:
+            output['detection_reason'] = f'{detection_reason}; name_only_no_email'
+        else:
+            output['detection_reason'] = f'{detection_reason}; no_identity_extracted'
         output['parser_version'] = PARSER_VERSION
         return output
 

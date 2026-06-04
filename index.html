@@ -1661,8 +1661,16 @@
 
       // Helper to get value or empty string
       const v = (key) => data[key] || '';
-      // Helper to join array values (multi-select checkboxes)
+      // Helper to join array values (multi-select checkboxes) — used where the target column is plain text
       const arr = (key) => Array.isArray(data[key]) ? data[key].join(', ') : (data[key] || '');
+      // Helper for MULTI_PICKLIST columns — Smartsheet requires an objectValue with a values array,
+      // not a joined string (a joined string like "Economy, Premium Economy" fails strict validation).
+      const multiPicklistCell = (columnId, key) => {
+        const raw = data[key];
+        if (!raw) return null;
+        const values = Array.isArray(raw) ? raw : [raw];
+        return { columnId, objectValue: { objectType: 'MULTI_PICKLIST', values } };
+      };
       // Today's date in YYYY-MM-DD format
       const today = new Date().toISOString().split('T')[0];
 
@@ -1702,7 +1710,7 @@
         { columnId: 8203442610016132, value: v('arrivalTime') },
         { columnId: 885093215539076,  value: v('departureDate') || null },
         { columnId: 5388692842909572, value: v('departureTime') },
-        { columnId: 3136893029224324, value: arr('cabinClass') },
+        multiPicklistCell(3136893029224324, 'cabinClass'),
         { columnId: 6565385116880772, value: String(v('economySeats') || '') },
         { columnId: 2800086341160836, value: String(v('premiumEconomySeats') || '') },
         { columnId: 3424333530959748, value: String(v('businessClassSeats') || '') },
@@ -1738,7 +1746,7 @@
         { columnId: 2714680564158340, value: 'New' },                      // Status
         { columnId: 6092380284686212, value: false },                      // Needs Review
         { columnId: 3840580471000964, value: today },                      // Date of Request
-      ].filter(cell => cell.value !== '' && cell.value !== null && cell.value !== undefined);
+      ].filter(cell => cell !== null && cell !== undefined && ((cell.value !== '' && cell.value !== null && cell.value !== undefined) || cell.objectValue));
 
       try {
         const response = await fetch('/api/submit', {
