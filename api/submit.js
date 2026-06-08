@@ -97,6 +97,7 @@ export default async function handler(req, res) {
       { columnId: MASTER.contactPhone, value: cellMap[INTAKE.eventManagerPhone]|| '' },
       { columnId: MASTER.status,       value: 'New' },
       { columnId: MASTER.completed,    value: false },
+      { columnId: 6289100570398596,    value: true },  // Auto-Synced — prevents sync loop
     ];
 
     // Group ID is the master's primary column. The form doesn't always send
@@ -155,69 +156,67 @@ export default async function handler(req, res) {
       console.error('MASTER TRACKER write failed:', masterErr.message);
     }
 
-    // ── Step 3: Mirror the same row into the KCG Agent copy ───────────────
-    // "Copy of LIVE GROUP MASTERSHEET" lives in the KCG Agent workspace and is
-    // an exact duplicate, but copying gave it new sheet + column IDs. We
-    // translate each master cell's columnId to the copy's equivalent (matched
-    // by column title) and write the same values. Best-effort; never blocks.
-    const GROUP_COPY_SHEET_ID = '4758210073284484';
-    const COPY_GROUP_ID_COL = 5289756757102468; // "GROUP ID" on the copy sheet
-    const GROUP_ORIG_TO_COPY = {
-      671286488764292:  5289756757102468, // GROUP ID
-      8552585836662660: 3037956943417220, // Company Name
-      5174886116134788: 7541556570787716, // Contact Name
-      2923086302449540: 1912057036574596, // Contact E-mail
-      2157300629671812: 6415656663945092, // Contact Phone
-      6300786022977412: 4163856850259844, // Status
-      4048986209292164: 6134181687234436, // Completed
-      4893411139424132: 7260081594077060, // Travel Start Date
-      2641611325738884: 1630582059863940, // Travel End Date
+    // ── Step 3: Mirror the same row into KC AGENT GROUPS MASTERSHEET ───────
+    // This is the agent-facing sheet in the KCG Agent workspace. We map each
+    // master column to its agent-sheet equivalent and write the same values.
+    // Auto-Synced is set to true so the sync automation doesn't re-copy it.
+    const AGENT_SHEET_ID = '1453513052737412';
+    const AGENT_GROUP_ID_COL = 3130417439084420;
+    const MASTER_TO_AGENT = {
+      671286488764292:  3130417439084420, // GROUP ID
+      8552585836662660: 7634017066454916, // Company Name
+      5174886116134788: 2004517532241796, // Contact Name
+      2923086302449540: 6508117159612292, // Contact E-mail
+      2157300629671812: 4256317345927044, // Contact Phone
+      6300786022977412: 8759916973297540, // Status
+      4048986209292164: 8056229531520900, // Completed
+      4893411139424132: 5804429717835652, // Travel Start Date
+      2641611325738884: 3552629904150404, // Travel End Date
     };
     try {
-      const copyCells = masterCells
-        .map(c => ({ columnId: GROUP_ORIG_TO_COPY[c.columnId], value: c.value }))
-        .filter(c => c.columnId);
+      const agentCells = masterCells
+        .filter(c => MASTER_TO_AGENT[c.columnId])  // only mapped columns
+        .map(c => ({ columnId: MASTER_TO_AGENT[c.columnId], value: c.value }));
+      // Add Auto-Synced = true on Agent sheet to prevent sync loop
+      agentCells.push({ columnId: 588135196299140, value: true });
 
-      // Position the new row the SAME way as the master (Step 2): insert right
-      // after the last row that has a real GROUP ID, instead of toBottom — which
-      // was burying new rows past ~45 empty placeholder rows at the bottom.
-      let copyPayload = [{ toTop: true, cells: copyCells }];
+      // Position after the last row with a GROUP ID
+      let agentPayload = [{ toBottom: true, cells: agentCells }];
       try {
-        const copySheetRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUP_COPY_SHEET_ID}`, {
+        const agentSheetRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${AGENT_SHEET_ID}`, {
           headers: { 'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}` }
         });
-        if (copySheetRes.ok) {
-          const copyData = await copySheetRes.json();
-          let lastCopyRowId = null;
-          for (const row of copyData.rows) {
-            const gc = row.cells?.find(c => c.columnId === COPY_GROUP_ID_COL);
+        if (agentSheetRes.ok) {
+          const agentData = await agentSheetRes.json();
+          let lastAgentRowId = null;
+          for (const row of agentData.rows) {
+            const gc = row.cells?.find(c => c.columnId === AGENT_GROUP_ID_COL);
             if (gc && gc.value !== undefined && gc.value !== null && String(gc.value).trim() !== '') {
-              lastCopyRowId = row.id;
+              lastAgentRowId = row.id;
             }
           }
-          // After the last GROUP-ID row if one exists; otherwise top of sheet.
-          copyPayload = lastCopyRowId
-            ? [{ siblingId: lastCopyRowId, cells: copyCells }]
-            : [{ toTop: true, cells: copyCells }];
+          if (lastAgentRowId) {
+            agentPayload = [{ siblingId: lastAgentRowId, cells: agentCells }];
+          }
         }
       } catch (posErr) {
-        console.error('Copy row position lookup failed, using toTop:', posErr.message);
+        console.error('Agent row position lookup failed, using toBottom:', posErr.message);
       }
 
-      const copyRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUP_COPY_SHEET_ID}/rows`, {
+      const agentRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${AGENT_SHEET_ID}/rows`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(copyPayload)
+        body: JSON.stringify(agentPayload)
       });
-      if (!copyRes.ok) {
-        const copyErr = await copyRes.json();
-        console.error('KCG Agent group copy mirror failed:', copyErr.message);
+      if (!agentRes.ok) {
+        const agentErr = await agentRes.json();
+        console.error('KC Agent Groups mirror failed:', agentErr.message);
       }
-    } catch (copyErr) {
-      console.error('KCG Agent group copy mirror error:', copyErr.message);
+    } catch (agentErr) {
+      console.error('KC Agent Groups mirror error:', agentErr.message);
     }
 
     return res.status(200).json({ success: true });
