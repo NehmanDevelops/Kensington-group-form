@@ -86,32 +86,46 @@ export default async function handler(req, res) {
       return res.status(200).json({ synced: 0, message: 'All groups already in sync' });
     }
 
-    // 4. Create rows in Agent sheet
-    const newRows = toSync.map(row => ({
-      toBottom: true,
-      cells: [
-        { columnId: AGT.groupId,    value: cellVal(row, MGR.groupId) || '' },
-        { columnId: AGT.company,    value: cellVal(row, MGR.company) || '' },
-        { columnId: AGT.contactN,   value: cellVal(row, MGR.contactN) || '' },
-        { columnId: AGT.contactE,   value: cellVal(row, MGR.contactE) || '' },
-        { columnId: AGT.contactP,   value: cellVal(row, MGR.contactP) || '' },
-        { columnId: AGT.status,     value: cellVal(row, MGR.status) || '' },
-        { columnId: AGT.passengers, value: cellVal(row, MGR.passengers) || '' },
-        { columnId: AGT.startDate,  value: cellVal(row, MGR.startDate) || '' },
-        { columnId: AGT.endDate,    value: cellVal(row, MGR.endDate) || '' },
-        { columnId: AGT.completed,  value: cellVal(row, MGR.completed) || false },
-        { columnId: AGT.launchDate, value: cellVal(row, MGR.launchDate) || '' },
-        { columnId: AGT.notes,      value: cellVal(row, MGR.notes) || '' },
-        { columnId: AGT.autoSynced, value: true },
-      ].filter(c => c.value !== ''),
-    }));
+    // 4. Find the last row with a GROUP ID on Agent sheet so we insert right after it
+    let lastAgentRowId = null;
+    for (const row of agtSheet.rows) {
+      const gid = cellVal(row, AGT.groupId);
+      if (gid && String(gid).trim() !== '') lastAgentRowId = row.id;
+    }
+
+    // 5. Create rows in Agent sheet — positioned right after last data row
+    const newRows = toSync.map(row => {
+      const rowDef = {
+        cells: [
+          { columnId: AGT.groupId,    value: cellVal(row, MGR.groupId) || '' },
+          { columnId: AGT.company,    value: cellVal(row, MGR.company) || '' },
+          { columnId: AGT.contactN,   value: cellVal(row, MGR.contactN) || '' },
+          { columnId: AGT.contactE,   value: cellVal(row, MGR.contactE) || '' },
+          { columnId: AGT.contactP,   value: cellVal(row, MGR.contactP) || '' },
+          { columnId: AGT.status,     value: cellVal(row, MGR.status) || '' },
+          { columnId: AGT.passengers, value: cellVal(row, MGR.passengers) || '' },
+          { columnId: AGT.startDate,  value: cellVal(row, MGR.startDate) || '' },
+          { columnId: AGT.endDate,    value: cellVal(row, MGR.endDate) || '' },
+          { columnId: AGT.completed,  value: cellVal(row, MGR.completed) || false },
+          { columnId: AGT.launchDate, value: cellVal(row, MGR.launchDate) || '' },
+          { columnId: AGT.notes,      value: cellVal(row, MGR.notes) || '' },
+          { columnId: AGT.autoSynced, value: true },
+        ].filter(c => c.value !== ''),
+      };
+      if (lastAgentRowId) {
+        rowDef.siblingId = lastAgentRowId;
+      } else {
+        rowDef.toBottom = true;
+      }
+      return rowDef;
+    });
 
     const insertRes = await api(`/sheets/${AGENT_SHEET}/rows`, {
       method: 'POST',
       body: JSON.stringify(newRows),
     });
 
-    // 5. Mark synced rows on Manager sheet
+    // 6. Mark synced rows on Manager sheet
     const updateRows = toSync.map(row => ({
       id: row.id,
       cells: [{ columnId: MGR.autoSynced, value: true }],
