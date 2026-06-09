@@ -50,11 +50,19 @@ export default async function handler(req, res) {
   const MGR_GROUP_ID = 5029597388509060; // Group ID on Manager
   const MGR_FIRST   = 5726513277472644;  // First Name on Manager
   const MGR_LAST    = 7978313091157892;  // Last Name on Manager
+  const MGR_AGENT_ASSIGNED = 4516209625436036; // Agent Assigned (CONTACT_LIST)
+  const MGR_ASSIGNED       = 689867251289988;  // Assigned (CHECKBOX)
+  const MGR_IN_PROGRESS    = 5193466878660484;  // In progress (CHECKBOX)
+  const MGR_COMPLETED      = 2941667064975236;  // Completed (CHECKBOX)
 
   const AGT_ROW_ID  = 6205526462730116;  // Row ID on Agent
   const AGT_GROUP_ID = 3953726649044868; // Group ID on Agent
   const AGT_FIRST   = 2546351765491588;  // First Name on Agent
   const AGT_LAST    = 1420451858648964;  // Last Name on Agent
+  const AGT_AGENT_ASSIGNED = 5924051486019460; // Agent Assigned (CONTACT_LIST)
+  const AGT_ASSIGNED       = 3672251672334212;  // Assigned (CHECKBOX)
+  const AGT_IN_PROGRESS    = 8175851299704708;  // In progress (CHECKBOX)
+  const AGT_COMPLETED      = 857501905227652;   // Completed (CHECKBOX)
 
   const api = (path, opts = {}) =>
     fetch(`https://api.smartsheet.com/2.0${path}`, {
@@ -75,70 +83,106 @@ export default async function handler(req, res) {
     ]);
 
     // 2. Build lookup of existing travellers in Agent sheet
-    //    Key = "GroupID|FirstName|LastName" (case-insensitive)
-    const agentKeys = new Set();
+    //    Key = "GroupID|FirstName|LastName" (case-insensitive) → Agent row
+    const agentByKey = {};
     for (const row of agtSheet.rows) {
       const gid   = cellVal(row, AGT_GROUP_ID) || '';
       const first = cellVal(row, AGT_FIRST) || '';
       const last  = cellVal(row, AGT_LAST) || '';
       const key = `${gid}|${first}|${last}`.toLowerCase().trim();
-      if (key !== '||') agentKeys.add(key);
+      if (key !== '||') agentByKey[key] = row;
     }
 
-    // 3. Find Manager travellers not in Agent sheet
+    // 3. Separate into new rows vs existing rows that need updates
     const toSync = [];
+    const toUpdate = [];
+
+    // Fields that should always sync from Manager → Agent
+    const SYNC_FIELDS = {
+      [MGR_AGENT_ASSIGNED]: AGT_AGENT_ASSIGNED,  // Agent Assigned (CONTACT_LIST)
+      [MGR_ASSIGNED]:       AGT_ASSIGNED,         // Assigned (CHECKBOX)
+      [MGR_IN_PROGRESS]:    AGT_IN_PROGRESS,      // In progress (CHECKBOX)
+      [MGR_COMPLETED]:      AGT_COMPLETED,         // Completed (CHECKBOX)
+    };
+
     for (const row of mgrSheet.rows) {
       const gid   = cellVal(row, MGR_GROUP_ID) || '';
       const first = cellVal(row, MGR_FIRST) || '';
       const last  = cellVal(row, MGR_LAST) || '';
       const key = `${gid}|${first}|${last}`.toLowerCase().trim();
-      if (key === '||') continue;            // Skip empty rows
-      if (agentKeys.has(key)) continue;      // Already exists
-      toSync.push(row);
+      if (key === '||') continue;
+
+      const existingAgentRow = agentByKey[key];
+      if (!existingAgentRow) {
+        // New row — needs to be created
+        toSync.push(row);
+      } else {
+        // Existing row — check if any sync fields changed
+        const updateCells = [];
+        for (const [mgrCol, agtCol] of Object.entries(SYNC_FIELDS)) {
+          const mgrVal = cellVal(row, Number(mgrCol));
+          const agtVal = cellVal(existingAgentRow, Number(agtCol));
+          // Only push Manager value to Agent if Manager has a value and it differs
+          if (mgrVal !== null && mgrVal !== undefined && mgrVal !== agtVal) {
+            updateCells.push({ columnId: Number(agtCol), value: mgrVal });
+          }
+        }
+        if (updateCells.length > 0) {
+          toUpdate.push({ id: existingAgentRow.id, cells: updateCells });
+        }
+      }
     }
 
-    if (toSync.length === 0) {
-      return res.status(200).json({ synced: 0, message: 'All travellers already in sync' });
+    let syncedCount = 0;
+    let updatedCount = 0;
+
+    // 4. Update existing rows with changed fields
+    if (toUpdate.length > 0) {
+      await api(`/sheets/${AGENT_TRAVELLER}/rows`, {
+        method: 'PUT',
+        body: JSON.stringify(toUpdate),
+      });
+      updatedCount = toUpdate.length;
     }
 
-    // 4. Find last data row in Agent sheet for positioning
-    let lastAgentRowId = null;
-    for (const row of agtSheet.rows) {
-      const first = cellVal(row, AGT_FIRST);
-      const last  = cellVal(row, AGT_LAST);
-      if (first || last) lastAgentRowId = row.id;
-    }
+    // 5. Create new rows
+    if (toSync.length > 0) {
+      // Find last data row in Agent sheet for positioning
+      let lastAgentRowId = null;
+      for (const row of agtSheet.rows) {
+        const first = cellVal(row, AGT_FIRST);
+        const last  = cellVal(row, AGT_LAST);
+        if (first || last) lastAgentRowId = row.id;
+      }
 
-    // 5. Build new rows for Agent sheet
-    const newRows = toSync.map(row => {
-      const cells = [];
-      for (const [mgrColId, agtColId] of Object.entries(COL_MAP)) {
-        const val = cellVal(row, Number(mgrColId));
-        if (val !== null && val !== '' && val !== undefined) {
-          // Contact list values need special handling
-          const mgrCol = mgrSheet.columns?.find(c => c.id === Number(mgrColId));
-          if (mgrCol?.type === 'CONTACT_LIST' && typeof val === 'string') {
-            // For contact columns, pass the email or name as-is
-            cells.push({ columnId: Number(agtColId), value: val });
-          } else {
+      const newRows = toSync.map(row => {
+        const cells = [];
+        for (const [mgrColId, agtColId] of Object.entries(COL_MAP)) {
+          const val = cellVal(row, Number(mgrColId));
+          if (val !== null && val !== '' && val !== undefined) {
             cells.push({ columnId: Number(agtColId), value: val });
           }
         }
-      }
 
-      const rowDef = { cells };
-      if (lastAgentRowId) {
-        rowDef.siblingId = lastAgentRowId;
-      } else {
-        rowDef.toBottom = true;
-      }
-      return rowDef;
-    });
+        const rowDef = { cells };
+        if (lastAgentRowId) {
+          rowDef.siblingId = lastAgentRowId;
+        } else {
+          rowDef.toBottom = true;
+        }
+        return rowDef;
+      });
 
-    const insertRes = await api(`/sheets/${AGENT_TRAVELLER}/rows`, {
-      method: 'POST',
-      body: JSON.stringify(newRows),
-    });
+      await api(`/sheets/${AGENT_TRAVELLER}/rows`, {
+        method: 'POST',
+        body: JSON.stringify(newRows),
+      });
+      syncedCount = toSync.length;
+    }
+
+    if (syncedCount === 0 && updatedCount === 0) {
+      return res.status(200).json({ synced: 0, updated: 0, message: 'All travellers already in sync' });
+    }
 
     // 6. After syncing travellers, update advisor counts
     try {
@@ -151,9 +195,9 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      synced: toSync.length,
-      travellers: toSync.map(r => `${cellVal(r, MGR_FIRST)} ${cellVal(r, MGR_LAST)}`),
-      message: `Synced ${toSync.length} traveller(s) from Manager → Agent`,
+      synced: syncedCount,
+      updated: updatedCount,
+      message: `Synced ${syncedCount} new, updated ${updatedCount} existing traveller(s)`,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
