@@ -19,6 +19,7 @@ export default async function handler(req, res) {
   // Column IDs on Advisor Summary
   const ADV = {
     advisorName:    7481264075739012, // "Advisor Assigned"
+    assigned:       563822393069444,  // "# Assigned"
     inProgress:     2882053124427652, // "# In Progress"
     ticketedClosed: 6355364168896388, // "# Ticketed/Closed"
   };
@@ -38,41 +39,77 @@ export default async function handler(req, res) {
     // 1. Read the AGENT Traveller List
     const travSheet = await api(`/sheets/${AGENT_TRAVELLER_SHEET}`);
 
-    // 2. Count "In progress" and "Completed" per agent
-    const counts = {}; // { agentName: { inProgress: N, completed: N } }
+    // 2. Count "Assigned", "In progress" and "Completed" per agent
+    //    Agent Assigned is a CONTACT_LIST — stores email but displays a name.
+    //    We need to match against the Advisor Summary which uses display names
+    //    like "Vera Perisic". Build a lookup from email → display name using the
+    //    Advisor Summary names so we can match reliably.
+    const counts = {}; // { agentName: { assigned: N, inProgress: N, completed: N } }
+
+    // Read Advisor Summary to build email→name hints
+    const advSheet = await api(`/sheets/${ADVISOR_SUMMARY_SHEET}`);
+    const advisorNames = [];
+    for (const row of advSheet.rows) {
+      const n = cellVal(row, ADV.advisorName);
+      if (n) advisorNames.push(String(n).trim());
+    }
+
+    // Helper: resolve a CONTACT_LIST cell value to the best matching advisor name
+    const resolveAgent = (agent) => {
+      if (!agent) return null;
+      const raw = typeof agent === 'object' ? (agent.name || agent.email || '') : String(agent);
+      const s = raw.trim();
+      if (!s) return null;
+
+      // Direct match by name
+      const directMatch = advisorNames.find(n => n.toLowerCase() === s.toLowerCase());
+      if (directMatch) return directMatch;
+
+      // If it's an email like "vera.perisic@...", try to match "Vera Perisic"
+      if (s.includes('@')) {
+        const local = s.split('@')[0]; // "vera.perisic"
+        const parts = local.split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+        const guess = parts.join(' '); // "Vera Perisic"
+        const emailMatch = advisorNames.find(n => n.toLowerCase() === guess.toLowerCase());
+        if (emailMatch) return emailMatch;
+      }
+
+      // Partial match — if the value is a first name only, find advisor whose name starts with it
+      const partialMatch = advisorNames.find(n => n.toLowerCase().startsWith(s.toLowerCase()));
+      if (partialMatch) return partialMatch;
+
+      return s; // Fallback to raw value
+    };
 
     for (const row of travSheet.rows) {
       const agent = cellVal(row, TRAV.agentAssigned);
-      if (!agent) continue;
-
-      // Contact list cells can return an object or display name
-      const name = typeof agent === 'object' ? agent.name || agent : String(agent).trim();
+      const name = resolveAgent(agent);
       if (!name) continue;
 
-      if (!counts[name]) counts[name] = { inProgress: 0, completed: 0 };
+      if (!counts[name]) counts[name] = { assigned: 0, inProgress: 0, completed: 0 };
 
+      const asgn = cellVal(row, TRAV.assigned);
       const inProg = cellVal(row, TRAV.inProgress);
       const done = cellVal(row, TRAV.completed);
 
+      if (asgn === true || asgn === 'true') counts[name].assigned++;
       if (inProg === true || inProg === 'true') counts[name].inProgress++;
       if (done === true || done === 'true') counts[name].completed++;
     }
 
-    // 3. Read the Advisor Summary sheet to get current rows
-    const advSheet = await api(`/sheets/${ADVISOR_SUMMARY_SHEET}`);
-
-    // 4. Update each advisor row with the correct counts
+    // 3. Update each advisor row with the correct counts
     const updateRows = [];
     for (const row of advSheet.rows) {
       const advisorName = cellVal(row, ADV.advisorName);
       if (!advisorName) continue;
 
       const name = String(advisorName).trim();
-      const c = counts[name] || { inProgress: 0, completed: 0 };
+      const c = counts[name] || { assigned: 0, inProgress: 0, completed: 0 };
 
       updateRows.push({
         id: row.id,
         cells: [
+          { columnId: ADV.assigned,       value: c.assigned },
           { columnId: ADV.inProgress,     value: c.inProgress },
           { columnId: ADV.ticketedClosed, value: c.completed },
         ],
