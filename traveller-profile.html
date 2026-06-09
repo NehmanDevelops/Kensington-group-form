@@ -1488,6 +1488,20 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Submitting…';
 
+      // ── Validate required fields ──
+      const travellerTypeVal = document.getElementById('travellerType').value;
+      if (!travellerTypeVal) {
+        const ttSelect = document.getElementById('travellerType');
+        ttSelect.style.borderColor = 'var(--error)';
+        ttSelect.style.boxShadow = '0 0 0 3px rgba(176, 58, 58, 0.15)';
+        ttSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        ttSelect.focus();
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Profile';
+        alert('Please select whether you are an Employee or Guest before submitting.');
+        return;
+      }
+
       const fd = new FormData(form);
       const data = {};
       const cabinClasses = [];
