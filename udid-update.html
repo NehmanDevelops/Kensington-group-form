@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — UDID Update Request</title>
+<!-- Official Kensington brand fonts (SangBleu) loaded locally via @font-face -->
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+
+  :root {
+    /* Kensington Corporate official brand palette */
+    --ink: #3a2f3c;        /* Kensington Purple */
+    --ink-soft: #524a54;
+    --ink-mute: #8b8678;
+    --bone: #fdf9ec;       /* Kensington Cream */
+    --paper: #fffdf8;
+    --cream: #f3eedf;
+    --gold: #767260;       /* Kensington Taupe (accent) */
+    --gold-deep: #1a3e32;  /* Kensington Green (deep accent) */
+    --line: #e4ddcc;
+    --error: #b03a3a;
+    --shadow-md: 0 4px 12px rgba(58,47,60,0.06), 0 2px 4px rgba(58,47,60,0.04);
+    --shadow-lg: 0 12px 40px rgba(58,47,60,0.10), 0 4px 12px rgba(58,47,60,0.05);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'SangBleu Republic', Georgia, -apple-system, serif;
+    background: var(--bone);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    padding: 56px 24px 96px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%),
+      linear-gradient(135deg, #2a2230 0%, #3a2f3c 45%, #1a3e32 100%);
+    overflow: hidden;
+  }
+  .hero-logo { height: 56px; width: auto; display: block; margin: 0 auto 24px; }
+  .hero-eyebrow {
+    font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase;
+    color: #c9c3b2; margin-bottom: 14px; font-weight: 500;
+  }
+  .hero-title {
+    font-family: 'SangBleu Sunrise', Georgia, serif;
+    font-weight: 400; color: var(--bone);
+    font-size: clamp(24px, 3vw, 38px); line-height: 1.2;
+  }
+  .hero-title em { font-style: italic; color: #c9b78f; }
+  .hero-subtitle {
+    color: rgba(245,241,232,0.72); font-size: 14px; max-width: 540px;
+    margin: 16px auto 0; line-height: 1.7;
+  }
+
+  /* FORM */
+  .form-wrap { max-width: 760px; margin: -64px auto 80px; padding: 0 20px; position: relative; z-index: 2; }
+  .form-card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+
+  .section { padding: 36px 44px; border-bottom: 1px solid var(--line); }
+  .section:last-of-type { border-bottom: none; }
+  .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
+  .section-num {
+    font-family: 'SangBleu Sunrise', Georgia, serif; font-style: italic;
+    color: var(--gold); font-size: 18px;
+  }
+  .section-title {
+    font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400;
+    color: var(--ink); font-size: 22px;
+  }
+  .section-tag { margin-left: auto; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-mute); }
+
+  .field { margin-bottom: 22px; }
+  .field:last-child { margin-bottom: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .section { padding: 28px 22px; } }
+
+  .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
+  .required-mark { color: var(--error); margin-left: 3px; }
+  .field-sub { font-size: 12px; color: var(--ink-mute); font-style: italic; margin: -4px 0 8px; }
+
+  .field-input, .field-textarea {
+    width: 100%; font-family: inherit; font-size: 15px; color: var(--ink);
+    background: #fff; border: 1px solid var(--line); border-radius: 6px;
+    padding: 12px 14px; transition: border-color .15s, box-shadow .15s;
+  }
+  .field-textarea { min-height: 96px; resize: vertical; }
+  .field-input:focus, .field-textarea:focus {
+    outline: none; border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(118,114,96,0.15);
+  }
+  .field-input.field-error, .field-textarea.field-error, .dropzone.field-error {
+    border-color: var(--error); box-shadow: 0 0 0 3px rgba(176,58,58,0.12);
+  }
+
+  /* Screenshot dropzone */
+  .dropzone {
+    border: 1.5px dashed var(--gold); border-radius: 8px; background: var(--cream);
+    padding: 28px; text-align: center; cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .dropzone:hover, .dropzone.dragover { background: #efe7d4; border-color: var(--gold-deep); }
+  .dropzone-icon { font-size: 26px; margin-bottom: 8px; }
+  .dropzone-text { font-size: 14px; color: var(--ink-soft); }
+  .dropzone-text strong { color: var(--gold-deep); }
+  .dropzone-hint { font-size: 12px; color: var(--ink-mute); margin-top: 4px; }
+  .preview { margin-top: 16px; display: none; }
+  .preview img { max-width: 100%; max-height: 280px; border: 1px solid var(--line); border-radius: 6px; display: block; margin: 0 auto; }
+  .preview-meta { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
+  .preview-remove { color: var(--error); cursor: pointer; text-decoration: underline; background: none; border: none; font: inherit; }
+
+  /* Footer / submit */
+  .form-footer { padding: 32px 44px 40px; text-align: center; }
+  .submit-btn {
+    font-family: 'SangBleu Republic', serif; font-size: 15px; font-weight: 500;
+    background: var(--ink); color: var(--bone); border: none; border-radius: 6px;
+    padding: 15px 48px; cursor: pointer; letter-spacing: 0.02em; transition: background .15s, transform .1s;
+  }
+  .submit-btn:hover { background: #4a3d4d; }
+  .submit-btn:active { transform: translateY(1px); }
+  .submit-btn:disabled { opacity: 0.6; cursor: default; }
+  .footer-note { font-size: 12px; color: var(--ink-mute); margin-top: 16px; line-height: 1.6; }
+
+  /* Success */
+  .success { display: none; padding: 72px 44px; text-align: center; }
+  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
+  .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
+  .success-text { color: var(--ink-soft); max-width: 460px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" />
+    <div class="hero-eyebrow">Finance · Internal Request</div>
+    <h1 class="hero-title">UDID Update <em>Request</em></h1>
+    <p class="hero-subtitle">Submit a UDID correction for review by the Support Finance team. Once received, an IT ticket is opened automatically and a confirmation is sent back to finance.</p>
+  </header>
+
+  <div class="form-wrap">
+    <form id="udidForm" class="form-card" novalidate>
+
+      <!-- SECTION 1 -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">I.</span>
+          <h2 class="section-title">Request Details</h2>
+          <span class="section-tag">Requester</span>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="agentName">Agent Name<span class="required-mark">*</span></label>
+            <input type="text" id="agentName" name="agentName" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="companyName">Client / Company Name<span class="required-mark">*</span></label>
+            <input type="text" id="companyName" name="companyName" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="branchPcc">Branch / PCC<span class="required-mark">*</span></label>
+            <input type="text" id="branchPcc" name="branchPcc" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="pnrInvoice">PNR / Invoice #<span class="required-mark">*</span></label>
+            <input type="text" id="pnrInvoice" name="pnrInvoice" class="field-input" required />
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:22px;">
+          <label class="field-label" for="reason">Reason for updating UDID<span class="required-mark">*</span></label>
+          <div class="field-sub">Please note the reason for the UDID update.</div>
+          <textarea id="reason" name="reason" class="field-textarea" required></textarea>
+        </div>
+      </section>
+
+      <!-- SECTION 2 -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">II.</span>
+          <h2 class="section-title">UDID Change</h2>
+          <span class="section-tag">Correction</span>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="pnr">PNR<span class="required-mark">*</span></label>
+            <input type="text" id="pnr" name="pnr" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="invoice">Invoice #</label>
+            <input type="text" id="invoice" name="invoice" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="udidNum">UDID #<span class="required-mark">*</span></label>
+            <input type="text" id="udidNum" name="udidNum" class="field-input" required />
+          </div>
+          <div class="field"></div>
+          <div class="field">
+            <label class="field-label" for="udidOld">Original UDID Value<span class="required-mark">*</span></label>
+            <input type="text" id="udidOld" name="udidOld" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="udidNew">New UDID Value<span class="required-mark">*</span></label>
+            <input type="text" id="udidNew" name="udidNew" class="field-input" required />
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3 -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">III.</span>
+          <h2 class="section-title">Supporting Screenshot</h2>
+          <span class="section-tag">Attachment</span>
+        </div>
+
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-icon">🖼️</div>
+          <div class="dropzone-text"><strong>Click to upload</strong> or drag &amp; drop a screenshot</div>
+          <div class="dropzone-hint">PNG or JPG of the PNR / UDID screen · up to 8 MB</div>
+          <input type="file" id="screenshot" name="screenshot" accept="image/png,image/jpeg" hidden />
+        </div>
+        <div class="preview" id="preview">
+          <img id="previewImg" alt="Screenshot preview" />
+          <div class="preview-meta">
+            <span id="previewName"></span>
+            <button type="button" class="preview-remove" id="previewRemove">Remove</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="form-footer">
+        <button type="submit" class="submit-btn">Submit Request</button>
+        <p class="footer-note">This request is sent to the Support Finance team and automatically opens an IT ticket. Do not include payment card numbers in this form.</p>
+      </div>
+    </form>
+
+    <!-- SUCCESS -->
+    <div class="form-card success" id="success">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">Request Submitted</h2>
+      <p class="success-text">Your UDID update has been sent to Support Finance and an IT ticket has been opened. A confirmation has been emailed to finance for tracking.</p>
+    </div>
+  </div>
+
+<script>
+  (function () {
+    var fileInput = document.getElementById('screenshot');
+    var dropzone = document.getElementById('dropzone');
+    var preview = document.getElementById('preview');
+    var previewImg = document.getElementById('previewImg');
+    var previewName = document.getElementById('previewName');
+    var previewRemove = document.getElementById('previewRemove');
+    var MAX_BYTES = 8 * 1024 * 1024;
+    var screenshotData = null; // { name, type, dataUrl }
+
+    function handleFile(file) {
+      if (!file) return;
+      if (!/^image\/(png|jpeg)$/.test(file.type)) { alert('Please upload a PNG or JPG image.'); return; }
+      if (file.size > MAX_BYTES) { alert('That image is larger than 8 MB. Please upload a smaller screenshot.'); return; }
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        screenshotData = { name: file.name, type: file.type, dataUrl: ev.target.result };
+        previewImg.src = ev.target.result;
+        previewName.textContent = file.name;
+        preview.style.display = 'block';
+        dropzone.classList.remove('field-error');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    dropzone.addEventListener('click', function () { fileInput.click(); });
+    fileInput.addEventListener('change', function () { handleFile(fileInput.files[0]); });
+    ['dragenter', 'dragover'].forEach(function (evt) {
+      dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(function (evt) {
+      dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.remove('dragover'); });
+    });
+    dropzone.addEventListener('drop', function (e) {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    previewRemove.addEventListener('click', function () {
+      screenshotData = null; fileInput.value = ''; preview.style.display = 'none'; previewImg.src = '';
+    });
+
+    document.getElementById('udidForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var form = e.target;
+
+      // ── Manual required-field validation (form is novalidate) ──
+      var requiredFields = form.querySelectorAll('[required]');
+      var firstInvalid = null;
+      requiredFields.forEach(function (field) {
+        var blank = !String(field.value).trim();
+        if (blank) { field.classList.add('field-error'); if (!firstInvalid) firstInvalid = field; }
+        else { field.classList.remove('field-error'); }
+      });
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { firstInvalid.focus({ preventScroll: true }); } catch (_) {}
+        alert('Please complete all required fields (marked with *) before submitting.');
+        return;
+      }
+
+      var btn = form.querySelector('.submit-btn');
+      btn.textContent = 'Submitting…';
+      btn.disabled = true;
+
+      var data = {};
+      new FormData(form).forEach(function (value, key) { if (key !== 'screenshot') data[key] = value; });
+      data.screenshot = screenshotData; // null or { name, type, dataUrl }
+      data.submittedAt = new Date().toISOString();
+
+      try {
+        var res = await fetch('/api/submit-udid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Request failed');
+        document.getElementById('udidForm').style.display = 'none';
+        document.getElementById('success').style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        btn.textContent = 'Submit Request';
+        btn.disabled = false;
+        alert('Something went wrong submitting your request. Please try again, or contact Support Finance directly.');
+      }
+    });
+  })();
+</script>
+</body>
+</html>
