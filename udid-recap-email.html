@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UDID Update Request</title>
+<!--
+  ============================================================================
+  KENSINGTON CORPORATE — UDID UPDATE REQUEST (recap email for Support Finance)
+  ----------------------------------------------------------------------------
+  TRIGGER: Power Automate "When a new row is created" on the
+           "UDID Update Requests" sheet (137792326684548).
+  HOW TO USE:
+    1. Add a "Send an email (V2)" action (Outlook/365).
+    2. To = the Support Finance shared mailbox.
+    3. Subject = New UDID Update Request — {{Agent Name}} / {{PNR}}
+    4. Open the Body in </> CODE VIEW and paste this whole file.
+    5. Replace each {{Token}} with the matching Smartsheet dynamic-content chip.
+    6. (Optional) attach the screenshot from the row — see setup steps.
+  NOTE: brand fonts (SangBleu) don't render in email clients, so this uses
+        email-safe Georgia/Arial with the official Kensington colours.
+  ============================================================================
+-->
+</head>
+<body style="margin:0;padding:0;background-color:#e9e3d6;">
+  <div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#e9e3d6;">A new UDID update request has been submitted for finance review.</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#e9e3d6" style="background-color:#e9e3d6;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:640px;max-width:640px;background-color:#fffdf8;border:1px solid #e4ddcc;">
+
+          <!-- HEADER (purple) -->
+          <tr>
+            <td bgcolor="#3a2f3c" style="background-color:#3a2f3c;padding:24px 48px;text-align:center;border-bottom:3px solid #1a3e32;">
+              <div style="color:#fdf9ec;font-family:Georgia,'Times New Roman',serif;font-size:17px;letter-spacing:0.28em;text-transform:uppercase;font-weight:bold;">Kensington Corporate</div>
+              <div style="color:#c9b78f;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;margin-top:8px;">Finance · UDID Update Request</div>
+            </td>
+          </tr>
+
+          <!-- INTRO -->
+          <tr>
+            <td style="padding:32px 48px 8px;">
+              <div style="height:2px;width:44px;background-color:#767260;margin-bottom:18px;font-size:0;line-height:0;">&nbsp;</div>
+              <div style="color:#3a2f3c;font-family:Georgia,'Times New Roman',serif;font-size:23px;">New UDID Update Request</div>
+              <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#524a54;">A new request has been submitted and logged for review. Details below. The screenshot is attached to the request row in Smartsheet.</p>
+            </td>
+          </tr>
+
+          <!-- REQUEST DETAILS -->
+          <tr>
+            <td style="padding:24px 48px 4px;">
+              <div style="color:#1a3e32;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:12px;">Request Details</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;">
+                <tr><td style="padding:8px 0;width:42%;color:#8b8678;font-size:13px;border-bottom:1px solid #f0ebdf;">Agent Name</td><td style="padding:8px 0;font-size:13px;color:#2a2a28;border-bottom:1px solid #f0ebdf;">{{Agent Name}}</td></tr>
+                <tr><td style="padding:8px 0;color:#8b8678;font-size:13px;border-bottom:1px solid #f0ebdf;">Client / Company</td><td style="padding:8px 0;font-size:13px;color:#2a2a28;border-bottom:1px solid #f0ebdf;">{{Client / Company Name}}</td></tr>
+                <tr><td style="padding:8px 0;color:#8b8678;font-size:13px;border-bottom:1px solid #f0ebdf;">Branch / PCC</td><td style="padding:8px 0;font-size:13px;color:#2a2a28;border-bottom:1px solid #f0ebdf;">{{Branch / PCC}}</td></tr>
+                <tr><td style="padding:8px 0;color:#8b8678;font-size:13px;border-bottom:1px solid #f0ebdf;">PNR / Invoice #</td><td style="padding:8px 0;font-size:13px;color:#2a2a28;border-bottom:1px solid #f0ebdf;">{{PNR / Invoice #}}</td></tr>
+                <tr><td style="padding:8px 0;color:#8b8678;font-size:13px;">Reason</td><td style="padding:8px 0;font-size:13px;color:#2a2a28;">{{Reason for UDID Update}}</td></tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- UDID CHANGE -->
+          <tr>
+            <td style="padding:24px 48px 8px;">
+              <div style="color:#1a3e32;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:12px;">UDID Change</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#faf7ee" style="background-color:#faf7ee;border:1px solid #ecd9b0;font-family:Arial,Helvetica,sans-serif;">
+                <tr><td style="padding:14px 20px 6px;width:42%;color:#8b8678;font-size:13px;">PNR</td><td style="padding:14px 20px 6px;font-size:13px;color:#2a2a28;">{{PNR}}</td></tr>
+                <tr><td style="padding:6px 20px;color:#8b8678;font-size:13px;">Invoice #</td><td style="padding:6px 20px;font-size:13px;color:#2a2a28;">{{Invoice #}}</td></tr>
+                <tr><td style="padding:6px 20px;color:#8b8678;font-size:13px;">UDID #</td><td style="padding:6px 20px;font-size:13px;color:#2a2a28;">{{UDID #}}</td></tr>
+                <tr><td style="padding:6px 20px;color:#8b8678;font-size:13px;">Original Value</td><td style="padding:6px 20px;font-size:13px;color:#9a3b3b;text-decoration:line-through;">{{Original UDID Value}}</td></tr>
+                <tr><td style="padding:6px 20px 14px;color:#8b8678;font-size:13px;">New Value</td><td style="padding:6px 20px 14px;font-size:14px;color:#1a3e32;font-weight:bold;">{{New UDID Value}}</td></tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td bgcolor="#3a2f3c" style="background-color:#3a2f3c;padding:22px 48px;text-align:center;border-top:3px solid #1a3e32;">
+              <div style="color:#fdf9ec;font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.28em;text-transform:uppercase;margin-bottom:6px;font-weight:bold;">Kensington Corporate</div>
+              <div style="color:#c9c3b2;font-family:Arial,Helvetica,sans-serif;font-size:12px;">Submitted {{Submitted At}} · Support Finance</div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
