@@ -230,7 +230,7 @@
         <div class="dropzone" id="dropzone">
           <div class="dropzone-icon">🖼️</div>
           <div class="dropzone-text"><strong>Click to upload</strong> or drag &amp; drop a screenshot</div>
-          <div class="dropzone-hint">PNG or JPG of the PNR / UDID screen · up to 8 MB</div>
+          <div class="dropzone-hint">PNG or JPG of the PNR / UDID screen · up to 3 MB</div>
           <input type="file" id="screenshot" name="screenshot" accept="image/png,image/jpeg" hidden />
         </div>
         <div class="preview" id="preview">
@@ -264,13 +264,13 @@
     var previewImg = document.getElementById('previewImg');
     var previewName = document.getElementById('previewName');
     var previewRemove = document.getElementById('previewRemove');
-    var MAX_BYTES = 8 * 1024 * 1024;
+    var MAX_BYTES = 3 * 1024 * 1024;
     var screenshotData = null; // { name, type, dataUrl }
 
     function handleFile(file) {
       if (!file) return;
       if (!/^image\/(png|jpeg)$/.test(file.type)) { alert('Please upload a PNG or JPG image.'); return; }
-      if (file.size > MAX_BYTES) { alert('That image is larger than 8 MB. Please upload a smaller screenshot.'); return; }
+      if (file.size > MAX_BYTES) { alert('That image is larger than 3 MB. Please upload a smaller screenshot.'); return; }
       var reader = new FileReader();
       reader.onload = function (ev) {
         screenshotData = { name: file.name, type: file.type, dataUrl: ev.target.result };
