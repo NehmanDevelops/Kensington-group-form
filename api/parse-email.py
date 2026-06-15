@@ -590,7 +590,7 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '2.4-swoogo-support'
+    PARSER_VERSION = '2.5-master-fix'
 
     text = clean_html_to_text(html_email_body)
     text = normalize_swoogo_format(text)
