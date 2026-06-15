@@ -51,6 +51,7 @@ FIELD_ALIASES = {
                             'Reservation Number', 'PNR', 'Itinerary Number',
                             'Registration Code', 'Registration ID', 'Registration Number',
                             'Order Number', 'Order #', 'Conference Code'],
+    'group_id':            ['Kensington Group ID', 'KCG Group ID', 'Group ID', 'GROUP ID'],
     'event_title':         ['Event Title', 'Event Name', 'Meeting Name', 'Tour Name', 'Trip Name',
                             'Package Name', 'Itinerary Name', 'Conference Name', 'Trip Title',
                             'Group Name', 'Program Name'],
@@ -123,7 +124,7 @@ SECTION_FIELDS = {
                 'cc_email_address', 'company', 'title', 'work_phone', 'home_phone',
                 'mobile_phone', 'passport_number', 'passport_nationality',
                 'passport_expiration_date', 'guest_email', 'guest_mobile_phone'],
-    'event':   ['event_code', 'event_title', 'event_date', 'event_time'],
+    'event':   ['event_code', 'event_title', 'event_date', 'event_time', 'group_id'],
     'request': ['request_name', 'request_date', 'full_name', 'gender', 'date_of_birth',
                 'redress_number', 'age_category', 'food_preferences', 'special_requests',
                 'departure_time', 'departure_trip', 'return_time', 'return_trip',
@@ -590,7 +591,7 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '2.5-master-fix'
+    PARSER_VERSION = '2.6-group-id'
 
     text = clean_html_to_text(html_email_body)
     text = normalize_swoogo_format(text)
@@ -670,6 +671,17 @@ def parse_email(html_email_body, email_subject=''):
     extract_emails_fallback(text, output)
     extract_name_fallback(text, output)
 
+    # Group ID fallback: Swoogo puts it in the subject after a pipe,
+    # e.g. "War Heroes on Water 2026 | 1OEGLOASEP26". The body also has
+    # "Kensington Group ID: 1OEGLOASEP26" which the alias should catch,
+    # but the subject fallback covers any template that drops it from body.
+    if not output.get('group_id') and email_subject:
+        # Match Kensington-style group IDs: 4-12 uppercase alphanumeric chars
+        # often containing trailing digits, after a pipe or "ID:" marker.
+        m = re.search(r'(?:\||ID\s*:?\s*)\s*([A-Z0-9]{6,16})\b', email_subject)
+        if m:
+            output['group_id'] = m.group(1).strip()
+
     if output.get('request_name'):
         output['request_name'] = re.sub(r'\s+', ' ', output['request_name']).strip()
 
@@ -746,6 +758,7 @@ CVENT_COLUMN_MAP = {
     'event_title':              7395447022063492,
     'event_date':               1765947487850372,
     'event_time':               6269547115220868,
+    'group_id':                 6407673733222276,
     'request_name':             4017747301535620,
     'request_date':             8521346928906116,
     'full_name':                358572604297092,
@@ -801,6 +814,7 @@ MASTER_COLUMN_MAP = {
     'event_title':              2188489977532292,
     'event_date':               6692089604902788,
     'event_time':               4440289791217540,
+    'group_id':                 5029597388509060,
     'request_name':             8943889418588036,
     'request_date':             42243280113540,
     'full_name':                4545842907484036,
@@ -856,6 +870,7 @@ TRAVELLER_ORIG_TO_COPY = {
     2188489977532292: 998239393582980,   # Event Title
     6692089604902788: 5501839020953476,  # Event Date
     4440289791217540: 3250039207268228,  # Event Time
+    5029597388509060: 3953726649044868,  # Group ID
     8943889418588036: 7753638834638724,  # Request Name
     42243280113540:   2124139300425604,  # Request Date
     4545842907484036: 6627738927796100,  # Full Name
