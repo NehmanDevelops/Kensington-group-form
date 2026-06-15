@@ -773,6 +773,11 @@ CVENT_COLUMN_MAP = {
 
 
 MASTER_SHEET_ID = '8780932377956228'
+# Maps parser output fields → Traveller Profile MasterSheet column IDs.
+# NOTE: omits `source_form` and `age_category` — those columns don't exist on
+# this sheet. `Source` is supplied separately via master_extra below, set to
+# 'CVENT' for parser-fed rows. Including them caused every CVENT write to be
+# rejected with INVALID_COLUMN_ID 1036, so the master sheet had 0 CVENT rows.
 MASTER_COLUMN_MAP = {
     'first_name':               5726513277472644,
     'middle_name':              3474713463787396,
@@ -806,7 +811,6 @@ MASTER_COLUMN_MAP = {
     'return_trip':              3419943000641412,
     'ticket_type':              7923542628011908,
     'seating':                  605193233534852,
-    'age_category':             5108792860905348,
     'food_preferences':         2856993047220100,
     'special_requests':         7360592674590596,
     'reservation_status':       1731093140377476,
@@ -816,7 +820,6 @@ MASTER_COLUMN_MAP = {
     'frequent_flyer_number_2':  323718256824196,
     'airline_preference_3':     4827317884194692,
     'frequent_flyer_number_3':  2575518070509444,
-    'source_form':              3138468023930756,
     'confidence_score':         7642067651301252,
 }
 
