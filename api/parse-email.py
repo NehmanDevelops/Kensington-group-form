@@ -70,12 +70,12 @@ FIELD_ALIASES = {
     'food_preferences':    ['Food Preferences', 'Dietary Preferences', 'Meal Preference',
                             'Dietary Restrictions', 'Dietary Requirements', 'Meal Type',
                             'Special Diet', 'Dietary Needs', 'Food Allergies'],
-    'special_requests':    ['Special Requests', 'Special Needs', 'Comments', 'Notes',
+    'special_requests':    ['Special Requests', 'Special Request', 'Special Needs', 'Comments', 'Notes',
                             'Additional Information', 'Additional Notes', 'Remarks',
                             'Other Requirements', 'Accessibility Requirements',
                             'Accommodation Needs'],
-    'departure_time':      ['Departure Time', 'Departure Date', 'Outbound Date', 'Depart Date',
-                            'Travel Date', 'Departure'],
+    'departure_time':      ['Departure Time', 'Departure Date', 'Depature Date', 'Outbound Date',
+                            'Depart Date', 'Travel Date', 'Departure'],
     'departure_trip':      ['Departure Trip', 'Departure Route', 'Outbound Trip', 'Outbound Flight',
                             'Outbound', 'From'],
     'return_time':         ['Return Time', 'Return Date', 'Inbound Date', 'Check-out Date',
@@ -84,8 +84,8 @@ FIELD_ALIASES = {
                             'Inbound', 'To'],
     'ticket_type':         ['Ticket Type', 'Cabin Class', 'Class of Service', 'Fare Class',
                             'Service Class', 'Travel Class', 'Class'],
-    'seating':             ['Seating', 'Seat Preference', 'Seat Type', 'Seat Selection',
-                            'Seat Assignment'],
+    'seating':             ['Seating', 'Seating Preference', 'Seat Preference', 'Seat Type',
+                            'Seat Selection', 'Seat Assignment'],
     'reservation_status':  ['Reservation Status', 'Booking Status', 'Order Status',
                             'Confirmation Status', 'Registration Status'],
     'airline_preference_1':['Airline Preference 1', 'Preferred Airline 1', 'Airline 1',
@@ -114,7 +114,8 @@ SECTION_ALIASES = {
     'request':  ['Request Details', 'Booking Details', 'Reservation Details',
                  'Booking Information', 'Reservation Information', 'Travel Request',
                  'Flight Information', 'Travel Preferences', 'Trip Details',
-                 'Registration Details', 'Order Details', 'Flight Details'],
+                 'Registration Details', 'Order Details', 'Flight Details',
+                 'Travel Selections', 'Travel Selection', 'Flight Selections'],
 }
 
 SECTION_FIELDS = {
@@ -287,6 +288,35 @@ def clean_html_to_text(html_body):
     return text.strip()
 
 
+def normalize_swoogo_format(text):
+    """Swoogo emails use a two-level label syntax that our flat-label parser
+    can't see: e.g. "Legal Name: First = Faamagalo" instead of "Legal First
+    Name: Faamagalo". This rewrites those compound labels into the flat form
+    the rest of the parser already understands.
+
+    Also handles a few Swoogo-only stragglers:
+      - "DOB:" lines (already aliased as date_of_birth, no change needed)
+      - "Depature Date:" typo (handled via FIELD_ALIASES)
+      - Stand-alone "Name:" with all-caps full name in plain-text header
+    """
+    if not text:
+        return text
+
+    # "Legal Name: First = Faamagalo"  →  "Legal First Name: Faamagalo"
+    # "Legal Name: Middle = X"         →  "Legal Middle Name: X"
+    # "Legal Name: Last = Potasi"      →  "Legal Last Name: Potasi"
+    text = re.sub(
+        r'Legal\s+Name\s*:\s*(First|Middle|Last)\s*=\s*',
+        lambda m: f'Legal {m.group(1)} Name: ',
+        text, flags=re.IGNORECASE,
+    )
+
+    # Bullet-style Swoogo lists often have orphan "Frequent Flyer 1:" and
+    # "Preferred Airline 1:" sub-bullets that the parser already handles; no
+    # extra work needed there.
+    return text
+
+
 def cut_signature(text):
     data_start_markers = [
         r'Contact Information', r'Traveler Information', r'Personal Information',
@@ -367,6 +397,22 @@ def _starts_with_label(line):
     return bool(re.match(pattern, line, re.IGNORECASE))
 
 
+_SECTION_HEADER_RE = re.compile(
+    r'^[A-Z][A-Z0-9 /&,\-]{2,}$'  # ALL-CAPS line with at least one space (e.g. "TRAVEL SELECTIONS")
+)
+
+
+def _looks_like_section_header(line):
+    if not line or len(line) < 5:
+        return False
+    if not _SECTION_HEADER_RE.match(line):
+        return False
+    # Must be a phrase (at least one space) and at least one alphabetic word
+    if ' ' not in line:
+        return False
+    return True
+
+
 def _collect_multiline_value(first_line, rest):
     parts = [first_line]
     for line in rest.split('\n'):
@@ -375,9 +421,16 @@ def _collect_multiline_value(first_line, rest):
             break
         if _starts_with_label(stripped):
             break
+        if _looks_like_section_header(stripped):
+            break
         parts.append(stripped)
     value = ' '.join(parts)
     value = re.sub(r'\s+', ' ', value).strip()
+    # If the first_line itself absorbed a trailing section header on the
+    # same physical line (e.g. "Female TRAVEL SELECTIONS"), trim it off.
+    m = re.match(r'^(.+?)\s+([A-Z][A-Z0-9 /&,\-]{4,})$', value)
+    if m and _looks_like_section_header(m.group(2).strip()):
+        value = m.group(1).strip()
     return value
 
 
@@ -537,9 +590,10 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '2.3-strict-detection'
+    PARSER_VERSION = '2.4-swoogo-support'
 
     text = clean_html_to_text(html_email_body)
+    text = normalize_swoogo_format(text)
     text = cut_signature(text)
 
     combined_text = email_subject + ' ' + text
@@ -580,6 +634,24 @@ def parse_email(html_email_body, email_subject=''):
                 output[field] = extract_field(section_text, field, exclude_prefixes=GUEST_EXCLUDE)
             else:
                 output[field] = extract_field(section_text, field)
+
+    # ── Whole-text fallback ─────────────────────────────────────────────────
+    # Some platforms (notably Swoogo) put fields in unexpected sections — DOB
+    # and Gender appear under PASSENGER DETAILS rather than the travel block.
+    # For any field still empty after section-based extraction, retry against
+    # the entire email text so we don't miss values that landed in the "wrong"
+    # section. Sectioned extraction stays the primary path; this is rescue-only.
+    for section_key, fields in SECTION_FIELDS.items():
+        for field in fields:
+            if output.get(field):
+                continue
+            if field in ('email_address', 'cc_email_address', 'guest_email'):
+                output[field] = extract_email(text, field)
+                continue
+            if field in ('first_name', 'last_name', 'middle_name', 'mobile_phone'):
+                output[field] = extract_field(text, field, exclude_prefixes=GUEST_EXCLUDE)
+            else:
+                output[field] = extract_field(text, field)
 
     for field in ['departure_time', 'return_time', 'event_date', 'date_of_birth',
                   'passport_expiration_date', 'request_date']:
