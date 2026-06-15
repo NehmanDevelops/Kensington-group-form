@@ -758,7 +758,8 @@ CVENT_COLUMN_MAP = {
     'event_title':              7395447022063492,
     'event_date':               1765947487850372,
     'event_time':               6269547115220868,
-    'group_id':                 6407673733222276,
+    # NOTE: Group ID on the CVENT sheet has column formula =[Event Code]@row,
+    # so it's read-only via API. Master + Agent copy receive group_id directly.
     'request_name':             4017747301535620,
     'request_date':             8521346928906116,
     'full_name':                358572604297092,
