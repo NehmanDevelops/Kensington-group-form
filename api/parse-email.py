@@ -67,7 +67,8 @@ FIELD_ALIASES = {
     'redress_number':      ['Known Traveler Number', 'KTN', 'Redress Number', 'Redress',
                             'TSA Redress', 'Traveler Number', 'TSA Number', 'TSA PreCheck'],
     'age_category':        ['Age Category', 'Age Group', 'Passenger Type', 'Traveler Type',
-                            'Guest Type', 'Attendee Type', 'Registration Type'],
+                            'Guest Type', 'Attendee Type', 'Registration Type', 'Registrant Type'],
+    'air_selection':       ['Air Selection', 'Air Booking', 'Flight Booking Option', 'Air Option'],
     'food_preferences':    ['Food Preferences', 'Dietary Preferences', 'Meal Preference',
                             'Dietary Restrictions', 'Dietary Requirements', 'Meal Type',
                             'Special Diet', 'Dietary Needs', 'Food Allergies'],
@@ -677,6 +678,15 @@ def parse_email(html_email_body, email_subject=''):
     extract_emails_fallback(text, output)
     extract_name_fallback(text, output)
 
+    # ── Group ID sanitization ───────────────────────────────────────────────────
+    # Group IDs are compact alphanumeric codes (e.g. "1OEGLOASEP26"). If the
+    # extractor bled into adjacent text (e.g. "1OEGLOASEP26 Registrant Type: Veteran"),
+    # strip everything past the first space.
+    if output.get('group_id'):
+        m = re.match(r'([A-Z0-9]{4,20})', output['group_id'].strip(), re.IGNORECASE)
+        if m:
+            output['group_id'] = m.group(1).upper()
+
     # ── Swoogo airport → route combining ───────────────────────────────────────
     # Swoogo gives Departure Airport + Arrival Airport as separate fields.
     # If departure_trip is still empty, build a route string from those two.
@@ -1092,23 +1102,44 @@ def _fetch_existing_dedup_keys(token, sheet_id):
 
 
 def _find_row_by_email(token, sheet_id, email_col_id, email):
-    """Return the first row ID in sheet_id where email_col_id == email, or None."""
-    url = (f'https://api.smartsheet.com/2.0/sheets/{sheet_id}'
-           f'?columnIds={email_col_id}&level=0')
+    """Return the first row ID in sheet_id where email_col_id == email, or None.
+    Tries a column-filtered fetch first; falls back to full sheet scan if the
+    filtered response returns no matching cells (can happen with CONTACT_LIST
+    columns where value is stored as an object rather than a plain string)."""
+    email_lower = email.strip().lower()
+
+    def _scan_rows(rows):
+        for row in rows:
+            for cell in row.get('cells', []):
+                if cell.get('columnId') == email_col_id:
+                    val = (cell.get('value') or cell.get('displayValue') or '')
+                    if str(val).strip().lower() == email_lower:
+                        return row['id']
+        return None
+
+    # First attempt: column-filtered (fast)
     try:
+        url = (f'https://api.smartsheet.com/2.0/sheets/{sheet_id}'
+               f'?columnIds={email_col_id}&level=1')
         req = Request(url, headers={'Authorization': f'Bearer {token}'})
         resp = urlopen(req, timeout=10)
         data = json.loads(resp.read().decode())
+        hit = _scan_rows(data.get('rows', []))
+        if hit:
+            return hit
     except Exception as e:
-        print(f'Row lookup failed: {e}')
+        print(f'Row lookup (filtered) failed: {e}')
+
+    # Fallback: full sheet fetch — needed when filtered API drops contact-type cells
+    try:
+        url = f'https://api.smartsheet.com/2.0/sheets/{sheet_id}?level=1'
+        req = Request(url, headers={'Authorization': f'Bearer {token}'})
+        resp = urlopen(req, timeout=15)
+        data = json.loads(resp.read().decode())
+        return _scan_rows(data.get('rows', []))
+    except Exception as e:
+        print(f'Row lookup (full) failed: {e}')
         return None
-    for row in data.get('rows', []):
-        for cell in row.get('cells', []):
-            if cell.get('columnId') == email_col_id:
-                val = (cell.get('value') or cell.get('displayValue') or '')
-                if str(val).strip().lower() == email.strip().lower():
-                    return row['id']
-    return None
 
 
 def _update_row(token, sheet_id, row_id, column_map, parsed, extra_cells=None):
