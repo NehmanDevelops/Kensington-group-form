@@ -76,8 +76,9 @@ FIELD_ALIASES = {
                             'Additional Information', 'Additional Notes', 'Remarks',
                             'Other Requirements', 'Accessibility Requirements',
                             'Accommodation Needs'],
-    'departure_time':      ['Departure Time', 'Departure Date', 'Depature Date', 'Outbound Date',
-                            'Depart Date', 'Travel Date', 'Departure'],
+    'departure_time':      ['Departure Date', 'Depature Date', 'Outbound Date',
+                            'Depart Date', 'Travel Date'],
+    'departure_time_pref': ['Departure Time', 'Depart Time'],
     'departure_trip':      ['Departure Trip', 'Departure Route', 'Outbound Trip', 'Outbound Flight',
                             'Outbound', 'From'],
     'departure_airport':   ['Departure Airport', 'Departing Airport', 'Origin Airport',
@@ -133,7 +134,8 @@ SECTION_FIELDS = {
     'event':   ['event_code', 'event_title', 'event_date', 'event_time', 'group_id'],
     'request': ['request_name', 'request_date', 'full_name', 'gender', 'date_of_birth',
                 'redress_number', 'age_category', 'food_preferences', 'special_requests',
-                'departure_time', 'departure_trip', 'departure_airport', 'arrival_airport',
+                'departure_time', 'departure_time_pref', 'departure_trip',
+                'departure_airport', 'arrival_airport',
                 'return_time', 'return_time_pref', 'return_trip',
                 'ticket_type', 'seating', 'reservation_status',
                 'airline_preference_1', 'airline_preference_2', 'airline_preference_3',
@@ -598,7 +600,7 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '2.7-airports'
+    PARSER_VERSION = '2.8-departure-date'
 
     text = clean_html_to_text(html_email_body)
     text = normalize_swoogo_format(text)
@@ -700,6 +702,16 @@ def parse_email(html_email_body, email_subject=''):
                 output['departure_trip'] = dep_apt
             elif arr_apt:
                 output['departure_trip'] = arr_apt
+
+    # Merge departure_time_pref (e.g. "Morning (8-11 a.m.)") into departure_time.
+    # departure_time holds the DATE (e.g. "September 25, 2026"); append the
+    # time-of-day preference so the report shows both, mirroring the return side.
+    dtp = output.get('departure_time_pref', '').strip()
+    dt = output.get('departure_time', '').strip()
+    if dtp and dt and dtp.lower() not in dt.lower():
+        output['departure_time'] = f'{dt} ({dtp})'
+    elif dtp and not dt:
+        output['departure_time'] = dtp
 
     # Merge return_time_pref (e.g. "Early Morning (6-8 a.m.)") into return_time
     # if return_time only holds a date — append the preference as a note.
