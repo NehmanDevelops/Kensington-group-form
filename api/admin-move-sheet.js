@@ -44,7 +44,16 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const { sheetId, destinationType, destinationId } = body;
+      const { sheetId, destinationType, destinationId, newName } = body;
+
+      if (sheetId && newName) {
+        const renamed = await api(`/sheets/${sheetId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: newName }),
+        });
+        return res.status(200).json(renamed);
+      }
+
       if (!sheetId || !destinationType || !destinationId) {
         return res.status(400).json({ error: 'Need sheetId, destinationType, destinationId' });
       }
