@@ -55,27 +55,55 @@ export default async function handler(req, res) {
     }
 
     // Helper: resolve a CONTACT_LIST cell value to the best matching advisor name
+    const norm = x => String(x || '').trim().toLowerCase();
     const resolveAgent = (agent) => {
       if (!agent) return null;
       const raw = typeof agent === 'object' ? (agent.name || agent.email || '') : String(agent);
       const s = raw.trim();
       if (!s) return null;
 
-      // Direct match by name
-      const directMatch = advisorNames.find(n => n.toLowerCase() === s.toLowerCase());
+      // 1. Direct match by name
+      const directMatch = advisorNames.find(n => norm(n) === norm(s));
       if (directMatch) return directMatch;
 
-      // If it's an email like "vera.perisic@...", try to match "Vera Perisic"
+      // Derive a first/last guess from an email local part ("grace.northrup")
+      // or a plain "First Last" string.
+      let firstG, lastG;
       if (s.includes('@')) {
-        const local = s.split('@')[0]; // "vera.perisic"
-        const parts = local.split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
-        const guess = parts.join(' '); // "Vera Perisic"
-        const emailMatch = advisorNames.find(n => n.toLowerCase() === guess.toLowerCase());
-        if (emailMatch) return emailMatch;
+        const parts = s.split('@')[0].split(/[._-]/).filter(Boolean);
+        firstG = parts[0]; lastG = parts[parts.length - 1];
+      } else {
+        const parts = s.split(/\s+/).filter(Boolean);
+        firstG = parts[0]; lastG = parts[parts.length - 1];
       }
 
-      // Partial match — if the value is a first name only, find advisor whose name starts with it
-      const partialMatch = advisorNames.find(n => n.toLowerCase().startsWith(s.toLowerCase()));
+      if (firstG && lastG) {
+        const ff = norm(firstG), ll = norm(lastG);
+        // 2. Exact first + last
+        let m = advisorNames.find(n => {
+          const w = n.split(/\s+/); if (w.length < 2) return false;
+          return norm(w[0]) === ff && norm(w[w.length - 1]) === ll;
+        });
+        if (m) return m;
+        // 3. First matches + last-name PREFIX overlaps (handles spelling
+        //    variants like email "northrup" vs name "Northrop")
+        m = advisorNames.find(n => {
+          const w = n.split(/\s+/); if (w.length < 2) return false;
+          const af = norm(w[0]), al = norm(w[w.length - 1]);
+          const pfx = Math.min(4, al.length, ll.length);
+          return af === ff && pfx >= 3 && al.slice(0, pfx) === ll.slice(0, pfx);
+        });
+        if (m) return m;
+      }
+
+      // 4. Unique first-name-only match
+      if (firstG) {
+        const fm = advisorNames.filter(n => norm(n.split(/\s+/)[0]) === norm(firstG));
+        if (fm.length === 1) return fm[0];
+      }
+
+      // 5. Partial startsWith fallback
+      const partialMatch = advisorNames.find(n => norm(n).startsWith(norm(s)));
       if (partialMatch) return partialMatch;
 
       return s; // Fallback to raw value
