@@ -600,7 +600,7 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '2.8-departure-date'
+    PARSER_VERSION = '2.9-departure-split'
 
     text = clean_html_to_text(html_email_body)
     text = normalize_swoogo_format(text)
@@ -703,15 +703,11 @@ def parse_email(html_email_body, email_subject=''):
             elif arr_apt:
                 output['departure_trip'] = arr_apt
 
-    # Merge departure_time_pref (e.g. "Morning (8-11 a.m.)") into departure_time.
-    # departure_time holds the DATE (e.g. "September 25, 2026"); append the
-    # time-of-day preference so the report shows both, mirroring the return side.
-    dtp = output.get('departure_time_pref', '').strip()
-    dt = output.get('departure_time', '').strip()
-    if dtp and dt and dtp.lower() not in dt.lower():
-        output['departure_time'] = f'{dt} ({dtp})'
-    elif dtp and not dt:
-        output['departure_time'] = dtp
+    # Departure date and the time-of-day window are kept in SEPARATE fields:
+    #   departure_time      → the DATE        → master "Departure Time" column
+    #   departure_time_pref → the window      → master "Departure Preference" column
+    # (CVENT + Agent copy have no preference column, so write_to_smartsheet
+    # recombines them into "DATE (window)" for those two sheets only.)
 
     # Merge return_time_pref (e.g. "Early Morning (6-8 a.m.)") into return_time
     # if return_time only holds a date — append the preference as a note.
@@ -871,7 +867,8 @@ MASTER_COLUMN_MAP = {
     'request_date':             42243280113540,
     'full_name':                4545842907484036,
     'redress_number':           3756188440498052,
-    'departure_time':           6797642721169284,
+    'departure_time':           6797642721169284,   # holds the DEPARTURE DATE
+    'departure_time_pref':      2117685625524100,   # Departure Preference (time-of-day window)
     'departure_trip':           1168143186956164,
     'return_time':              5671742814326660,
     'return_trip':              3419943000641412,
@@ -1195,6 +1192,19 @@ def write_to_smartsheet(parsed, force=False):
     if not token:
         return {'cvent_sheet': 'skipped — no token', 'master_sheet': 'skipped — no token'}
 
+    # The master sheet has separate "Departure Time" (date) and "Departure
+    # Preference" (time-of-day window) columns. CVENT and the Agent copy only
+    # have one "Departure Time" column, so for those two we recombine the date
+    # and window into "DATE (window)" so no information is lost there.
+    dep_date = (parsed.get('departure_time') or '').strip()
+    dep_pref = (parsed.get('departure_time_pref') or '').strip()
+    if dep_date and dep_pref:
+        combined_dep = f'{dep_date} ({dep_pref})'
+    else:
+        combined_dep = dep_date or dep_pref
+    parsed_combined = dict(parsed)
+    parsed_combined['departure_time'] = combined_dep  # used for CVENT + Agent copy
+
     # ── Duplicate check (against the CVENT sheet, the source of truth) ──
     new_key = _dedup_key(
         parsed.get('email_address'), parsed.get('event_code'),
@@ -1216,9 +1226,9 @@ def write_to_smartsheet(parsed, force=False):
         copy_extra = [{'columnId': TRAVELLER_ORIG_TO_COPY[6155241207926660], 'value': 'CVENT'}]
 
         if cvent_row_id:
-            cvent_result = _update_row(token, CVENT_SHEET_ID, cvent_row_id, CVENT_COLUMN_MAP, parsed)
+            cvent_result = _update_row(token, CVENT_SHEET_ID, cvent_row_id, CVENT_COLUMN_MAP, parsed_combined)
         else:
-            cvent_result = _write_rows(token, CVENT_SHEET_ID, CVENT_COLUMN_MAP, parsed)
+            cvent_result = _write_rows(token, CVENT_SHEET_ID, CVENT_COLUMN_MAP, parsed_combined)
 
         if master_row_id:
             master_result = _update_row(token, MASTER_SHEET_ID, master_row_id, MASTER_COLUMN_MAP, parsed, master_extra)
@@ -1226,9 +1236,9 @@ def write_to_smartsheet(parsed, force=False):
             master_result = _write_rows(token, MASTER_SHEET_ID, MASTER_COLUMN_MAP, parsed, master_extra)
 
         if copy_row_id:
-            copy_result = _update_row(token, TRAVELLER_COPY_SHEET_ID, copy_row_id, copy_map, parsed, copy_extra)
+            copy_result = _update_row(token, TRAVELLER_COPY_SHEET_ID, copy_row_id, copy_map, parsed_combined, copy_extra)
         else:
-            copy_result = _write_rows(token, TRAVELLER_COPY_SHEET_ID, copy_map, parsed, copy_extra)
+            copy_result = _write_rows(token, TRAVELLER_COPY_SHEET_ID, copy_map, parsed_combined, copy_extra)
 
         ok = (str(cvent_result).startswith('ok') or str(cvent_result).startswith('updated')) and \
              (str(master_result).startswith('ok') or str(master_result).startswith('updated'))
@@ -1245,7 +1255,7 @@ def write_to_smartsheet(parsed, force=False):
                 'ok': True,  # a duplicate is a successful no-op, not a failure
             }
 
-    cvent_result = _write_rows(token, CVENT_SHEET_ID, CVENT_COLUMN_MAP, parsed)
+    cvent_result = _write_rows(token, CVENT_SHEET_ID, CVENT_COLUMN_MAP, parsed_combined)
 
     master_extra = [
         {'columnId': 6155241207926660, 'value': 'CVENT'},
@@ -1256,7 +1266,7 @@ def write_to_smartsheet(parsed, force=False):
     copy_map = {f: TRAVELLER_ORIG_TO_COPY[c] for f, c in MASTER_COLUMN_MAP.items()
                 if c in TRAVELLER_ORIG_TO_COPY}
     copy_extra = [{'columnId': TRAVELLER_ORIG_TO_COPY[6155241207926660], 'value': 'CVENT'}]
-    copy_result = _write_rows(token, TRAVELLER_COPY_SHEET_ID, copy_map, parsed, copy_extra)
+    copy_result = _write_rows(token, TRAVELLER_COPY_SHEET_ID, copy_map, parsed_combined, copy_extra)
 
     # 'ok' intentionally ignores the copy mirror: a copy hiccup must not make
     # the parser return non-200 (which would trigger Power Automate retries).
