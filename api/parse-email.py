@@ -1091,7 +1091,63 @@ def _fetch_existing_dedup_keys(token, sheet_id):
     return keys
 
 
-def write_to_smartsheet(parsed):
+def _find_row_by_email(token, sheet_id, email_col_id, email):
+    """Return the first row ID in sheet_id where email_col_id == email, or None."""
+    url = (f'https://api.smartsheet.com/2.0/sheets/{sheet_id}'
+           f'?columnIds={email_col_id}&level=0')
+    try:
+        req = Request(url, headers={'Authorization': f'Bearer {token}'})
+        resp = urlopen(req, timeout=10)
+        data = json.loads(resp.read().decode())
+    except Exception as e:
+        print(f'Row lookup failed: {e}')
+        return None
+    for row in data.get('rows', []):
+        for cell in row.get('cells', []):
+            if cell.get('columnId') == email_col_id:
+                val = (cell.get('value') or cell.get('displayValue') or '')
+                if str(val).strip().lower() == email.strip().lower():
+                    return row['id']
+    return None
+
+
+def _update_row(token, sheet_id, row_id, column_map, parsed, extra_cells=None):
+    """PUT (update) an existing row with all non-empty fields."""
+    cells = []
+    for field, col_id in column_map.items():
+        val = parsed.get(field, '')
+        if val != '' and val is not None:
+            if col_id in DATE_COLUMNS:
+                val = _normalize_date_for_smartsheet(val)
+            cells.append({'columnId': col_id, 'value': val})
+    if extra_cells:
+        cells.extend(extra_cells)
+    if not cells:
+        return 'skipped — no data'
+    payload = json.dumps([{'id': row_id, 'cells': cells}]).encode()
+    req = Request(
+        f'https://api.smartsheet.com/2.0/sheets/{sheet_id}/rows',
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+        },
+        method='PUT',
+    )
+    try:
+        resp = urlopen(req)
+        return f'updated ({resp.status})'
+    except Exception as e:
+        detail = ''
+        if hasattr(e, 'read'):
+            try:
+                detail = e.read().decode()
+            except Exception:
+                pass
+        return f'error: {str(e)} | {detail}'
+
+
+def write_to_smartsheet(parsed, force=False):
     token = os.environ.get('SMARTSHEET_API_TOKEN', '')
     if not token:
         return {'cvent_sheet': 'skipped — no token', 'master_sheet': 'skipped — no token'}
@@ -1102,6 +1158,39 @@ def write_to_smartsheet(parsed):
         parsed.get('event_title'), parsed.get('full_name'),
         parsed.get('first_name'), parsed.get('last_name'),
     )
+
+    if force and parsed.get('email_address'):
+        # Force-repost: find existing rows and UPDATE them instead of creating dupes
+        email = parsed['email_address']
+        cvent_row_id = _find_row_by_email(token, CVENT_SHEET_ID, _DEDUP_COLS['email_address'], email)
+        master_row_id = _find_row_by_email(token, MASTER_SHEET_ID, MASTER_COLUMN_MAP['email_address'], email)
+        copy_email_col = TRAVELLER_ORIG_TO_COPY.get(MASTER_COLUMN_MAP['email_address'])
+        copy_row_id = _find_row_by_email(token, TRAVELLER_COPY_SHEET_ID, copy_email_col, email) if copy_email_col else None
+
+        master_extra = [{'columnId': 6155241207926660, 'value': 'CVENT'}]
+        copy_map = {f: TRAVELLER_ORIG_TO_COPY[c] for f, c in MASTER_COLUMN_MAP.items()
+                    if c in TRAVELLER_ORIG_TO_COPY}
+        copy_extra = [{'columnId': TRAVELLER_ORIG_TO_COPY[6155241207926660], 'value': 'CVENT'}]
+
+        if cvent_row_id:
+            cvent_result = _update_row(token, CVENT_SHEET_ID, cvent_row_id, CVENT_COLUMN_MAP, parsed)
+        else:
+            cvent_result = _write_rows(token, CVENT_SHEET_ID, CVENT_COLUMN_MAP, parsed)
+
+        if master_row_id:
+            master_result = _update_row(token, MASTER_SHEET_ID, master_row_id, MASTER_COLUMN_MAP, parsed, master_extra)
+        else:
+            master_result = _write_rows(token, MASTER_SHEET_ID, MASTER_COLUMN_MAP, parsed, master_extra)
+
+        if copy_row_id:
+            copy_result = _update_row(token, TRAVELLER_COPY_SHEET_ID, copy_row_id, copy_map, parsed, copy_extra)
+        else:
+            copy_result = _write_rows(token, TRAVELLER_COPY_SHEET_ID, copy_map, parsed, copy_extra)
+
+        ok = (str(cvent_result).startswith('ok') or str(cvent_result).startswith('updated')) and \
+             (str(master_result).startswith('ok') or str(master_result).startswith('updated'))
+        return {'cvent_sheet': cvent_result, 'master_sheet': master_result, 'copy_sheet': copy_result, 'ok': ok, 'forced': True}
+
     if new_key:
         existing_keys = _fetch_existing_dedup_keys(token, CVENT_SHEET_ID)
         if new_key in existing_keys:
@@ -1161,10 +1250,11 @@ class handler(BaseHTTPRequestHandler):
             html_email_body = data.get('html_email_body', '') or data.get('body', '') or data.get('Body', '')
             email_subject = data.get('email_subject', '') or data.get('subject', '') or data.get('Subject', '')
 
+            force = bool(data.get('force') or data.get('Force'))
             result = parse_email(html_email_body, email_subject)
 
             if result.get('should_process'):
-                ss_result = write_to_smartsheet(result)
+                ss_result = write_to_smartsheet(result, force=force)
                 result['smartsheet_write'] = ss_result
                 # Always return 200 — even on a partial write failure. Returning
                 # a non-200 makes Power Automate's HTTP connector auto-retry,
