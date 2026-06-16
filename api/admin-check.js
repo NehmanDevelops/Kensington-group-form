@@ -10,6 +10,34 @@ export default async function handler(req, res) {
   const q = (req.query?.q || '').toLowerCase();
 
   try {
+    // Delete a row:  POST { sheetId, deleteRowId }
+    if (req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      if (body.sheetId && body.deleteRowId) {
+        const dr = await fetch(`https://api.smartsheet.com/2.0/sheets/${body.sheetId}/rows?ids=${body.deleteRowId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${TOKEN}` },
+        });
+        return res.status(200).json(await dr.json());
+      }
+      return res.status(400).json({ error: 'need sheetId + deleteRowId' });
+    }
+
+    // Search all sheets by name substring:  ?find=traveller
+    if (req.query?.find) {
+      const sr = await fetch('https://api.smartsheet.com/2.0/sheets?includeAll=true', {
+        headers: { Authorization: `Bearer ${TOKEN}` },
+      });
+      const all = await sr.json();
+      const needle = req.query.find.toLowerCase();
+      return res.status(200).json({
+        total: (all.data || []).length,
+        matches: (all.data || [])
+          .filter(s => s.name.toLowerCase().includes(needle))
+          .map(s => ({ id: s.id, name: s.name })),
+      });
+    }
+
     // List a folder's sheets:  ?folder=393314542348164
     if (req.query?.folder) {
       const fr = await fetch(`https://api.smartsheet.com/2.0/folders/${req.query.folder}`, {
@@ -32,7 +60,7 @@ export default async function handler(req, res) {
     for (const c of sheet.columns) cols[c.id] = c.title;
 
     const rows = (sheet.rows || []).map(row => {
-      const o = {};
+      const o = { _rowId: row.id };
       for (const cell of row.cells || []) {
         const v = cell.value ?? cell.displayValue;
         if (v !== undefined && v !== null && v !== '') o[cols[cell.columnId]] = v;
@@ -50,6 +78,7 @@ export default async function handler(req, res) {
       totalRows: sheet.totalRowCount ?? rows.length,
       matched: filtered.length,
       rows: filtered.map(o => ({
+        _rowId: o._rowId,
         First: o['First Name'], Last: o['Last Name'],
         Group: o['Group ID'], Email: o['Email Address'],
         Phone: o['Phone Number'] || o['Mobile Phone'],
