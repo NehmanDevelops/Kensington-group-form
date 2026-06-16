@@ -865,7 +865,10 @@ MASTER_COLUMN_MAP = {
     'group_id':                 5029597388509060,
     'request_name':             8943889418588036,
     'request_date':             42243280113540,
-    'full_name':                4545842907484036,
+    # NOTE: 'full_name' (was 4545842907484036) intentionally omitted — that
+    # column was removed from the master sheet, so writing it returns
+    # INVALID_COLUMN_ID 1036 and rejects the whole row. First/Middle/Last
+    # cover the name; full_name is not needed on the master.
     'redress_number':           3756188440498052,
     'departure_time':           6797642721169284,   # holds the DEPARTURE DATE
     'departure_time_pref':      2117685625524100,   # Departure Preference (time-of-day window)
