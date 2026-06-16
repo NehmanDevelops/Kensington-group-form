@@ -36,6 +36,24 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+    // Verify/cleanup helpers
+    if (body.action === 'peek' || body.action === 'deleteRow') {
+      const sheet0 = await (await api(`/sheets/${MASTER}`)).json();
+      const cmap = {}; for (const c of sheet0.columns) cmap[c.id] = c.title;
+      const gv = (row, title) => { const c = (row.cells||[]).find(x => cmap[x.columnId] === title); return c?.value ?? c?.displayValue ?? ''; };
+      const match = (sheet0.rows||[]).filter(r => `${gv(r,'Group ID')}`.includes(body.q || 'VQ9GNTAAUG26'));
+      if (body.action === 'deleteRow' && body.rowId) {
+        const dr = await (await api(`/sheets/${MASTER}/rows?ids=${body.rowId}`, { method: 'DELETE' })).json();
+        return res.status(200).json(dr);
+      }
+      return res.status(200).json({
+        count: match.length,
+        sample: match.slice(0, 6).map(r => ({ id: r.id, name: `${gv(r,'First Name')} ${gv(r,'Last Name')}`, type: gv(r,'Traveller Type'), title: gv(r,'Title'), pnr: gv(r,'PNR'), group: gv(r,'Group ID') })),
+        testRow: match.filter(r => `${gv(r,'Last Name')}`.toLowerCase() === 'zzztest').map(r => r.id),
+      });
+    }
+
     const groupId = norm(body.groupId);
     const rows = Array.isArray(body.rows) ? body.rows : [];
     if (!groupId) return res.status(400).json({ error: 'missing groupId' });
