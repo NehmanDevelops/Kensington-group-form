@@ -79,8 +79,13 @@ FIELD_ALIASES = {
                             'Depart Date', 'Travel Date', 'Departure'],
     'departure_trip':      ['Departure Trip', 'Departure Route', 'Outbound Trip', 'Outbound Flight',
                             'Outbound', 'From'],
-    'return_time':         ['Return Time', 'Return Date', 'Inbound Date', 'Check-out Date',
-                            'Check out Date', 'Check-out', 'Return'],
+    'departure_airport':   ['Departure Airport', 'Departing Airport', 'Origin Airport',
+                            'Departing From', 'Flying From', 'Origin City'],
+    'arrival_airport':     ['Arrival Airport', 'Arriving Airport', 'Destination Airport',
+                            'Arriving At', 'Flying To', 'Destination City'],
+    'return_time':         ['Return Date', 'Inbound Date', 'Check-out Date',
+                            'Check out Date', 'Check-out'],
+    'return_time_pref':    ['Return Time', 'Return Departure Time'],
     'return_trip':         ['Return Trip', 'Return Route', 'Inbound Trip', 'Inbound Flight',
                             'Inbound', 'To'],
     'ticket_type':         ['Ticket Type', 'Cabin Class', 'Class of Service', 'Fare Class',
@@ -127,7 +132,8 @@ SECTION_FIELDS = {
     'event':   ['event_code', 'event_title', 'event_date', 'event_time', 'group_id'],
     'request': ['request_name', 'request_date', 'full_name', 'gender', 'date_of_birth',
                 'redress_number', 'age_category', 'food_preferences', 'special_requests',
-                'departure_time', 'departure_trip', 'return_time', 'return_trip',
+                'departure_time', 'departure_trip', 'departure_airport', 'arrival_airport',
+                'return_time', 'return_time_pref', 'return_trip',
                 'ticket_type', 'seating', 'reservation_status',
                 'airline_preference_1', 'airline_preference_2', 'airline_preference_3',
                 'frequent_flyer_number_1', 'frequent_flyer_number_2', 'frequent_flyer_number_3'],
@@ -591,7 +597,7 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '2.6-group-id'
+    PARSER_VERSION = '2.7-airports'
 
     text = clean_html_to_text(html_email_body)
     text = normalize_swoogo_format(text)
@@ -670,6 +676,29 @@ def parse_email(html_email_body, email_subject=''):
     parse_full_name_fallback(output)
     extract_emails_fallback(text, output)
     extract_name_fallback(text, output)
+
+    # ── Swoogo airport → route combining ───────────────────────────────────────
+    # Swoogo gives Departure Airport + Arrival Airport as separate fields.
+    # If departure_trip is still empty, build a route string from those two.
+    dep_apt = output.get('departure_airport', '').strip()
+    arr_apt = output.get('arrival_airport', '').strip()
+    if dep_apt or arr_apt:
+        if not output.get('departure_trip'):
+            if dep_apt and arr_apt:
+                output['departure_trip'] = f'{dep_apt} → {arr_apt}'
+            elif dep_apt:
+                output['departure_trip'] = dep_apt
+            elif arr_apt:
+                output['departure_trip'] = arr_apt
+
+    # Merge return_time_pref (e.g. "Early Morning (6-8 a.m.)") into return_time
+    # if return_time only holds a date — append the preference as a note.
+    rtp = output.get('return_time_pref', '').strip()
+    rt = output.get('return_time', '').strip()
+    if rtp and rt and rtp.lower() not in rt.lower():
+        output['return_time'] = f'{rt} ({rtp})'
+    elif rtp and not rt:
+        output['return_time'] = rtp
 
     # Group ID fallback: Swoogo puts it in the subject after a pipe,
     # e.g. "War Heroes on Water 2026 | 1OEGLOASEP26". The body also has
