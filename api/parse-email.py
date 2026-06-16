@@ -64,8 +64,9 @@ FIELD_ALIASES = {
                             'Reservation Date', 'Order Date', 'Registration Date'],
     'gender':              ['Gender', 'Sex'],
     'date_of_birth':       ['Date of Birth', 'Birth Date', 'DOB', 'Birthday', 'Birthdate'],
-    'redress_number':      ['Known Traveler Number', 'KTN', 'Redress Number', 'Redress',
-                            'TSA Redress', 'Traveler Number', 'TSA Number', 'TSA PreCheck'],
+    'known_traveller_number':['Known Traveller Number', 'Known Traveler Number', 'KTN',
+                            'TSA PreCheck', 'Traveler Number', 'TSA Number'],
+    'redress_number':      ['Redress Number', 'Redress', 'TSA Redress'],
     'age_category':        ['Age Category', 'Age Group', 'Passenger Type', 'Traveler Type',
                             'Guest Type', 'Attendee Type', 'Registration Type', 'Registrant Type'],
     'air_selection':       ['Air Selection', 'Air Booking', 'Flight Booking Option', 'Air Option'],
@@ -133,7 +134,8 @@ SECTION_FIELDS = {
                 'passport_expiration_date', 'guest_email', 'guest_mobile_phone'],
     'event':   ['event_code', 'event_title', 'event_date', 'event_time', 'group_id'],
     'request': ['request_name', 'request_date', 'full_name', 'gender', 'date_of_birth',
-                'redress_number', 'age_category', 'food_preferences', 'special_requests',
+                'known_traveller_number', 'redress_number', 'age_category',
+                'food_preferences', 'special_requests',
                 'departure_time', 'departure_time_pref', 'departure_trip',
                 'departure_airport', 'arrival_airport',
                 'return_time', 'return_time_pref', 'return_trip',
@@ -600,7 +602,7 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '2.9-departure-split'
+    PARSER_VERSION = '3.0-date-time-split'
 
     text = clean_html_to_text(html_email_body)
     text = normalize_swoogo_format(text)
@@ -709,14 +711,10 @@ def parse_email(html_email_body, email_subject=''):
     # (CVENT + Agent copy have no preference column, so write_to_smartsheet
     # recombines them into "DATE (window)" for those two sheets only.)
 
-    # Merge return_time_pref (e.g. "Early Morning (6-8 a.m.)") into return_time
-    # if return_time only holds a date — append the preference as a note.
-    rtp = output.get('return_time_pref', '').strip()
-    rt = output.get('return_time', '').strip()
-    if rtp and rt and rtp.lower() not in rt.lower():
-        output['return_time'] = f'{rt} ({rtp})'
-    elif rtp and not rt:
-        output['return_time'] = rtp
+    # Return is handled the same way as departure: return_time holds the DATE
+    # (master "Return Date" column) and return_time_pref holds the time-of-day
+    # window (master "Return Time" column). CVENT + Agent copy have only one
+    # return column, so write_to_smartsheet recombines them for those sheets.
 
     # Group ID fallback: Swoogo puts it in the subject after a pipe,
     # e.g. "War Heroes on Water 2026 | 1OEGLOASEP26". The body also has
@@ -869,11 +867,13 @@ MASTER_COLUMN_MAP = {
     # column was removed from the master sheet, so writing it returns
     # INVALID_COLUMN_ID 1036 and rejects the whole row. First/Middle/Last
     # cover the name; full_name is not needed on the master.
-    'redress_number':           3756188440498052,
-    'departure_time':           6797642721169284,   # holds the DEPARTURE DATE
-    'departure_time_pref':      2117685625524100,   # Departure Preference (time-of-day window)
+    'known_traveller_number':   8259788067868548,   # "Known Traveller Number" column
+    'redress_number':           3756188440498052,    # "Redress Number" column (separate from KTN)
+    'departure_time':           6797642721169284,   # "Departure Date" column (holds the date)
+    'departure_time_pref':      2117685625524100,   # "Departure Time" column (time-of-day window)
     'departure_trip':           1168143186956164,
-    'return_time':              5671742814326660,
+    'return_time':              5671742814326660,    # "Return Date" column (holds the date)
+    'return_time_pref':         5554005685342084,    # "Return Time" column (time-of-day window)
     'return_trip':              3419943000641412,
     'ticket_type':              7923542628011908,
     'seating':                  605193233534852,
@@ -1199,14 +1199,15 @@ def write_to_smartsheet(parsed, force=False):
     # Preference" (time-of-day window) columns. CVENT and the Agent copy only
     # have one "Departure Time" column, so for those two we recombine the date
     # and window into "DATE (window)" so no information is lost there.
-    dep_date = (parsed.get('departure_time') or '').strip()
-    dep_pref = (parsed.get('departure_time_pref') or '').strip()
-    if dep_date and dep_pref:
-        combined_dep = f'{dep_date} ({dep_pref})'
-    else:
-        combined_dep = dep_date or dep_pref
+    def _combine(date_val, pref_val):
+        d = (date_val or '').strip()
+        p = (pref_val or '').strip()
+        if d and p:
+            return f'{d} ({p})'
+        return d or p
     parsed_combined = dict(parsed)
-    parsed_combined['departure_time'] = combined_dep  # used for CVENT + Agent copy
+    parsed_combined['departure_time'] = _combine(parsed.get('departure_time'), parsed.get('departure_time_pref'))
+    parsed_combined['return_time'] = _combine(parsed.get('return_time'), parsed.get('return_time_pref'))
 
     # ── Duplicate check (against the CVENT sheet, the source of truth) ──
     new_key = _dedup_key(
