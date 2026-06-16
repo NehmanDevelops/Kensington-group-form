@@ -10,6 +10,20 @@ export default async function handler(req, res) {
   const q = (req.query?.q || '').toLowerCase();
 
   try {
+    // List a folder's sheets:  ?folder=393314542348164
+    if (req.query?.folder) {
+      const fr = await fetch(`https://api.smartsheet.com/2.0/folders/${req.query.folder}`, {
+        headers: { Authorization: `Bearer ${TOKEN}` },
+      });
+      const folder = await fr.json();
+      return res.status(200).json({
+        folder: folder.name,
+        sheets: (folder.sheets || []).map(s => ({ id: s.id, name: s.name })),
+        reports: (folder.reports || []).map(r => ({ id: r.id, name: r.name })),
+        subfolders: (folder.folders || []).map(f => ({ id: f.id, name: f.name })),
+      });
+    }
+
     const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${sheetId}`, {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
