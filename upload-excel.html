@@ -199,7 +199,7 @@ $('upload').addEventListener('click', async () => {
     const data = await res.json();
     if (res.ok && data.ok){
       out.className = 'result ok';
-      out.innerHTML = `✓ <strong>${data.standing_sheet.written}</strong> added to Group Uploads, ` +
+      out.innerHTML = `✓ <strong>${data.standing_sheet.written}</strong> added to Excel Uploads, ` +
         `<strong>${data.master_sheet.written}</strong> added to the Traveller MasterSheet.` +
         ((data.standing_sheet.skipped_duplicates||0) ? `<br><span style="font-size:13px">${data.standing_sheet.skipped_duplicates} duplicate(s) skipped.</span>` : '') +
         (data.master_sheet.error ? `<br><span style="font-size:13px">Master note: ${data.master_sheet.error}</span>` : '');

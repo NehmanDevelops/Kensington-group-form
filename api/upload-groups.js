@@ -12,7 +12,7 @@
 // Dedup key everywhere is GroupID|First|Last (case-insensitive), matching
 // sync-travellers, so re-uploading the same template never doubles rows.
 
-const STANDING_SHEET_NAME = 'Group Uploads';
+const STANDING_SHEET_NAME = 'Excel Uploads';
 const MASTER_SHEET_ID = '8780932377956228';
 
 // Master (Traveller Profile MasterSheet) column IDs — verified against
