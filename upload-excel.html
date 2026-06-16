@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — Group Excel Upload</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
+
+  :root{
+    --ink:#3a2f3c; --ink-mute:#8b8678; --bone:#fdf9ec; --paper:#fffdf8;
+    --cream:#f3eedf; --gold:#767260; --green:#1a3e32; --line:#e4ddcc; --error:#b03a3a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'SangBleu Republic',Georgia,serif;background:var(--paper);color:var(--ink);line-height:1.6;min-height:100vh}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 24px 80px}
+
+  header{text-align:center;padding:32px 0 28px;border-bottom:1px solid var(--line);margin-bottom:36px}
+  header img{height:54px;width:auto;margin-bottom:18px}
+  .eyebrow{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold)}
+  h1{font-family:'SangBleu Sunrise',serif;font-weight:400;font-size:30px;letter-spacing:2px;text-transform:uppercase;margin:10px 0 6px}
+  .sub{font-style:italic;color:var(--ink-mute);font-size:15px}
+
+  .card{background:var(--bone);border:1px solid var(--line);border-radius:10px;padding:30px;margin-bottom:24px}
+  .step{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+
+  .drop{border:2px dashed var(--gold);border-radius:10px;padding:46px 24px;text-align:center;cursor:pointer;transition:.15s;background:var(--paper)}
+  .drop:hover,.drop.over{background:var(--cream);border-color:var(--green)}
+  .drop p{margin:6px 0;color:var(--ink-mute)}
+  .drop .big{font-size:17px;color:var(--ink)}
+  input[type=file]{display:none}
+
+  .meta{display:flex;gap:24px;flex-wrap:wrap;margin:18px 0 6px}
+  .meta div{flex:1;min-width:200px}
+  .meta label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:4px}
+  .meta .val{font-size:17px;color:var(--ink)}
+  .meta .missing{color:var(--error);font-style:italic;font-size:14px}
+
+  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}
+  th{text-align:left;padding:8px 10px;background:var(--cream);color:var(--gold);text-transform:uppercase;letter-spacing:1px;font-size:10px;border-bottom:1px solid var(--line)}
+  td{padding:7px 10px;border-bottom:1px solid var(--line)}
+  .tablewrap{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:8px}
+
+  button{font-family:'SangBleu Republic',serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;
+    background:var(--green);color:var(--bone);border:none;padding:15px 34px;border-radius:8px;cursor:pointer;transition:.15s}
+  button:hover{background:#15322a}
+  button:disabled{background:var(--ink-mute);cursor:not-allowed;opacity:.6}
+
+  .note{font-size:13px;color:var(--ink-mute);margin-top:14px;line-height:1.55}
+  .result{padding:18px 20px;border-radius:8px;margin-top:20px;font-size:15px;display:none}
+  .result.ok{background:#eef4ef;border:1px solid var(--green);color:var(--green);display:block}
+  .result.err{background:#f8eded;border:1px solid var(--error);color:var(--error);display:block}
+  .hidden{display:none}
+  .count{font-size:13px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo-taupe.png" alt="Kensington Corporate" />
+    <div class="eyebrow">— Corporate Groups Division —</div>
+    <h1>Group Excel Upload</h1>
+    <div class="sub">Upload a filled-out group template to add travellers to Smartsheet</div>
+  </header>
+
+  <div class="card">
+    <div class="step">Step 1 — Choose your completed template</div>
+    <label class="drop" id="drop">
+      <p class="big">Click to choose your Excel file</p>
+      <p>or drag &amp; drop the <strong>.xlsx</strong> here</p>
+      <input type="file" id="file" accept=".xlsx,.xls" />
+    </label>
+    <div class="note">
+      Use the Kensington Group template. The file must have <strong>Group Name</strong> in cell B5,
+      <strong>Group ID</strong> in cell B6, column headers on row 7, and travellers from row 8 down.
+    </div>
+  </div>
+
+  <div class="card hidden" id="review">
+    <div class="step">Step 2 — Review &amp; upload</div>
+    <div class="meta">
+      <div><label>Group Name</label><div class="val" id="gName">—</div></div>
+      <div><label>Group ID</label><div class="val" id="gId">—</div></div>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="tablewrap"><table id="preview"></table></div>
+    <div style="margin-top:22px">
+      <button id="upload" disabled>Upload to Smartsheet</button>
+    </div>
+    <div class="result" id="result"></div>
+  </div>
+</div>
+
+<script>
+const API = '/api/upload-groups';
+let payload = null;
+
+const $ = id => document.getElementById(id);
+const drop = $('drop'), fileInput = $('file');
+
+drop.addEventListener('click', () => fileInput.click());
+['dragover','dragenter'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', ev => { if (ev.dataTransfer.files[0]) handleFile(ev.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function txt(v){ return v == null ? '' : String(v).trim(); }
+function truthy(v){
+  if (v === true) return true;
+  const s = txt(v).toLowerCase();
+  return ['x','✓','yes','y','true','1','✔','done','complete','assigned'].includes(s);
+}
+function toISODate(v){
+  if (v == null || v === '') return '';
+  if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+  const d = new Date(v);
+  if (!isNaN(d)) return d.toISOString().slice(0,10);
+  return txt(v);
+}
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header:1, blankrows:false, defval:'' });
+
+    // Group Name = B5 (row index 4, col 1); Group ID = B6 (row index 5, col 1)
+    const groupName = txt((rows[4]||[])[1]);
+    const groupId   = txt((rows[5]||[])[1]);
+    // Header row 7 (index 6); data from row 8 (index 7) down.
+    const dataRows = rows.slice(7);
+
+    const C = { agent:0, assigned:1, inProgress:2, complete:3, first:4, middle:5,
+                last:6, dob:7, phone:8, email:9, ktn:10, redress:11, loyalty:12,
+                seat:13, notes:14, agentNotes:15 };
+
+    const travellers = dataRows.map(r => ({
+      assignedAgent: txt(r[C.agent]),
+      assigned:   truthy(r[C.assigned]),
+      inProgress: truthy(r[C.inProgress]),
+      complete:   truthy(r[C.complete]),
+      firstName:  txt(r[C.first]),
+      middleName: txt(r[C.middle]),
+      lastName:   txt(r[C.last]),
+      dob:        toISODate(r[C.dob]),
+      phone:      txt(r[C.phone]),
+      email:      txt(r[C.email]),
+      ktn:        txt(r[C.ktn]),
+      redress:    txt(r[C.redress]),
+      airlineLoyalty: txt(r[C.loyalty]),
+      seat:       txt(r[C.seat]),
+      additionalNotes: txt(r[C.notes]),
+      agentNotes: txt(r[C.agentNotes]),
+    })).filter(t => t.firstName || t.lastName);
+
+    payload = { groupName, groupId, travellers };
+    renderReview();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderReview(){
+  $('review').classList.remove('hidden');
+  $('result').className = 'result';
+  $('gName').textContent = payload.groupName || '—';
+  const idEl = $('gId');
+  if (payload.groupId){ idEl.textContent = payload.groupId; idEl.className = 'val'; }
+  else { idEl.textContent = 'Missing — add Group ID to cell B6'; idEl.className = 'val missing'; }
+
+  $('count').textContent = `${payload.travellers.length} traveller(s) found`;
+
+  const cols = ['First','Middle','Last','DOB','Phone','Email','KTN','Seat','Agent'];
+  let html = '<thead><tr>' + cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  for (const t of payload.travellers.slice(0,200)){
+    html += '<tr>' + [t.firstName,t.middleName,t.lastName,t.dob,t.phone,t.email,t.ktn,t.seat,t.assignedAgent]
+      .map(v=>`<td>${(v||'').replace(/</g,'&lt;')}</td>`).join('') + '</tr>';
+  }
+  html += '</tbody>';
+  $('preview').innerHTML = html;
+
+  $('upload').disabled = !(payload.groupId && payload.travellers.length);
+}
+
+$('upload').addEventListener('click', async () => {
+  const btn = $('upload'), out = $('result');
+  btn.disabled = true; btn.textContent = 'Uploading…';
+  out.className = 'result';
+  try {
+    const res = await fetch(API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok){
+      out.className = 'result ok';
+      out.innerHTML = `✓ <strong>${data.standing_sheet.written}</strong> added to Group Uploads, ` +
+        `<strong>${data.master_sheet.written}</strong> added to the Traveller MasterSheet.` +
+        ((data.standing_sheet.skipped_duplicates||0) ? `<br><span style="font-size:13px">${data.standing_sheet.skipped_duplicates} duplicate(s) skipped.</span>` : '') +
+        (data.master_sheet.error ? `<br><span style="font-size:13px">Master note: ${data.master_sheet.error}</span>` : '');
+      btn.textContent = 'Done';
+    } else {
+      out.className = 'result err';
+      out.textContent = '✕ ' + (data.error || 'Upload failed.');
+      btn.disabled = false; btn.textContent = 'Upload to Smartsheet';
+    }
+  } catch (err){
+    out.className = 'result err';
+    out.textContent = '✕ ' + err.message;
+    btn.disabled = false; btn.textContent = 'Upload to Smartsheet';
+  }
+});
+</script>
+</body>
+</html>
