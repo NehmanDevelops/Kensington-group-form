@@ -974,7 +974,10 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
         cells.extend(extra_cells)
     if not cells:
         return 'skipped — no data'
-    payload = json.dumps([{'toTop': True, 'cells': cells}]).encode()
+    # Append new rows at the BOTTOM, not the top. Inserting at top shifts every
+    # existing row down by one, which looked like the whole sheet "moving" every
+    # time a registration came in. Bottom-append leaves existing rows in place.
+    payload = json.dumps([{'toBottom': True, 'cells': cells}]).encode()
     # Single attempt only. Do NOT retry here, and do NOT raise to the caller:
     # the parser must always return 200 to Power Automate, otherwise PA's HTTP
     # connector auto-retries and we get duplicate rows in both sheets.

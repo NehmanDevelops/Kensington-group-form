@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     const rowRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${SHEET_ID}/rows`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify([{ toTop: true, cells }]),
+      body: JSON.stringify([{ toBottom: true, cells }]),
     });
     const rowData = await rowRes.json();
     if (!rowRes.ok) {

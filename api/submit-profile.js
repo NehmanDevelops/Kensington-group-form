@@ -63,7 +63,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify([{ toTop: true, cells }])
+      body: JSON.stringify([{ toBottom: true, cells }])
     });
 
     const ssData = await ssRes.json();
@@ -105,7 +105,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify([{ toTop: true, cells: masterCells }])
+      body: JSON.stringify([{ toBottom: true, cells: masterCells }])
     });
     const masterData = await masterRes.json();
     if (!masterRes.ok) {
@@ -151,7 +151,7 @@ export default async function handler(req, res) {
       await fetch(`https://api.smartsheet.com/2.0/sheets/${TRAVELLER_COPY_SHEET_ID}/rows`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ toTop: true, cells: copyCells }])
+        body: JSON.stringify([{ toBottom: true, cells: copyCells }])
       }).catch(err => console.error('KCG Agent traveller copy mirror failed:', err.message));
     } catch (copyErr) {
       console.error('KCG Agent traveller copy mirror error:', copyErr.message);

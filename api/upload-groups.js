@@ -222,7 +222,7 @@ export default async function handler(req, res) {
         { columnId: M.completed, value: t.complete },
         { columnId: M.submissionDate, value: today },
       ].filter(c => c.value !== '' && c.value !== false && c.value != null);
-      masterRows.push({ toTop: true, cells });
+      masterRows.push({ toBottom: true, cells });
     }
 
     let masterWritten = 0;
