@@ -32,6 +32,19 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
+      if (req.query?.count) {
+        const ASSIGNED_CB = 689867251289988;
+        const tally = {};
+        for (const row of sheet.rows || []) {
+          const ac = (row.cells || []).find(x => x.columnId === AGENT_ASSIGNED);
+          const cb = (row.cells || []).find(x => x.columnId === ASSIGNED_CB);
+          const disp = ac ? String(ac.displayValue ?? ac.value ?? '') : '';
+          if (!disp) continue;
+          if (cb && (cb.value === true || cb.value === 'true')) tally[disp] = (tally[disp] || 0) + 1;
+        }
+        const sorted = Object.entries(tally).sort((a,b)=>b[1]-a[1]);
+        return res.status(200).json({ masterAssignedTally: sorted });
+      }
       return res.status(200).json({ count: matches.length, sample: matches.slice(0, 8), distinctEmails: [...new Set(matches.map(m => m.email))] });
     }
 
