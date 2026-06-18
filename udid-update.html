@@ -177,6 +177,14 @@
             <label class="field-label" for="pnrInvoice">PNR / Invoice #<span class="required-mark">*</span></label>
             <input type="text" id="pnrInvoice" name="pnrInvoice" class="field-input" required />
           </div>
+          <div class="field">
+            <label class="field-label" for="requesterEmail">Your Email (requester)<span class="required-mark">*</span></label>
+            <input type="email" id="requesterEmail" name="requesterEmail" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="ccEmails">CC (optional)</label>
+            <input type="text" id="ccEmails" name="ccEmails" class="field-input" placeholder="comma-separate emails" />
+          </div>
         </div>
 
         <div class="field" style="margin-top:22px;">
@@ -244,15 +252,15 @@
 
       <div class="form-footer">
         <button type="submit" class="submit-btn">Submit Request</button>
-        <p class="footer-note">This request is sent to the Support Finance team and automatically opens an IT ticket. Do not include payment card numbers in this form.</p>
+        <p class="footer-note">Submitting opens a pre-filled email to Support Finance (finance.support@traveledge.com) from your own Outlook — review, attach the screenshot, and send to open the ServiceNow ticket. Do not include payment card numbers in this form.</p>
       </div>
     </form>
 
     <!-- SUCCESS -->
     <div class="form-card success" id="success">
       <div class="success-icon">✓</div>
-      <h2 class="success-title">Request Submitted</h2>
-      <p class="success-text">Your UDID update has been sent to Support Finance and an IT ticket has been opened. A confirmation has been emailed to finance for tracking.</p>
+      <h2 class="success-title">Almost done — <em>send your email</em></h2>
+      <p class="success-text">We've opened a pre-filled email to Support Finance in your mail app. <strong>Attach your screenshot and hit Send</strong> — that opens the ServiceNow ticket and routes all replies back to you (and anyone you CC'd). If the draft didn't open, email <strong>finance.support@traveledge.com</strong> directly.</p>
     </div>
   </div>
 
@@ -325,21 +333,49 @@
       data.screenshot = screenshotData; // null or { name, type, dataUrl }
       data.submittedAt = new Date().toISOString();
 
+      // 1) Log the request (record + screenshot). Best-effort — never blocks the ticket.
       try {
-        var res = await fetch('/api/submit-udid', {
+        await fetch('/api/submit-udid', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error('Request failed');
-        document.getElementById('udidForm').style.display = 'none';
-        document.getElementById('success').style.display = 'block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } catch (err) {
-        btn.textContent = 'Submit Request';
-        btn.disabled = false;
-        alert('Something went wrong submitting your request. Please try again, or contact Support Finance directly.');
-      }
+      } catch (_) { /* logging is best-effort; the ServiceNow email below is the source of truth */ }
+
+      // 2) Open a pre-filled email from the agent's OWN Outlook → finance.support (ServiceNow).
+      //    Sending from the agent's mailbox makes them the ServiceNow "caller", and anyone
+      //    they CC'd is on the thread, so replies route back correctly.
+      var subject = 'UDID Update Request — ' + (data.agentName || '') + ' / ' + (data.pnr || '');
+      var body = [
+        'UDID UPDATE REQUEST', '',
+        'Agent Name: ' + (data.agentName || ''),
+        'Requester Email: ' + (data.requesterEmail || ''),
+        'Client / Company: ' + (data.companyName || ''),
+        'Branch / PCC: ' + (data.branchPcc || ''),
+        'PNR / Invoice #: ' + (data.pnrInvoice || ''),
+        '',
+        'Reason for update:',
+        (data.reason || ''),
+        '',
+        '--- UDID CHANGE ---',
+        'PNR: ' + (data.pnr || ''),
+        'Invoice #: ' + (data.invoice || ''),
+        'UDID #: ' + (data.udidNum || ''),
+        'Original UDID Value: ' + (data.udidOld || ''),
+        'New UDID Value: ' + (data.udidNew || ''),
+        '',
+        '** Please attach the screenshot to this email before sending. **'
+      ].join('\n');
+
+      var mailto = 'mailto:finance.support@traveledge.com'
+        + '?cc=' + encodeURIComponent(data.ccEmails || '')
+        + '&subject=' + encodeURIComponent(subject)
+        + '&body=' + encodeURIComponent(body);
+
+      document.getElementById('udidForm').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.location.href = mailto; // opens the agent's mail client with the draft
     });
   })();
 </script>
