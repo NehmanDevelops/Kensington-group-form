@@ -1,3 +1,10 @@
+// Relays a UDID Update Request straight to the finance Power Automate flow,
+// which logs it into the finance Excel table (and stores the screenshot).
+// No Smartsheet involved. The browser posts here (same-origin, so no CORS issue);
+// this function forwards server-side to the PA HTTP trigger.
+//
+// Set FINANCE_FLOW_URL in Vercel → Project Settings → Environment Variables to the
+// Power Automate "When an HTTP request is received" URL once the flow is built.
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -6,78 +13,22 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // "UDID Update Requests" sheet in the KCG MANAGER workspace.
-  const SHEET_ID = '137792326684548';
-  const COL = {
-    agentName:   915513936220036,
-    companyName: 5419113563590532,
-    branchPcc:   3167313749905284,
-    pnrInvoice:  7670913377275780,
-    reason:      2041413843062660,
-    pnr:         6545013470433156,
-    invoice:     4293213656747908,
-    udidNum:     8796813284118404,
-    udidOld:     211826494443396,
-    udidNew:     4715426121813892,
-    submittedAt: 2463626308128644,
-    status:      6967225935499140,
-  };
-  const token = process.env.SMARTSHEET_API_TOKEN;
+  const FLOW_URL = process.env.FINANCE_FLOW_URL;
+  if (!FLOW_URL) {
+    // Not wired yet — tell the caller, but the form's ServiceNow email path is unaffected.
+    return res.status(503).json({ error: 'FINANCE_FLOW_URL not configured' });
+  }
 
   try {
-    const b = req.body || {};
-
-    const cells = [
-      { columnId: COL.agentName,   value: String(b.agentName   || '') },
-      { columnId: COL.companyName, value: String(b.companyName || '') },
-      { columnId: COL.branchPcc,   value: String(b.branchPcc   || '') },
-      { columnId: COL.pnrInvoice,  value: String(b.pnrInvoice  || '') },
-      { columnId: COL.reason,      value: String(b.reason      || '') },
-      { columnId: COL.pnr,         value: String(b.pnr         || '') },
-      { columnId: COL.invoice,     value: String(b.invoice     || '') },
-      { columnId: COL.udidNum,     value: String(b.udidNum     || '') },
-      { columnId: COL.udidOld,     value: String(b.udidOld     || '') },
-      { columnId: COL.udidNew,     value: String(b.udidNew     || '') },
-      { columnId: COL.submittedAt, value: String(b.submittedAt || '') },
-      { columnId: COL.status,      value: 'New' },
-    ].filter(c => c.value !== '');
-
-    // ── Write the request row ──
-    const rowRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${SHEET_ID}/rows`, {
+    const flowRes = await fetch(FLOW_URL, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify([{ toBottom: true, cells }]),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
     });
-    const rowData = await rowRes.json();
-    if (!rowRes.ok) {
-      return res.status(502).json({ error: rowData.message || 'Smartsheet write failed' });
+    if (!flowRes.ok) {
+      const detail = await flowRes.text().catch(() => '');
+      return res.status(502).json({ error: 'Flow returned an error', detail: detail.slice(0, 300) });
     }
-    const rowId = rowData.result && rowData.result[0] && rowData.result[0].id;
-
-    // ── Attach the screenshot to the row (best-effort; never blocks) ──
-    if (rowId && b.screenshot && b.screenshot.dataUrl) {
-      try {
-        const m = /^data:([^;]+);base64,(.*)$/.exec(b.screenshot.dataUrl);
-        if (m) {
-          const mime = m[1];
-          const buf = Buffer.from(m[2], 'base64');
-          const safeName = String(b.screenshot.name || 'screenshot.png').replace(/[^\w.\-]/g, '_');
-          await fetch(`https://api.smartsheet.com/2.0/sheets/${SHEET_ID}/rows/${rowId}/attachments`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': mime,
-              'Content-Disposition': `attachment; filename="${safeName}"`,
-              'Content-Length': String(buf.length),
-            },
-            body: buf,
-          });
-        }
-      } catch (attErr) {
-        console.error('UDID screenshot attach failed:', attErr.message);
-      }
-    }
-
     return res.status(200).json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
