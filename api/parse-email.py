@@ -846,7 +846,7 @@ MASTER_COLUMN_MAP = {
     'nationality':              2911763510366084,
     'email_address':            7415363137736580,
     'cc_email_address':         8662414441877380,
-    'mobile_phone':             1625540024110980,
+    'mobile_phone':             1785863603523460,   # Phone Number (Mobile Phone column retired/merged)
     'work_phone':               2751439930953604,
     'home_phone':               7255039558324100,
     'company':                  6289463230893956,
@@ -908,7 +908,7 @@ TRAVELLER_ORIG_TO_COPY = {
     2911763510366084: 7612901346283396,  # Nationality
     7415363137736580: 1983401812070276,  # Email Address
     8662414441877380: 1842664323714948,  # CC Email Address
-    1625540024110980: 435289440161668,   # Mobile Phone
+    1785863603523460: 6487001439440772,  # Phone Number (Mobile Phone merged in)
     2751439930953604: 4094464137400196,  # Work Phone
     7255039558324100: 8598063764770692,  # Home Phone
     6289463230893956: 4235201625755524,  # Company Name

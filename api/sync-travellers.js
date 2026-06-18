@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     '3756188440498052': '8035113811349380',  // Redress Number
     '652472233529220':  '5431470276775812',  // Global Entry Number (consolidated; was Known Traveller Number)
     '941438673391492':  '5220364044242820',  // Status
-    '7696838114447236': '2968564230557572',  // Additional Notes
+    '7360592674590596': '7964745067171716',  // Special Requests (Additional Notes merged in)
     '2067338580234116': '7472163857928068',  // Submission Date
   };
 

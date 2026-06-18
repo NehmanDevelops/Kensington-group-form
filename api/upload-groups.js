@@ -31,7 +31,7 @@ const M = {
   redress:        3756188440498052,
   airlineLoyalty: 6007988254183300,
   seat:           2630288533655428,
-  additionalNotes:7696838114447236,
+  additionalNotes:7360592674590596,  // Special Requests (Additional Notes merged in)
   assigned:       689867251289988,    // checkbox
   inProgress:     5193466878660484,   // checkbox
   completed:      2941667064975236,   // checkbox

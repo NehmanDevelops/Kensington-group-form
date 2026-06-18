@@ -95,7 +95,7 @@ export default async function handler(req, res) {
       { columnId: 6007988254183300, value: d.airlineLoyaltyPrograms || '' },
       { columnId: 3756188440498052, value: d.redressNumber || '' },
       { columnId: 8259788067868548, value: d.knownTravellerNumber || '' },
-      { columnId: 7696838114447236, value: d.additionalNotes || '' },
+      { columnId: 7360592674590596, value: d.additionalNotes || '' }, // Special Requests (Additional Notes merged in)
       { columnId: 2067338580234116, value: today },
     ].filter(c => c.value !== '');
 
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
       6007988254183300: 3531514183978884, // Airline Loyalty Programs
       3756188440498052: 8035113811349380, // Redress Number
       8259788067868548: 716764416872324,  // Known Traveller Number
-      7696838114447236: 2968564230557572, // Additional Notes
+      7360592674590596: 7964745067171716, // Special Requests (Additional Notes merged in)
       2067338580234116: 7472163857928068, // Submission Date
     };
     try {
