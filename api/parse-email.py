@@ -962,6 +962,50 @@ def _normalize_date_for_smartsheet(val):
             continue
     return val
 
+def _consolidate_master_cells(cells):
+    """Fold retired/duplicate Traveller-master columns into their kept destination."""
+    RETIRE = {
+        323718256824196: 3982892954062724, 2575518070509444: 3982892954062724,
+        8259788067868548: 652472233529220, 2294043093798788: 652472233529220,
+        5156071860899716: 7133888161025924, 2856993047220100: 7133888161025924,
+        42243280113540: 2067338580234116,
+        1168143186956164: 4882088347340676,
+        605193233534852: 2630288533655428,
+        2904272047214468: 1504388626812804,
+        6129139651481476: 2911763510366084,
+    }
+    DESTS = {3982892954062724, 652472233529220, 7133888161025924, 2067338580234116,
+             4882088347340676, 2630288533655428, 1504388626812804, 2911763510366084}
+    DATE_DEST = 2067338580234116
+    passthrough, buckets, order = [], {}, []
+    for c in cells:
+        cid = c.get('columnId')
+        dest = RETIRE.get(cid, cid)
+        if dest in DESTS:
+            if dest not in buckets:
+                buckets[dest] = []
+                order.append(dest)
+            buckets[dest].append(c.get('value'))
+        else:
+            passthrough.append(c)
+    out = list(passthrough)
+    for dest in order:
+        if dest == DATE_DEST:
+            v = next((x for x in buckets[dest] if x not in (None, '')), None)
+            if v not in (None, ''):
+                out.append({'columnId': dest, 'value': _normalize_date_for_smartsheet(v)})
+        else:
+            seen, parts = set(), []
+            for v in buckets[dest]:
+                s = ('' if v is None else str(v)).strip()
+                if s and s.lower() not in seen:
+                    seen.add(s.lower())
+                    parts.append(s)
+            if parts:
+                out.append({'columnId': dest, 'value': '; '.join(parts)})
+    return out
+
+
 def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     cells = []
     for field, col_id in column_map.items():
@@ -972,6 +1016,8 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
             cells.append({'columnId': col_id, 'value': val})
     if extra_cells:
         cells.extend(extra_cells)
+    if str(sheet_id) == str(MASTER_SHEET_ID):
+        cells = _consolidate_master_cells(cells)
     if not cells:
         return 'skipped — no data'
     # Append new rows at the BOTTOM, not the top. Inserting at top shifts every
@@ -1168,6 +1214,8 @@ def _update_row(token, sheet_id, row_id, column_map, parsed, extra_cells=None):
             cells.append({'columnId': col_id, 'value': val})
     if extra_cells:
         cells.extend(extra_cells)
+    if str(sheet_id) == str(MASTER_SHEET_ID):
+        cells = _consolidate_master_cells(cells)
     if not cells:
         return 'skipped — no data'
     payload = json.dumps([{'id': row_id, 'cells': cells}]).encode()

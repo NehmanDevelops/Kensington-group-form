@@ -99,13 +99,29 @@ export default async function handler(req, res) {
       { columnId: 2067338580234116, value: today },
     ].filter(c => c.value !== '');
 
+    // Fold retired/duplicate Traveller-master columns into their kept destination.
+    const consolidateMaster = (cs) => {
+      const RETIRE = { 323718256824196:3982892954062724, 2575518070509444:3982892954062724, 8259788067868548:652472233529220, 2294043093798788:652472233529220, 5156071860899716:7133888161025924, 2856993047220100:7133888161025924, 42243280113540:2067338580234116, 1168143186956164:4882088347340676, 605193233534852:2630288533655428, 2904272047214468:1504388626812804, 6129139651481476:2911763510366084 };
+      const DESTS = new Set([3982892954062724,652472233529220,7133888161025924,2067338580234116,4882088347340676,2630288533655428,1504388626812804,2911763510366084]);
+      const DATE_DEST = 2067338580234116;
+      const pass = [], buckets = {}, order = [];
+      for (const c of cs) { const d = RETIRE[c.columnId] || c.columnId; if (DESTS.has(d)) { if (!buckets[d]) { buckets[d] = []; order.push(d); } buckets[d].push(c.value); } else pass.push(c); }
+      const out = pass.slice();
+      for (const d of order) {
+        if (d === DATE_DEST) { const v = buckets[d].find(x => x !== '' && x != null); if (v != null && v !== '') out.push({ columnId: d, value: v }); }
+        else { const seen = new Set(), parts = []; for (let v of buckets[d]) { v = (v == null ? '' : String(v)).trim(); if (v && !seen.has(v.toLowerCase())) { seen.add(v.toLowerCase()); parts.push(v); } } if (parts.length) out.push({ columnId: d, value: parts.join('; ') }); }
+      }
+      return out;
+    };
+    const masterFinal = consolidateMaster(masterCells);
+
     const masterRes = await fetch('https://api.smartsheet.com/2.0/sheets/8780932377956228/rows', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify([{ toBottom: true, cells: masterCells }])
+      body: JSON.stringify([{ toBottom: true, cells: masterFinal }])
     });
     const masterData = await masterRes.json();
     if (!masterRes.ok) {
@@ -145,7 +161,7 @@ export default async function handler(req, res) {
       2067338580234116: 7472163857928068, // Submission Date
     };
     try {
-      const copyCells = masterCells
+      const copyCells = masterFinal
         .map(c => ({ columnId: TRAVELLER_ORIG_TO_COPY[c.columnId], value: c.value }))
         .filter(c => c.columnId);
       await fetch(`https://api.smartsheet.com/2.0/sheets/${TRAVELLER_COPY_SHEET_ID}/rows`, {

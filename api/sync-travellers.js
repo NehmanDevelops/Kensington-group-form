@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     '1504388626812804': '5783313997664132',  // Special Assistance
     '6007988254183300': '3531514183978884',  // Airline Loyalty Programs
     '3756188440498052': '8035113811349380',  // Redress Number
-    '8259788067868548': '716764416872324',   // Known Traveller Number
+    '652472233529220':  '5431470276775812',  // Global Entry Number (consolidated; was Known Traveller Number)
     '941438673391492':  '5220364044242820',  // Status
     '7696838114447236': '2968564230557572',  // Additional Notes
     '2067338580234116': '7472163857928068',  // Submission Date

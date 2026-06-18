@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kensington-forms",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "calc",
+      "runtimeExecutable": "pwsh",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".preview-server.ps1"],
+      "port": 8777
+    }
+  ]
+}
