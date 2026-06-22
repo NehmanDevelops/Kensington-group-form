@@ -222,7 +222,7 @@ export default async function handler(req, res) {
         { columnId: M.completed, value: t.complete },
         { columnId: M.submissionDate, value: today },
       ].filter(c => c.value !== '' && c.value !== false && c.value != null);
-      masterRows.push({ toBottom: true, locked: true, cells }); // freeze master rows so editors can't sort/move them
+      masterRows.push({ toBottom: true, cells }); // append at bottom so new rows never push existing rows
     }
 
     let masterWritten = 0;

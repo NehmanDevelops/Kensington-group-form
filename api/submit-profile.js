@@ -121,7 +121,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify([{ toBottom: true, locked: true, cells: masterFinal }]) // locked so row order can't be sorted/moved by editors
+      body: JSON.stringify([{ toBottom: true, cells: masterFinal }]) // append at bottom so new rows never push existing rows
     });
     const masterData = await masterRes.json();
     if (!masterRes.ok) {
