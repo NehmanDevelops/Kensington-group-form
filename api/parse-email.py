@@ -1023,7 +1023,10 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     # Append new rows at the BOTTOM, not the top. Inserting at top shifts every
     # existing row down by one, which looked like the whole sheet "moving" every
     # time a registration came in. Bottom-append leaves existing rows in place.
-    payload = json.dumps([{'toBottom': True, 'cells': cells}]).encode()
+    row = {'toBottom': True, 'cells': cells}
+    if str(sheet_id) == str(MASTER_SHEET_ID):
+        row['locked'] = True  # freeze master rows so editors can't sort/move them
+    payload = json.dumps([row]).encode()
     # Single attempt only. Do NOT retry here, and do NOT raise to the caller:
     # the parser must always return 200 to Power Automate, otherwise PA's HTTP
     # connector auto-retries and we get duplicate rows in both sheets.
