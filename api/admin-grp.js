@@ -1,33 +1,33 @@
-// TEMP read-only — dump LIVE GROUP MASTERSHEET groups + values, and reports. Delete after.
-//   GET ?sheet=1   → LIVE GROUP MASTERSHEET rows (Group ID, Status, counts)
-//   GET ?report=ID → a report's rows (Group ID + numeric cells)
+// TEMP — inspect/clean LIVE GROUP MASTERSHEET. Delete after.
+//   GET                       → rows with _rowId + key fields
+//   POST { deleteRowIds:[..]} → delete those rows
 const LIVE = '4820086761148292';
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   if (!TOKEN) return res.status(500).json({ error: 'no token' });
-  const api = (p) => fetch(`https://api.smartsheet.com/2.0${p}`, { headers: { Authorization: `Bearer ${TOKEN}` } }).then(r => r.json());
+  const api = (p, o = {}) => fetch(`https://api.smartsheet.com/2.0${p}`, { ...o, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...o.headers } }).then(r => r.json());
   try {
-    if (req.query?.report) {
-      const rep = await api(`/reports/${req.query.report}?pageSize=500`);
-      const cols = (rep.columns || []);
-      const rows = (rep.rows || []).map(row => {
-        const o = {};
-        for (const cell of row.cells || []) {
-          const col = cols.find(c => c.virtualId === cell.virtualColumnId || c.id === cell.columnId);
-          if (col) o[col.title] = cell.value ?? cell.displayValue;
-        }
-        return o;
-      });
-      return res.status(200).json({ name: rep.name, totalRows: rep.totalRowCount, columns: cols.map(c => c.title), rows });
+    if (req.method === 'POST') {
+      const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const ids = (b.deleteRowIds || []).join(',');
+      if (!ids) return res.status(400).json({ error: 'no ids' });
+      const r = await api(`/sheets/${LIVE}/rows?ids=${ids}`, { method: 'DELETE' });
+      return res.status(200).json(r);
     }
     const s = await api(`/sheets/${LIVE}`);
     const cmap = {}; for (const c of s.columns) cmap[c.id] = c.title;
-    const rows = (s.rows || []).map((r, i) => {
-      const o = { _i: i };
-      for (const cell of r.cells || []) { const v = cell.value ?? cell.displayValue; if (v != null && v !== '') o[cmap[cell.columnId]] = v; }
-      return o;
-    });
-    return res.status(200).json({ name: s.name, columns: s.columns.map(c => c.title), totalRows: rows.length, rows });
+    const g = (row, title) => { const c = (row.cells||[]).find(x => cmap[x.columnId] === title); return c?.value ?? c?.displayValue ?? ''; };
+    const rows = (s.rows || []).map((r, i) => ({
+      i, rowId: r.id,
+      groupId: g(r, 'GROUP ID'), company: g(r, 'Company Name'), event: g(r, 'Event Name'),
+      contact: g(r, 'Contact Name'), email: g(r, 'Contact E-mail'), status: g(r, 'Status'),
+      signedUp: g(r, '# Signed Up'), contacted: g(r, '# Contacted'), ticketed: g(r, '# Ticketed'),
+      cellCount: (r.cells || []).filter(c => (c.value ?? c.displayValue ?? '') !== '').length,
+    }));
+    return res.status(200).json({ totalRows: rows.length, rows });
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }
