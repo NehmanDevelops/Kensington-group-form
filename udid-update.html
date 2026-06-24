@@ -330,10 +330,14 @@
 
       var data = {};
       new FormData(form).forEach(function (value, key) { if (key !== 'screenshot') data[key] = value; });
-      data.screenshot = screenshotData; // null or { name, type, dataUrl }
       data.submittedAt = new Date().toISOString();
+      data.screenshotName = screenshotData ? screenshotData.name : ''; // filename only, not the image
 
-      // 1) Log the request (record + screenshot). Best-effort — never blocks the ticket.
+      // 1) Log the request to the finance Excel (best-effort — never blocks the ticket).
+      //    IMPORTANT: do NOT send the screenshot's base64 dataUrl here. A 1–3 MB
+      //    image balloons the request past the size limit and makes this call fail
+      //    silently (the form still shows success). The agent attaches the
+      //    screenshot to the email below; the Excel log doesn't need the image.
       try {
         await fetch('/api/submit-udid', {
           method: 'POST',
