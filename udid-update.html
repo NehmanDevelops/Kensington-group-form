@@ -170,12 +170,12 @@
             <input type="text" id="companyName" name="companyName" class="field-input" required />
           </div>
           <div class="field">
-            <label class="field-label" for="branchPcc">Branch / PCC<span class="required-mark">*</span></label>
-            <input type="text" id="branchPcc" name="branchPcc" class="field-input" required />
+            <label class="field-label" for="pnr">PNR<span class="required-mark">*</span></label>
+            <input type="text" id="pnr" name="pnr" class="field-input" required />
           </div>
           <div class="field">
-            <label class="field-label" for="pnrInvoice">PNR / Invoice #<span class="required-mark">*</span></label>
-            <input type="text" id="pnrInvoice" name="pnrInvoice" class="field-input" required />
+            <label class="field-label" for="invoice">Invoice #</label>
+            <input type="text" id="invoice" name="invoice" class="field-input" />
           </div>
           <div class="field">
             <label class="field-label" for="requesterEmail">Your Email (requester)<span class="required-mark">*</span></label>
@@ -198,19 +198,19 @@
       <section class="section">
         <div class="section-header">
           <span class="section-num">II.</span>
-          <h2 class="section-title">UDID Change</h2>
-          <span class="section-tag">Correction</span>
+          <h2 class="section-title">Request</h2>
+          <span class="section-tag">Details</span>
         </div>
 
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="pnr">PNR<span class="required-mark">*</span></label>
-            <input type="text" id="pnr" name="pnr" class="field-input" required />
-          </div>
-          <div class="field">
-            <label class="field-label" for="invoice">Invoice #</label>
-            <input type="text" id="invoice" name="invoice" class="field-input" />
-          </div>
+        <div class="field">
+          <label class="field-label" for="requestType">Request Type<span class="required-mark">*</span></label>
+          <select id="requestType" name="requestType" class="field-input" required>
+            <option value="" disabled selected>Select a request type…</option>
+            <option value="UDID Update">UDID Update</option>
+          </select>
+        </div>
+
+        <div class="grid2" style="margin-top:22px;">
           <div class="field">
             <label class="field-label" for="udidNum">UDID #<span class="required-mark">*</span></label>
             <input type="text" id="udidNum" name="udidNum" class="field-input" required />
@@ -348,23 +348,21 @@
       var subject = 'UDID Update Request — ' + (data.agentName || '') + ' / ' + (data.pnr || '');
       var body = [
         'UDID UPDATE REQUEST', '',
+        '** Please attach the screenshot to this email before sending. **', '',
         'Agent Name: ' + (data.agentName || ''),
         'Requester Email: ' + (data.requesterEmail || ''),
         'Client / Company: ' + (data.companyName || ''),
-        'Branch / PCC: ' + (data.branchPcc || ''),
-        'PNR / Invoice #: ' + (data.pnrInvoice || ''),
+        'PNR: ' + (data.pnr || ''),
+        'Invoice #: ' + (data.invoice || ''),
+        'Request Type: ' + (data.requestType || ''),
         '',
         'Reason for update:',
         (data.reason || ''),
         '',
         '--- UDID CHANGE ---',
-        'PNR: ' + (data.pnr || ''),
-        'Invoice #: ' + (data.invoice || ''),
         'UDID #: ' + (data.udidNum || ''),
         'Original UDID Value: ' + (data.udidOld || ''),
         'New UDID Value: ' + (data.udidNew || ''),
-        '',
-        '** Please attach the screenshot to this email before sending. **'
       ].join('\n');
 
       var mailto = 'mailto:finance.support@traveledge.com'
