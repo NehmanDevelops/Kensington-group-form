@@ -20,7 +20,12 @@ export default async function handler(req, res) {
     const contracted = Array.isArray(body.contracted) ? body.contracted : [];
     const preferred  = Array.isArray(body.preferred)  ? body.preferred  : [];
 
-    const norm = (v) => (v === null || v === undefined) ? '' : String(v).trim();
+    // Normalize HODs so "00488" == "488" (leading zeros) and numeric/text both match.
+    const norm = (v) => {
+      let s = (v === null || v === undefined) ? '' : String(v).trim();
+      if (s === '') return '';
+      return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s.toLowerCase();
+    };
 
     // Property IDs already in the Booking Builder / Preferred Hotels file.
     const existing = new Set(preferred.map(r => norm(r.LT_HOD)).filter(Boolean));
