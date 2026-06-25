@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       { columnId: COL.groupId,        value: String(d.groupId).trim() },
       { columnId: COL.firstName,      value: String(d.firstName).trim() },
       { columnId: COL.lastName,       value: String(d.lastName).trim() },
-      { columnId: COL.agentNotes,     value: d.additionalAgents ? `Additional agents: ${String(d.additionalAgents).trim()}` : '' },
+      { columnId: COL.agentNotes,     value: d.additionalAgents ? `Additional agent notes: ${String(d.additionalAgents).trim()}` : '' },
       { columnId: COL.source,         value: 'Agent Form' },
       { columnId: COL.submissionDate, value: today },
     ].filter(c => c.value !== '');
