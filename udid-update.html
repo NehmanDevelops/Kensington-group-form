@@ -207,7 +207,13 @@
           <select id="requestType" name="requestType" class="field-input" required>
             <option value="" disabled selected>Select a request type…</option>
             <option value="UDID Update">UDID Update</option>
+            <option value="Other">Other — enter my own</option>
           </select>
+        </div>
+
+        <div class="field" id="otherRequestWrap" style="display:none; margin-top:22px;">
+          <label class="field-label" for="requestTypeOther">Describe your request<span class="required-mark">*</span></label>
+          <input type="text" id="requestTypeOther" name="requestTypeOther" class="field-input" placeholder="Type your own request type / details" />
         </div>
 
         <div class="grid2" style="margin-top:22px;">
@@ -223,29 +229,6 @@
           <div class="field">
             <label class="field-label" for="udidNew">New UDID Value<span class="required-mark">*</span></label>
             <input type="text" id="udidNew" name="udidNew" class="field-input" required />
-          </div>
-        </div>
-      </section>
-
-      <!-- SECTION 3 -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">III.</span>
-          <h2 class="section-title">Supporting Screenshot</h2>
-          <span class="section-tag">Attachment</span>
-        </div>
-
-        <div class="dropzone" id="dropzone">
-          <div class="dropzone-icon">🖼️</div>
-          <div class="dropzone-text"><strong>Click to upload</strong> or drag &amp; drop a screenshot</div>
-          <div class="dropzone-hint">PNG or JPG of the PNR / UDID screen · up to 3 MB</div>
-          <input type="file" id="screenshot" name="screenshot" accept="image/png,image/jpeg" hidden />
-        </div>
-        <div class="preview" id="preview">
-          <img id="previewImg" alt="Screenshot preview" />
-          <div class="preview-meta">
-            <span id="previewName"></span>
-            <button type="button" class="preview-remove" id="previewRemove">Remove</button>
           </div>
         </div>
       </section>
@@ -266,43 +249,15 @@
 
 <script>
   (function () {
-    var fileInput = document.getElementById('screenshot');
-    var dropzone = document.getElementById('dropzone');
-    var preview = document.getElementById('preview');
-    var previewImg = document.getElementById('previewImg');
-    var previewName = document.getElementById('previewName');
-    var previewRemove = document.getElementById('previewRemove');
-    var MAX_BYTES = 3 * 1024 * 1024;
-    var screenshotData = null; // { name, type, dataUrl }
-
-    function handleFile(file) {
-      if (!file) return;
-      if (!/^image\/(png|jpeg)$/.test(file.type)) { alert('Please upload a PNG or JPG image.'); return; }
-      if (file.size > MAX_BYTES) { alert('That image is larger than 3 MB. Please upload a smaller screenshot.'); return; }
-      var reader = new FileReader();
-      reader.onload = function (ev) {
-        screenshotData = { name: file.name, type: file.type, dataUrl: ev.target.result };
-        previewImg.src = ev.target.result;
-        previewName.textContent = file.name;
-        preview.style.display = 'block';
-        dropzone.classList.remove('field-error');
-      };
-      reader.readAsDataURL(file);
-    }
-
-    dropzone.addEventListener('click', function () { fileInput.click(); });
-    fileInput.addEventListener('change', function () { handleFile(fileInput.files[0]); });
-    ['dragenter', 'dragover'].forEach(function (evt) {
-      dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
-    });
-    ['dragleave', 'drop'].forEach(function (evt) {
-      dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.remove('dragover'); });
-    });
-    dropzone.addEventListener('drop', function (e) {
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-    });
-    previewRemove.addEventListener('click', function () {
-      screenshotData = null; fileInput.value = ''; preview.style.display = 'none'; previewImg.src = '';
+    // Show the "describe your request" field only when Request Type = Other.
+    var requestType = document.getElementById('requestType');
+    var otherWrap = document.getElementById('otherRequestWrap');
+    var otherInput = document.getElementById('requestTypeOther');
+    requestType.addEventListener('change', function () {
+      var isOther = requestType.value === 'Other';
+      otherWrap.style.display = isOther ? 'block' : 'none';
+      otherInput.required = isOther;
+      if (!isOther) { otherInput.value = ''; otherInput.classList.remove('field-error'); }
     });
 
     document.getElementById('udidForm').addEventListener('submit', async function (e) {
@@ -329,9 +284,8 @@
       btn.disabled = true;
 
       var data = {};
-      new FormData(form).forEach(function (value, key) { if (key !== 'screenshot') data[key] = value; });
+      new FormData(form).forEach(function (value, key) { data[key] = value; });
       data.submittedAt = new Date().toISOString();
-      data.screenshotName = screenshotData ? screenshotData.name : ''; // filename only, not the image
 
       // 1) Log the request to the finance Excel (best-effort — never blocks the ticket).
       //    IMPORTANT: do NOT send the screenshot's base64 dataUrl here. A 1–3 MB
@@ -349,16 +303,20 @@
       // 2) Open a pre-filled email from the agent's OWN Outlook → finance.support (ServiceNow).
       //    Sending from the agent's mailbox makes them the ServiceNow "caller", and anyone
       //    they CC'd is on the thread, so replies route back correctly.
+      var reqType = data.requestType === 'Other' ? (data.requestTypeOther || 'Other') : (data.requestType || '');
       var subject = 'UDID Update Request — ' + (data.agentName || '') + ' / ' + (data.pnr || '');
       var body = [
+        '*** IMPORTANT — ATTACH YOUR SCREENSHOT TO THIS EMAIL BEFORE SENDING ***',
+        'Drag the PNR / UDID screenshot into this email. The request cannot be processed without it.',
+        '==================================================================',
+        '',
         'UDID UPDATE REQUEST', '',
-        '** Please attach the screenshot to this email before sending. **', '',
         'Agent Name: ' + (data.agentName || ''),
         'Requester Email: ' + (data.requesterEmail || ''),
         'Client / Company: ' + (data.companyName || ''),
         'PNR: ' + (data.pnr || ''),
         'Invoice #: ' + (data.invoice || ''),
-        'Request Type: ' + (data.requestType || ''),
+        'Request Type: ' + reqType,
         '',
         'Reason for update:',
         (data.reason || ''),
@@ -367,6 +325,8 @@
         'UDID #: ' + (data.udidNum || ''),
         'Original UDID Value: ' + (data.udidOld || ''),
         'New UDID Value: ' + (data.udidNew || ''),
+        '',
+        '*** Reminder: did you attach the screenshot? It is required. ***',
       ].join('\n');
 
       var mailto = 'mailto:finance.support@traveledge.com'
