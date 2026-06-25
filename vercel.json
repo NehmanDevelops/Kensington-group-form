@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/reconcile-groups?commit=1", "schedule": "0 13 * * *" }
+  ]
+}
