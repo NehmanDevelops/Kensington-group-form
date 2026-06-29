@@ -66,13 +66,14 @@ const toISODate = (v) => {
   return '';
 };
 
-// Best-effort IATA pull: prefer a (XXX) code, else a standalone 3-letter UPPER token.
+// Pull a 3-letter IATA code. Uppercases first so "sna" works; prefers a (XXX)
+// code, else a standalone 3-letter token. A clean "SNA" returns "SNA".
 const toIATA = (v) => {
-  const s = norm(v);
-  let m = s.match(/\(([A-Za-z]{3})\)/);
-  if (m) return m[1].toUpperCase();
+  const s = norm(v).toUpperCase();
+  let m = s.match(/\(([A-Z]{3})\)/);
+  if (m) return m[1];
   m = s.match(/\b([A-Z]{3})\b/);
-  if (m) return m[1].toUpperCase();
+  if (m) return m[1];
   return '';
 };
 
@@ -162,6 +163,8 @@ export default async function handler(req, res) {
       groupId: norm(M.val(mrow, 'Group ID')),
       depDate: M.val(mrow, 'Departure Date'),
       retDate: M.val(mrow, 'Return Date'),
+      depIATA: norm(M.val(mrow, 'Departure Airport (IATA)')),
+      arrIATA: norm(M.val(mrow, 'Arrival Airport (IATA)')),
       depTrip: norm(M.val(mrow, 'Departure Trip')) || norm(M.val(mrow, 'Departure City')),
       retTrip: norm(M.val(mrow, 'Return Trip/City')),
     };
@@ -176,9 +179,10 @@ export default async function handler(req, res) {
     const policyGuid = norm(G.val(grow, 'Amgine Policy GUID'));
     if (!branchGuid) return res.status(400).json({ error: `group "${t.groupId}" has no Amgine Branch GUID — onboard it first` });
 
-    // 3. Airports (best-effort IATA). depTrip is usually "Origin -> Destination".
-    const origin = toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
-    const dest   = toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
+    // 3. Airports. Prefer the clean IATA columns; fall back to parsing the
+    //    older "Departure Trip / City" / "Return Trip/City" fields.
+    const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
+    const dest   = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
     const intentNodes = [];
     if (origin && dest && toISODate(t.depDate)) intentNodes.push({ Flight: { From: origin, To: dest, DepartureDate: toISODate(t.depDate), stops: ['NonStop'] } });
     if (origin && dest && toISODate(t.retDate)) intentNodes.push({ Flight: { From: dest, To: origin, DepartureDate: toISODate(t.retDate), stops: ['NonStop'] } });
