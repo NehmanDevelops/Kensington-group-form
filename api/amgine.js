@@ -106,6 +106,14 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP debug: POST { debug:"env" } → report env var lengths + first/last 2 chars (no full secrets).
+  if (body.debug === 'env') {
+    const names = ['AMGINE_TOKEN_URL','AMGINE_CLIENT_ID','AMGINE_CLIENT_SECRET','AMGINE_GRANT_TYPE','AMGINE_SCOPE','AMGINE_USERNAME','AMGINE_PASSWORD','AMGINE_API_URL','AMGINE_TMC_GUID','AMGINE_HASH'];
+    const out = {};
+    for (const n of names) { const v = process.env[n]; out[n] = v ? { len: v.length, head: v.slice(0,2), tail: v.slice(-2) } : 'MISSING'; }
+    return res.status(200).json(out);
+  }
+
   // TEMP debug: POST { debug:true, email } → report what the endpoint sees on the master sheet.
   if (body.debug) {
     const s = await (await api(`/sheets/${MASTER}`)).json();
