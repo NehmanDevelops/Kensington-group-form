@@ -106,6 +106,21 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP debug: POST { debug:true, email } → report what the endpoint sees on the master sheet.
+  if (body.debug) {
+    const s = await (await api(`/sheets/${MASTER}`)).json();
+    const D = indexSheet(s);
+    const want = norm(body.email).toLowerCase();
+    const emailMatches = (s.rows || []).filter(r => norm(D.val(r, 'Email Address')).toLowerCase() === want).length;
+    return res.status(200).json({
+      sheetName: s.name, sheetId: MASTER, totalRows: (s.rows || []).length,
+      columns: (s.columns || []).map(c => c.title),
+      emailColumnExists: !!D.id('Email Address'),
+      groupColumnExists: { 'Group ID': !!D.id('Group ID'), Group: !!D.id('Group') },
+      emailMatches,
+    });
+  }
+
   // ── WEBHOOK half (Amgine -> us) — stub until vendor sends the payload spec ──
   // Amgine's webhook posts a status change; it will include the ExternalId we
   // sent (the traveller row id). Once we know the field names, we match by that
