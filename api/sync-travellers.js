@@ -184,15 +184,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ synced: 0, updated: 0, message: 'All travellers already in sync' });
     }
 
-    // 6. After syncing travellers, update advisor counts
-    try {
-      const baseUrl = req.headers?.host
-        ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`
-        : 'https://kensington-group-form.vercel.app';
-      await fetch(`${baseUrl}/api/update-advisor-counts`);
-    } catch (e) {
-      console.error('Advisor count update after traveller sync failed:', e.message);
-    }
+    // NOTE: advisor counts are now driven by COUNTIFS column formulas on the
+    // Advisor Summary sheet (they recompute automatically), so the old
+    // /api/update-advisor-counts call was removed — it was superseded and only
+    // taking up a Vercel function slot.
 
     return res.status(200).json({
       synced: syncedCount,
