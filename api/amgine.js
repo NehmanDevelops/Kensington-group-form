@@ -76,23 +76,29 @@ const toIATA = (v) => {
   return '';
 };
 
-async function getAmgineToken() {
-  const body = new URLSearchParams({
-    client_id: process.env.AMGINE_CLIENT_ID,
-    client_secret: process.env.AMGINE_CLIENT_SECRET,
+async function getAmgineToken(mode) {
+  const cid = process.env.AMGINE_CLIENT_ID;
+  const secret = process.env.AMGINE_CLIENT_SECRET;
+  const base = {
     grant_type: process.env.AMGINE_GRANT_TYPE,
     scope: process.env.AMGINE_SCOPE,
     username: process.env.AMGINE_USERNAME,
     password: process.env.AMGINE_PASSWORD,
-  });
+  };
+  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+  let fields = { ...base };
+  if (mode === 'basic') {
+    // client_secret_basic: client creds in Authorization header
+    headers['Authorization'] = 'Basic ' + Buffer.from(`${cid}:${secret}`).toString('base64');
+  } else {
+    // client_secret_post: client creds in the body
+    fields = { client_id: cid, client_secret: secret, ...base };
+  }
   const r = await fetch(process.env.AMGINE_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
+    method: 'POST', headers, body: new URLSearchParams(fields).toString(),
   });
-  const j = await r.json();
-  if (!r.ok || !j.access_token) throw new Error('Amgine token failed: ' + JSON.stringify(j).slice(0, 200));
-  return j.access_token;
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok && !!j.access_token, token: j.access_token, status: r.status, detail: j };
 }
 
 export default async function handler(req, res) {
@@ -105,6 +111,13 @@ export default async function handler(req, res) {
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+  // TEMP debug: POST { debug:"token" } → try both auth methods, report which works.
+  if (body.debug === 'token') {
+    const b = await getAmgineToken('basic');
+    const p = await getAmgineToken('post');
+    return res.status(200).json({ basic: { ok: b.ok, status: b.status, detail: b.detail }, post: { ok: p.ok, status: p.status, detail: p.detail } });
+  }
 
   // TEMP debug: POST { debug:"env" } → report env var lengths + first/last 2 chars (no full secrets).
   if (body.debug === 'env') {
@@ -200,8 +213,11 @@ export default async function handler(req, res) {
     if (origin && dest && toISODate(t.depDate)) intentNodes.push({ Flight: { From: origin, To: dest, DepartureDate: toISODate(t.depDate), stops: ['NonStop'] } });
     if (origin && dest && toISODate(t.retDate)) intentNodes.push({ Flight: { From: dest, To: origin, DepartureDate: toISODate(t.retDate), stops: ['NonStop'] } });
 
-    // 4. Get Amgine token
-    const amgToken = await getAmgineToken();
+    // 4. Get Amgine token — try basic-auth client first, fall back to post.
+    let auth = await getAmgineToken('basic');
+    if (!auth.ok) auth = await getAmgineToken('post');
+    if (!auth.ok) return res.status(502).json({ error: 'Amgine token failed', detail: auth.detail });
+    const amgToken = auth.token;
 
     // 5. Build the New Request
     const payload = {
