@@ -117,14 +117,31 @@ export default async function handler(req, res) {
 
   // ── SEND half (us -> Amgine) ────────────────────────────────────────────
   try {
-    const rowId = body.rowId;
-    if (!rowId) return res.status(400).json({ error: 'Missing rowId' });
-
-    // 1. Read the traveller row
-    const master = await (await api(`/sheets/${MASTER}?rowIds=${rowId}`)).json();
-    const mrow = (master.rows || [])[0];
+    // Find the traveller row. Production path: PA passes { rowId } (fast).
+    // Test/fallback path: look up by { email } or { firstName, lastName } (+ optional groupId).
+    let rowId = body.rowId;
+    let master, mrow, M;
+    if (rowId) {
+      master = await (await api(`/sheets/${MASTER}?rowIds=${rowId}`)).json();
+      M = indexSheet(master);
+      mrow = (master.rows || [])[0];
+    } else if (body.email || (body.firstName && body.lastName)) {
+      master = await (await api(`/sheets/${MASTER}`)).json();
+      M = indexSheet(master);
+      const wantEmail = norm(body.email).toLowerCase();
+      const wantFirst = norm(body.firstName).toLowerCase();
+      const wantLast = norm(body.lastName).toLowerCase();
+      const wantGroup = norm(body.groupId).toLowerCase();
+      mrow = (master.rows || []).find(r => {
+        if (wantGroup && norm(M.val(r, 'Group ID')).toLowerCase() !== wantGroup) return false;
+        if (wantEmail) return norm(M.val(r, 'Email Address')).toLowerCase() === wantEmail;
+        return norm(M.val(r, 'First Name')).toLowerCase() === wantFirst && norm(M.val(r, 'Last Name')).toLowerCase() === wantLast;
+      });
+      if (mrow) rowId = mrow.id;
+    } else {
+      return res.status(400).json({ error: 'Provide rowId, or email, or firstName+lastName' });
+    }
     if (!mrow) return res.status(404).json({ error: 'traveller row not found' });
-    const M = indexSheet(master);
     const t = {
       first: norm(M.val(mrow, 'First Name')),
       middle: norm(M.val(mrow, 'Middle Name')),
