@@ -112,36 +112,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP debug: POST { debug:"token" } → try both auth methods, report which works.
-  if (body.debug === 'token') {
-    const b = await getAmgineToken('basic');
-    const p = await getAmgineToken('post');
-    return res.status(200).json({ basic: { ok: b.ok, status: b.status, detail: b.detail }, post: { ok: p.ok, status: p.status, detail: p.detail } });
-  }
-
-  // TEMP debug: POST { debug:"env" } → report env var lengths + first/last 2 chars (no full secrets).
-  if (body.debug === 'env') {
-    const names = ['AMGINE_TOKEN_URL','AMGINE_CLIENT_ID','AMGINE_CLIENT_SECRET','AMGINE_GRANT_TYPE','AMGINE_SCOPE','AMGINE_USERNAME','AMGINE_PASSWORD','AMGINE_API_URL','AMGINE_TMC_GUID','AMGINE_HASH'];
-    const out = {};
-    for (const n of names) { const v = process.env[n]; out[n] = v ? { len: v.length, head: v.slice(0,2), tail: v.slice(-2) } : 'MISSING'; }
-    return res.status(200).json(out);
-  }
-
-  // TEMP debug: POST { debug:true, email } → report what the endpoint sees on the master sheet.
-  if (body.debug) {
-    const s = await (await api(`/sheets/${MASTER}`)).json();
-    const D = indexSheet(s);
-    const want = norm(body.email).toLowerCase();
-    const emailMatches = (s.rows || []).filter(r => norm(D.val(r, 'Email Address')).toLowerCase() === want).length;
-    return res.status(200).json({
-      sheetName: s.name, sheetId: MASTER, totalRows: (s.rows || []).length,
-      columns: (s.columns || []).map(c => c.title),
-      emailColumnExists: !!D.id('Email Address'),
-      groupColumnExists: { 'Group ID': !!D.id('Group ID'), Group: !!D.id('Group') },
-      emailMatches,
-    });
-  }
-
   // ── WEBHOOK half (Amgine -> us) — stub until vendor sends the payload spec ──
   // Amgine's webhook posts a status change; it will include the ExternalId we
   // sent (the traveller row id). Once we know the field names, we match by that
