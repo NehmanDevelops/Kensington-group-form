@@ -119,11 +119,11 @@ export default async function handler(req, res) {
         travelServiceType: 'FlightLeg', inPolicy: true,
       }],
     };
-    // A brand-new branch isn't always ready for the policy call immediately, so
-    // give it a moment and retry — this step occasionally returns no guid otherwise.
+    // A brand-new branch can take several seconds to be ready for the policy call,
+    // so retry with a generous window (function maxDuration is raised to 60s).
     let policyGuid, polJson, polStatus;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      await sleep(attempt === 1 ? 1000 : 1800);
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      await sleep(attempt === 1 ? 2000 : 3000);
       const polRes = await amg(policyUrl(branchGuid), policyBody);
       polStatus = polRes.status;
       polJson = await polRes.json().catch(() => ({}));
@@ -137,13 +137,13 @@ export default async function handler(req, res) {
     // 3) CreatePolicyGroup (retry likewise)
     const groupBody = { groupName: uniqueName, description: name, policyGuid };
     let policyGroupGuid, pgJson, pgStatus, pgOk = false;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 6; attempt++) {
       const pgRes = await amg(policyGroupUrl(branchGuid), groupBody);
       pgStatus = pgRes.status; pgOk = pgRes.ok;
       pgJson = await pgRes.json().catch(() => ({}));
       policyGroupGuid = deepFind(pgJson, 'guid') || policyGuid;
       if (pgRes.ok) break;
-      await sleep(1800);
+      await sleep(2500);
     }
     if (!pgOk) {
       return res.status(502).json({ step: 'CreatePolicyGroup', status: pgStatus, error: 'failed', branchGuid, policyGuid, raw: pgJson });
