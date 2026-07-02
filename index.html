@@ -1089,10 +1089,10 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field hidden" id="reportingRecipientWrap">
         <label class="field-label" for="reportingRecipient">Reporting confirmation email(s)<span class="required-mark">*</span></label>
         <div class="field-subtitle">Please specify email(s) you would like reports sent to. Separate multiple with commas.</div>
-        <input type="text" id="reportingRecipient" name="reportingRecipient" class="field-input" required placeholder="e.g. name@company.com, name2@company.com" />
+        <input type="text" id="reportingRecipient" name="reportingRecipient" class="field-input" placeholder="e.g. name@company.com, name2@company.com" />
       </div>
 
       <div class="field hidden" id="reportingScheduleWrap">
@@ -1559,9 +1559,15 @@
       e.target.value === 'Other' ? show('groupTypeOtherWrap') : hide('groupTypeOtherWrap');
     });
 
-    // ---- Reporting dropdown -> reveal schedule + "Other" specify ----
+    // ---- Reporting dropdown -> reveal schedule + recipient email + "Other" specify ----
     document.getElementById('reporting').addEventListener('change', (e) => {
-      e.target.value ? show('reportingScheduleWrap') : hide('reportingScheduleWrap');
+      const on = !!e.target.value;
+      on ? show('reportingScheduleWrap') : hide('reportingScheduleWrap');
+      // Reporting recipient email is required ONLY when a reporting type is chosen.
+      const rec = document.getElementById('reportingRecipient');
+      on ? show('reportingRecipientWrap') : hide('reportingRecipientWrap');
+      rec.required = on;
+      if (!on) rec.value = '';
       e.target.value === 'Other' ? show('reportingOtherWrap') : hide('reportingOtherWrap');
     });
 
