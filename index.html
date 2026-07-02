@@ -1067,6 +1067,12 @@
       </div>
 
       <div class="field">
+        <label class="field-label" for="confirmationCC">Confirmation email(s)<span class="required-mark">*</span></label>
+        <div class="field-subtitle">Please specify email(s) that need to be CC'ed on final confirmations. Separate multiple with commas.</div>
+        <input type="text" id="confirmationCC" name="confirmationCC" class="field-input" required placeholder="e.g. name@company.com, name2@company.com" />
+      </div>
+
+      <div class="field">
         <label class="field-label" for="reporting">If applicable, please indicate preferred reporting</label>
         <div class="field-subtitle">Charges could apply depending on requirement</div>
         <select id="reporting" name="reporting" class="field-select">
@@ -1083,8 +1089,15 @@
         </div>
       </div>
 
+      <div class="field">
+        <label class="field-label" for="reportingRecipient">Reporting confirmation email(s)<span class="required-mark">*</span></label>
+        <div class="field-subtitle">Please specify email(s) you would like reports sent to. Separate multiple with commas.</div>
+        <input type="text" id="reportingRecipient" name="reportingRecipient" class="field-input" required placeholder="e.g. name@company.com, name2@company.com" />
+      </div>
+
       <div class="field hidden" id="reportingScheduleWrap">
         <label class="field-label" for="reportingSchedule">If applicable, please indicate your preferred reporting schedule</label>
+        <div class="field-subtitle">If you are requesting weekly reporting, please state which day of the week you prefer to receive it on.</div>
         <select id="reportingSchedule" name="reportingSchedule" class="field-select">
           <option value="">Select an option</option>
           <option value="Weekly">Weekly</option>
@@ -1688,8 +1701,10 @@
         { columnId: 8942314423881604, value: v('eventDate') || null },
         { columnId: 40668285407108,   value: v('eventAddress') },
         { columnId: 4544267912777604, value: v('eventCode') },
+        { columnId: 3777687961505668, value: v('confirmationCC') },
         { columnId: 2292468099092356, value: v('reporting') },
         { columnId: 6796067726462852, value: v('reportingOtherText') },
+        { columnId: 7324165803904900, value: v('reportingRecipient') },
         { columnId: 1166568192249732, value: v('reportingSchedule') },
         { columnId: 5670167819620228, value: v('reportingScheduleOtherText') },
         { columnId: 3418368005934980, value: String(v('numAttendees') || '') },
