@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — Finance Request</title>
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+
+  :root {
+    --ink: #3a2f3c; --ink-soft: #524a54; --ink-mute: #8b8678;
+    --bone: #fdf9ec; --paper: #fffdf8; --cream: #f3eedf;
+    --gold: #767260; --gold-deep: #1a3e32; --line: #e4ddcc; --error: #b03a3a;
+    --shadow-lg: 0 12px 40px rgba(58,47,60,0.10), 0 4px 12px rgba(58,47,60,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'SangBleu Republic', Georgia, -apple-system, serif; background: var(--bone); color: var(--ink); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+  .hero { position: relative; padding: 56px 24px 96px; text-align: center;
+    background: radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%), linear-gradient(135deg, #2a2230 0%, #3a2f3c 45%, #1a3e32 100%); overflow: hidden; }
+  .hero-logo { height: 56px; width: auto; display: block; margin: 0 auto 24px; }
+  .hero-eyebrow { font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase; color: #c9c3b2; margin-bottom: 14px; font-weight: 500; }
+  .hero-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; color: var(--bone); font-size: clamp(24px, 3vw, 38px); line-height: 1.2; }
+  .hero-title em { font-style: italic; color: #c9b78f; }
+  .hero-subtitle { color: rgba(245,241,232,0.72); font-size: 14px; max-width: 540px; margin: 16px auto 0; line-height: 1.7; }
+
+  .form-wrap { max-width: 760px; margin: -64px auto 80px; padding: 0 20px; position: relative; z-index: 2; }
+  .form-card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+
+  .section { padding: 36px 44px; border-bottom: 1px solid var(--line); }
+  .section:last-of-type { border-bottom: none; }
+  .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
+  .section-num { font-family: 'SangBleu Sunrise', Georgia, serif; font-style: italic; color: var(--gold); font-size: 18px; }
+  .section-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; color: var(--ink); font-size: 22px; }
+  .section-tag { margin-left: auto; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-mute); }
+
+  .field { margin-bottom: 22px; }
+  .field:last-child { margin-bottom: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .section { padding: 28px 22px; } }
+
+  .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
+  .required-mark { color: var(--error); margin-left: 3px; }
+  .field-sub { font-size: 12px; color: var(--ink-mute); font-style: italic; margin: -4px 0 8px; }
+
+  .field-input, .field-textarea, select.field-input { width: 100%; font-family: inherit; font-size: 15px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; transition: border-color .15s, box-shadow .15s; }
+  .field-textarea { min-height: 80px; resize: vertical; }
+  .field-input:focus, .field-textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(118,114,96,0.15); }
+  .field-input.field-error, .field-textarea.field-error { border-color: var(--error); box-shadow: 0 0 0 3px rgba(176,58,58,0.12); }
+
+  .type-block { display: none; }
+  .type-block.active { display: block; }
+
+  .notice { background: var(--cream); border-left: 3px solid var(--gold-deep); border-radius: 4px; padding: 14px 16px; font-size: 13px; color: var(--ink-soft); margin-bottom: 22px; }
+  .notice strong { color: var(--gold-deep); }
+  .subgroup { border: 1px dashed var(--line); border-radius: 8px; padding: 18px 20px; margin-top: 8px; }
+  .subgroup-title { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+
+  .form-footer { padding: 32px 44px 40px; text-align: center; }
+  .submit-btn { font-family: 'SangBleu Republic', serif; font-size: 15px; font-weight: 500; background: var(--ink); color: var(--bone); border: none; border-radius: 6px; padding: 15px 48px; cursor: pointer; letter-spacing: 0.02em; transition: background .15s, transform .1s; }
+  .submit-btn:hover { background: #4a3d4d; }
+  .submit-btn:active { transform: translateY(1px); }
+  .submit-btn:disabled { opacity: 0.6; cursor: default; }
+  .footer-note { font-size: 12px; color: var(--ink-mute); margin-top: 16px; line-height: 1.6; }
+
+  .success { display: none; padding: 72px 44px; text-align: center; }
+  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
+  .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
+  .success-text { color: var(--ink-soft); max-width: 460px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" />
+    <div class="hero-eyebrow">Finance · Internal Request</div>
+    <h1 class="hero-title">Finance <em>Request</em></h1>
+    <p class="hero-subtitle">Submit a finance request for processing. Submitting opens a pre-filled email from your own Outlook to the correct finance inbox — review and send. Do not include full credit card numbers in this form.</p>
+  </header>
+
+  <div class="form-wrap">
+    <form id="finForm" class="form-card" novalidate>
+
+      <!-- SECTION 1 — common fields -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">I.</span>
+          <h2 class="section-title">Request Details</h2>
+          <span class="section-tag">All requests</span>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="agentName">Agent Name<span class="required-mark">*</span></label>
+            <input type="text" id="agentName" name="agentName" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="companyName">Client / Company Name<span class="required-mark">*</span></label>
+            <input type="text" id="companyName" name="companyName" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="pcc">PCC<span class="required-mark">*</span></label>
+            <input type="text" id="pcc" name="pcc" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="pnr">PNR<span class="required-mark">*</span></label>
+            <input type="text" id="pnr" name="pnr" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="invoice">Invoice #</label>
+            <input type="text" id="invoice" name="invoice" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="ccEmails">CC (optional)</label>
+            <div class="field-sub">For payouts, CC your leader here for approval.</div>
+            <input type="text" id="ccEmails" name="ccEmails" class="field-input" placeholder="comma-separate emails" />
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2 — request type + conditional blocks -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">II.</span>
+          <h2 class="section-title">Request Type</h2>
+          <span class="section-tag">Details</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="requestType">What type of request is this?<span class="required-mark">*</span></label>
+          <select id="requestType" name="requestType" class="field-input" data-req="1">
+            <option value="" disabled selected>Select a request type…</option>
+            <option value="General">General</option>
+            <option value="ADM Request">ADM Request</option>
+            <option value="Payment Change">Payment Change</option>
+            <option value="Payout Request">Payout Request</option>
+            <option value="Refund Request">Refund Request</option>
+          </select>
+        </div>
+
+        <!-- GENERAL -->
+        <div class="type-block" data-type="General" style="margin-top:22px;">
+          <div class="field">
+            <label class="field-label" for="gen_invoiceTotal">Invoice Total<span class="required-mark">*</span></label>
+            <input type="text" id="gen_invoiceTotal" name="gen_invoiceTotal" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="gen_vendor">Vendor Name<span class="required-mark">*</span></label>
+            <input type="text" id="gen_vendor" name="gen_vendor" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="gen_action">Action to be taken<span class="required-mark">*</span></label>
+            <textarea id="gen_action" name="gen_action" class="field-textarea" data-req="1"></textarea>
+          </div>
+        </div>
+
+        <!-- ADM REQUEST -->
+        <div class="type-block" data-type="ADM Request" style="margin-top:22px;">
+          <div class="notice">ADM requests are routed automatically based on where the ADM is located — <strong>BSP → bsp.support@trip-arc.com</strong>, <strong>ARC → arc.support@trip-arc.com</strong>.</div>
+          <div class="field">
+            <label class="field-label" for="adm_location">ADM Location<span class="required-mark">*</span></label>
+            <select id="adm_location" name="adm_location" class="field-input" data-req="1">
+              <option value="" disabled selected>Select…</option>
+              <option value="BSP">BSP</option>
+              <option value="ARC">ARC</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="adm_invoiceTotal">Invoice Total<span class="required-mark">*</span></label>
+            <input type="text" id="adm_invoiceTotal" name="adm_invoiceTotal" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="adm_vendor">Vendor Name<span class="required-mark">*</span></label>
+            <input type="text" id="adm_vendor" name="adm_vendor" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="adm_action">Action to be taken<span class="required-mark">*</span></label>
+            <textarea id="adm_action" name="adm_action" class="field-textarea" data-req="1"></textarea>
+          </div>
+        </div>
+
+        <!-- PAYMENT CHANGE -->
+        <div class="type-block" data-type="Payment Change" style="margin-top:22px;">
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="pay_currency">Currency<span class="required-mark">*</span></label>
+              <select id="pay_currency" name="pay_currency" class="field-input" data-req="1">
+                <option value="" disabled selected>Select…</option>
+                <option value="USD">USD</option>
+                <option value="CAD">CAD</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="pay_vendor">Vendor Name (if applicable)</label>
+              <input type="text" id="pay_vendor" name="pay_vendor" class="field-input" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="pay_origMethod">Original Payment Method<span class="required-mark">*</span></label>
+              <div class="field-sub">e.g. cc xx54321 — do NOT include the full card number</div>
+              <input type="text" id="pay_origMethod" name="pay_origMethod" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="pay_origAmount">Original Payment Amount<span class="required-mark">*</span></label>
+              <input type="text" id="pay_origAmount" name="pay_origAmount" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="pay_newMethod">New Payment Method<span class="required-mark">*</span></label>
+              <input type="text" id="pay_newMethod" name="pay_newMethod" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="pay_newAmount">New Payment Amount<span class="required-mark">*</span></label>
+              <input type="text" id="pay_newAmount" name="pay_newAmount" class="field-input" data-req="1" />
+            </div>
+          </div>
+        </div>
+
+        <!-- PAYOUT REQUEST -->
+        <div class="type-block" data-type="Payout Request" style="margin-top:22px;">
+          <div class="notice"><strong>Payouts must be authorized by your leader before submission.</strong> Please ensure your leader is CC'd on this request (add them in the CC field above) for approval.</div>
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="po_reason">Payout Reason<span class="required-mark">*</span></label>
+              <div class="field-sub">e.g. agent error, issued as cash, etc.</div>
+              <input type="text" id="po_reason" name="po_reason" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="po_method">Payout Method<span class="required-mark">*</span></label>
+              <div class="field-sub">e.g. via commission, charge to agent error, etc.</div>
+              <input type="text" id="po_method" name="po_method" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="po_vendor">Vendor<span class="required-mark">*</span></label>
+              <input type="text" id="po_vendor" name="po_vendor" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="po_received">$ Received from Vendor<span class="required-mark">*</span></label>
+              <input type="text" id="po_received" name="po_received" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="po_owing">$ Owing to Client<span class="required-mark">*</span></label>
+              <input type="text" id="po_owing" name="po_owing" class="field-input" data-req="1" />
+            </div>
+          </div>
+        </div>
+
+        <!-- REFUND REQUEST -->
+        <div class="type-block" data-type="Refund Request" style="margin-top:22px;">
+          <div class="notice">⚠ This refund flow is a <strong>first draft</strong> — Joselynn to confirm the exact fields &amp; rules.</div>
+
+          <div class="field">
+            <label class="field-label" for="ref_reason">Reason for refund<span class="required-mark">*</span></label>
+            <textarea id="ref_reason" name="ref_reason" class="field-textarea" data-req="1"></textarea>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="ref_method">Refund Payment Method<span class="required-mark">*</span></label>
+              <div class="field-sub">Do NOT include the full credit card number</div>
+              <select id="ref_method" name="ref_method" class="field-input" data-req="1">
+                <option value="" disabled selected>Select…</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Wire">Wire</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="ref_total">Total amount to refund to client<span class="required-mark">*</span></label>
+              <input type="text" id="ref_total" name="ref_total" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="ref_currency">Refund Currency<span class="required-mark">*</span></label>
+              <select id="ref_currency" name="ref_currency" class="field-input" data-req="1">
+                <option value="" disabled selected>Select…</option>
+                <option value="USD">USD</option>
+                <option value="CAD">CAD</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="ref_cardLast4">Card reference (last 4 only, if CC)</label>
+              <div class="field-sub">e.g. cc x5432</div>
+              <input type="text" id="ref_cardLast4" name="ref_cardLast4" class="field-input" />
+            </div>
+          </div>
+
+          <!-- If Credit Card -->
+          <div class="subgroup ref-cond" data-method="Credit Card">
+            <div class="subgroup-title">Credit Card refunds — required</div>
+            <div class="grid2">
+              <div class="field">
+                <label class="field-label" for="ref_issuingCountry">Issuing Country of the Credit Card<span class="required-mark">*</span></label>
+                <input type="text" id="ref_issuingCountry" name="ref_issuingCountry" class="field-input" data-req-cond="Credit Card" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="ref_issuingBank">Issuing Bank Institution<span class="required-mark">*</span></label>
+                <div class="field-sub">e.g. BMO, Scotiabank, TD Canada, Bank of America, Amex Bank</div>
+                <input type="text" id="ref_issuingBank" name="ref_issuingBank" class="field-input" data-req-cond="Credit Card" />
+              </div>
+            </div>
+          </div>
+
+          <!-- If Wire or Cheque -->
+          <div class="subgroup ref-cond" data-method="Wire|Cheque">
+            <div class="subgroup-title">Wire / Cheque refunds — client address &amp; banking details</div>
+            <div class="notice">If the client is in the <strong>US, cheque is the only option.</strong> Banking information can be provided via a blank void cheque.</div>
+            <div class="field">
+              <label class="field-label" for="ref_address">Cheque / client mailing address<span class="required-mark">*</span></label>
+              <textarea id="ref_address" name="ref_address" class="field-textarea" data-req-cond="Wire|Cheque"></textarea>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <label class="field-label" for="ref_attention">Attention To</label>
+                <div class="field-sub">Required if refunding via ACH (automated clearinghouse)</div>
+                <input type="text" id="ref_attention" name="ref_attention" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="ref_banking">Banking Information</label>
+                <div class="field-sub">Can be provided via blank void cheque</div>
+                <input type="text" id="ref_banking" name="ref_banking" class="field-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="subgroup" style="margin-top:16px;">
+            <div class="subgroup-title">Vendor breakdown</div>
+            <div class="grid2">
+              <div class="field">
+                <label class="field-label" for="ref_vendor">Vendor Name</label>
+                <input type="text" id="ref_vendor" name="ref_vendor" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="ref_clientPaid">Client originally paid</label>
+                <input type="text" id="ref_clientPaid" name="ref_clientPaid" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="ref_vendorReceived">Vendor amount received</label>
+                <input type="text" id="ref_vendorReceived" name="ref_vendorReceived" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="ref_owing">Amount owing to Client</label>
+                <input type="text" id="ref_owing" name="ref_owing" class="field-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:16px;">
+            <label class="field-label" for="ref_comments">Additional information / comments</label>
+            <div class="field-sub">If the refund includes a vendor penalty, please provide the amounts here.</div>
+            <textarea id="ref_comments" name="ref_comments" class="field-textarea"></textarea>
+          </div>
+        </div>
+
+      </section>
+
+      <div class="form-footer">
+        <button type="submit" class="submit-btn">Submit Request</button>
+        <p class="footer-note" id="footerNote">Submitting opens a pre-filled email from your own Outlook to the correct finance inbox — review and send.</p>
+      </div>
+    </form>
+
+    <div class="form-card success" id="success">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">Almost done — <em>send your email</em></h2>
+      <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> Replies route back to you (and anyone you CC'd). If the draft didn't open, check the recipient noted below and email them directly.</p>
+    </div>
+  </div>
+
+<script>
+  (function () {
+    var form = document.getElementById('finForm');
+    var typeSel = document.getElementById('requestType');
+    var blocks = Array.prototype.slice.call(document.querySelectorAll('.type-block'));
+
+    // Recipient routing per request type. General/Payment/Payout/Refund default to
+    // finance.support@traveledge.com (to confirm with Jos); ADM routes by location.
+    function recipientFor(type) {
+      if (type === 'ADM Request') {
+        var loc = (document.getElementById('adm_location') || {}).value;
+        return loc === 'ARC' ? 'arc.support@trip-arc.com'
+             : loc === 'BSP' ? 'bsp.support@trip-arc.com'
+             : '';
+      }
+      return 'finance.support@traveledge.com';
+    }
+
+    function activeBlock() { return blocks.find(function (b) { return b.classList.contains('active'); }); }
+
+    typeSel.addEventListener('change', function () {
+      blocks.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === typeSel.value); });
+    });
+
+    // Refund method sub-conditionals.
+    var refMethod = document.getElementById('ref_method');
+    if (refMethod) {
+      refMethod.addEventListener('change', function () {
+        document.querySelectorAll('.ref-cond').forEach(function (sg) {
+          var applies = sg.getAttribute('data-method').split('|').indexOf(refMethod.value) !== -1;
+          sg.style.display = applies ? 'block' : 'none';
+        });
+      });
+      // hide both until a method is chosen
+      document.querySelectorAll('.ref-cond').forEach(function (sg) { sg.style.display = 'none'; });
+    }
+
+    function visible(el) { return !!(el.offsetParent !== null); }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var firstInvalid = null;
+
+      // Validate common + active-block required fields that are actually visible.
+      form.querySelectorAll('[data-req="1"]').forEach(function (f) {
+        if (!visible(f)) { f.classList.remove('field-error'); return; }
+        if (!String(f.value).trim()) { f.classList.add('field-error'); if (!firstInvalid) firstInvalid = f; }
+        else f.classList.remove('field-error');
+      });
+      // Conditional-required (refund method-dependent) fields.
+      var method = refMethod ? refMethod.value : '';
+      form.querySelectorAll('[data-req-cond]').forEach(function (f) {
+        var applies = f.getAttribute('data-req-cond').split('|').indexOf(method) !== -1;
+        if (applies && visible(f) && !String(f.value).trim()) { f.classList.add('field-error'); if (!firstInvalid) firstInvalid = f; }
+        else f.classList.remove('field-error');
+      });
+
+      if (!typeSel.value) { alert('Please choose a request type.'); typeSel.focus(); return; }
+      var recipient = recipientFor(typeSel.value);
+      if (!recipient) { alert('Please select the ADM location so we can route to the right support inbox.'); return; }
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { firstInvalid.focus({ preventScroll: true }); } catch (_) {}
+        alert('Please complete all required fields (marked with *) before submitting.');
+        return;
+      }
+
+      var d = {};
+      new FormData(form).forEach(function (value, key) { d[key] = value; });
+      var g = function (k) { return d[k] || ''; };
+
+      var lines = [
+        (typeSel.value || '').toUpperCase() + ' — FINANCE REQUEST', '',
+        'Agent Name: ' + g('agentName'),
+        'Client / Company: ' + g('companyName'),
+        'PCC: ' + g('pcc'),
+        'PNR: ' + g('pnr'),
+        'Invoice #: ' + g('invoice'),
+        '', '--- ' + typeSel.value + ' ---',
+      ];
+
+      if (typeSel.value === 'General') {
+        lines.push('Invoice Total: ' + g('gen_invoiceTotal'), 'Vendor Name: ' + g('gen_vendor'), 'Action to be taken: ' + g('gen_action'));
+      } else if (typeSel.value === 'ADM Request') {
+        lines.push('ADM Location: ' + g('adm_location'), 'Invoice Total: ' + g('adm_invoiceTotal'), 'Vendor Name: ' + g('adm_vendor'), 'Action to be taken: ' + g('adm_action'));
+      } else if (typeSel.value === 'Payment Change') {
+        lines.push('Currency: ' + g('pay_currency'), 'Vendor Name: ' + g('pay_vendor'), 'Original Payment Method: ' + g('pay_origMethod'), 'Original Payment Amount: ' + g('pay_origAmount'), 'New Payment Method: ' + g('pay_newMethod'), 'New Payment Amount: ' + g('pay_newAmount'));
+      } else if (typeSel.value === 'Payout Request') {
+        lines.push('** Leader approval required — ensure leader is CC\'d **', 'Payout Reason: ' + g('po_reason'), 'Payout Method: ' + g('po_method'), 'Vendor: ' + g('po_vendor'), '$ Received from Vendor: ' + g('po_received'), '$ Owing to Client: ' + g('po_owing'));
+      } else if (typeSel.value === 'Refund Request') {
+        lines.push('Reason for refund: ' + g('ref_reason'), 'Refund Payment Method: ' + g('ref_method'), 'Card reference: ' + g('ref_cardLast4'), 'Total to refund to client: ' + g('ref_total'), 'Refund Currency: ' + g('ref_currency'));
+        if (g('ref_method') === 'Credit Card') {
+          lines.push('Issuing Country: ' + g('ref_issuingCountry'), 'Issuing Bank: ' + g('ref_issuingBank'));
+        } else if (g('ref_method') === 'Wire' || g('ref_method') === 'Cheque') {
+          lines.push('Cheque / client address: ' + g('ref_address'), 'Attention To: ' + g('ref_attention'), 'Banking Information: ' + g('ref_banking'));
+        }
+        lines.push('', 'Vendor Name: ' + g('ref_vendor'), 'Client originally paid: ' + g('ref_clientPaid'), 'Vendor amount received: ' + g('ref_vendorReceived'), 'Amount owing to Client: ' + g('ref_owing'), '', 'Comments: ' + g('ref_comments'));
+      }
+
+      var subject = typeSel.value + ' — ' + g('agentName') + ' / ' + g('pnr');
+      var mailto = 'mailto:' + recipient
+        + '?cc=' + encodeURIComponent(g('ccEmails'))
+        + '&subject=' + encodeURIComponent(subject)
+        + '&body=' + encodeURIComponent(lines.join('\n'));
+
+      document.getElementById('success').querySelector('.success-text').innerHTML =
+        'We\'ve opened a pre-filled email to <strong>' + recipient + '</strong>. Review and hit Send.';
+      form.style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.location.href = mailto;
+    });
+  })();
+</script>
+</body>
+</html>
