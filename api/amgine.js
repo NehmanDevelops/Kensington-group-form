@@ -77,6 +77,37 @@ const toIATA = (v) => {
   return '';
 };
 
+// Map an Amgine webhook ItineraryState to a human-friendly status for the sheet.
+// Any state not listed is a "Suspense" end state (per Amgine's spec) — surface it.
+function amgineStatus(b) {
+  const s = norm(b.ItineraryState);
+  const map = {
+    Ready: 'Ready — agent to action',
+    Direct_Traveler: 'Sent to traveler',
+    Agent_Approved: 'Sent to traveler (agent approved)',
+    Agent_Declined: 'Agent declined — manual handling',
+    Client_Declined: 'Traveler declined — reopen for changes',
+    Client_Booking: 'Booking in progress',
+    Agnet_Booking: 'Booking in progress',   // vendor's spelling, kept intentionally
+    Agent_Booking: 'Booking in progress',
+    Booked: 'Booked',
+    Booking_Failed: 'Booking failed',
+  };
+  return map[s] || ('Suspense: ' + s);
+}
+
+// Build a clickable link from a webhook payload: a traveler approval link when an
+// AccessHash is present (Direct_Traveler / Agent_Approved), else an Agent Experience
+// link. Honours the Environment field (prod vs staging).
+function amgineLink(b) {
+  const base = norm(b.Environment).toLowerCase() === 'staging' ? 'https://staging.amgine.ai' : 'https://app.amgine.ai';
+  const ws = norm(b.WorkspaceGuid);
+  const id = b.ItineraryId != null ? String(b.ItineraryId) : '';
+  if (!ws || !id) return '';
+  if (b.AccessHash) return `${base}/clienttool/approval/${ws}/${id}/${id}/${norm(b.AccessHash)}`;
+  return `${base}/agentapp/transaction/${ws}/${id}`;
+}
+
 async function getAmgineToken(mode) {
   const cid = process.env.AMGINE_CLIENT_ID;
   const secret = process.env.AMGINE_CLIENT_SECRET;
@@ -175,13 +206,44 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // ── WEBHOOK half (Amgine -> us) — stub until vendor sends the payload spec ──
-  // Amgine's webhook posts a status change; it will include the ExternalId we
-  // sent (the traveller row id). Once we know the field names, we match by that
-  // id and write "Amgine Status". For now: accept + log so nothing 500s.
-  if (!body.rowId && (body.externalId || body.ExternalId || body.state || body.itineraryId)) {
-    console.log('Amgine webhook received (spec pending):', JSON.stringify(body).slice(0, 500));
-    return res.status(200).json({ ok: true, note: 'webhook received; handler pending vendor spec' });
+  // ── WEBHOOK half (Amgine -> us) ─────────────────────────────────────────
+  // Amgine posts a lifecycle state change (identified by ItineraryState). Match
+  // the traveller row by ExternalId (the row id we sent) or, as a fallback, by
+  // ItineraryId (some states like Direct_Traveler omit ExternalId), then write
+  // the status + a clickable agent/traveler link + any Note back onto the row.
+  // Always answer 200 so Amgine doesn't retry on our bookkeeping hiccups.
+  if (body.ItineraryState) {
+    try {
+      const master = await (await api(`/sheets/${MASTER}`)).json();
+      const M = indexSheet(master);
+      const rows = master.rows || [];
+      const extId = norm(body.ExternalId);
+      const itinId = body.ItineraryId != null ? String(body.ItineraryId) : '';
+
+      let row = null;
+      if (extId) row = rows.find(r => String(r.id) === extId);
+      if (!row && itinId) row = rows.find(r => norm(M.val(r, 'Amgine Itinerary ID')) === itinId);
+      if (!row) {
+        console.log('Amgine webhook: no matching row', JSON.stringify({ extId, itinId, state: body.ItineraryState }));
+        return res.status(200).json({ ok: true, matched: false, note: 'no matching traveller row' });
+      }
+
+      const status = amgineStatus(body);
+      const link = amgineLink(body);
+      const note = norm(body.Note);
+
+      const cells = [];
+      if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: status });
+      if (M.id('Amgine Itinerary ID') && itinId && !norm(M.val(row, 'Amgine Itinerary ID'))) cells.push({ columnId: M.id('Amgine Itinerary ID'), value: itinId });
+      if (link && M.id('Amgine Link')) cells.push({ columnId: M.id('Amgine Link'), value: link });
+      if (note && M.id('Amgine Note')) cells.push({ columnId: M.id('Amgine Note'), value: note });
+      if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells }]) });
+
+      return res.status(200).json({ ok: true, matched: true, rowId: row.id, state: body.ItineraryState, status });
+    } catch (err) {
+      console.log('Amgine webhook error:', err.message);
+      return res.status(200).json({ ok: false, error: err.message });
+    }
   }
 
   // ── SEND half (us -> Amgine) ────────────────────────────────────────────
