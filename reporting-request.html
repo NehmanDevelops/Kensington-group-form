@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — Corporate Reporting Request</title>
+<!-- Official Kensington brand fonts (SangBleu) loaded locally via @font-face -->
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+
+  :root {
+    --ink: #3a2f3c;
+    --ink-soft: #524a54;
+    --ink-mute: #8b8678;
+    --bone: #fdf9ec;
+    --paper: #fffdf8;
+    --cream: #f3eedf;
+    --gold: #767260;
+    --gold-deep: #1a3e32;
+    --line: #e4ddcc;
+    --error: #b03a3a;
+    --shadow-md: 0 4px 12px rgba(58,47,60,0.06), 0 2px 4px rgba(58,47,60,0.04);
+    --shadow-lg: 0 12px 40px rgba(58,47,60,0.10), 0 4px 12px rgba(58,47,60,0.05);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'SangBleu Republic', Georgia, -apple-system, serif;
+    background: var(--bone);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    padding: 56px 24px 96px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%),
+      linear-gradient(135deg, #2a2230 0%, #3a2f3c 45%, #1a3e32 100%);
+    overflow: hidden;
+  }
+  .hero-logo { height: 56px; width: auto; display: block; margin: 0 auto 24px; }
+  .hero-eyebrow {
+    font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase;
+    color: #c9c3b2; margin-bottom: 14px; font-weight: 500;
+  }
+  .hero-title {
+    font-family: 'SangBleu Sunrise', Georgia, serif;
+    font-weight: 400; color: var(--bone);
+    font-size: clamp(24px, 3vw, 38px); line-height: 1.2;
+  }
+  .hero-title em { font-style: italic; color: #c9b78f; }
+  .hero-subtitle {
+    color: rgba(245,241,232,0.72); font-size: 14px; max-width: 540px;
+    margin: 16px auto 0; line-height: 1.7;
+  }
+
+  /* FORM */
+  .form-wrap { max-width: 760px; margin: -64px auto 80px; padding: 0 20px; position: relative; z-index: 2; }
+  .form-card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+
+  .section { padding: 36px 44px; border-bottom: 1px solid var(--line); }
+  .section:last-of-type { border-bottom: none; }
+  .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
+  .section-num {
+    font-family: 'SangBleu Sunrise', Georgia, serif; font-style: italic;
+    color: var(--gold); font-size: 18px;
+  }
+  .section-title {
+    font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400;
+    color: var(--ink); font-size: 22px;
+  }
+  .section-tag { margin-left: auto; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-mute); }
+
+  .field { margin-bottom: 22px; }
+  .field:last-child { margin-bottom: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .section { padding: 28px 22px; } }
+
+  .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
+  .required-mark { color: var(--error); margin-left: 3px; }
+  .field-sub { font-size: 12px; color: var(--ink-mute); font-style: italic; margin: -4px 0 8px; }
+
+  .field-input, .field-textarea, select.field-input {
+    width: 100%; font-family: inherit; font-size: 15px; color: var(--ink);
+    background: #fff; border: 1px solid var(--line); border-radius: 6px;
+    padding: 12px 14px; transition: border-color .15s, box-shadow .15s;
+  }
+  .field-textarea { min-height: 80px; resize: vertical; }
+  .field-input:focus, .field-textarea:focus {
+    outline: none; border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(118,114,96,0.15);
+  }
+  .field-input.field-error, .field-textarea.field-error {
+    border-color: var(--error); box-shadow: 0 0 0 3px rgba(176,58,58,0.12);
+  }
+
+  /* Report checkbox blocks */
+  .report-block { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; background: #fff; transition: background .15s, border-color .15s; }
+  .report-block.active { background: var(--cream); border-color: var(--gold); }
+  .report-check { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .report-check input { width: 18px; height: 18px; accent-color: var(--gold-deep); cursor: pointer; flex: 0 0 auto; }
+  .report-check .report-name { font-weight: 700; font-size: 15px; color: var(--ink); }
+  .report-detail { margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--line); display: none; }
+  .report-block.active .report-detail { display: block; }
+  .report-detail.field { margin-bottom: 0; }
+
+  /* Footer / submit */
+  .form-footer { padding: 32px 44px 40px; text-align: center; }
+  .submit-btn {
+    font-family: 'SangBleu Republic', serif; font-size: 15px; font-weight: 500;
+    background: var(--ink); color: var(--bone); border: none; border-radius: 6px;
+    padding: 15px 48px; cursor: pointer; letter-spacing: 0.02em; transition: background .15s, transform .1s;
+  }
+  .submit-btn:hover { background: #4a3d4d; }
+  .submit-btn:active { transform: translateY(1px); }
+  .submit-btn:disabled { opacity: 0.6; cursor: default; }
+  .footer-note { font-size: 12px; color: var(--ink-mute); margin-top: 16px; line-height: 1.6; }
+
+  /* Success */
+  .success { display: none; padding: 72px 44px; text-align: center; }
+  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
+  .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
+  .success-text { color: var(--ink-soft); max-width: 460px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" />
+    <div class="hero-eyebrow">Finance · Corporate Reporting</div>
+    <h1 class="hero-title">Corporate Reporting <em>Request</em></h1>
+    <p class="hero-subtitle">Request reports from Corporate Reporting. Submitting opens a pre-filled email from your own Outlook to corporate.reporting@traveledge.com — review and send.</p>
+  </header>
+
+  <div class="form-wrap">
+    <form id="reportingForm" class="form-card" novalidate>
+
+      <!-- SECTION 1 -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">I.</span>
+          <h2 class="section-title">Account Details</h2>
+          <span class="section-tag">Requester</span>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="dkNumber">DK Number<span class="required-mark">*</span></label>
+            <input type="text" id="dkNumber" name="dkNumber" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="companyName">Company Name<span class="required-mark">*</span></label>
+            <input type="text" id="companyName" name="companyName" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="pcc">PCC<span class="required-mark">*</span></label>
+            <input type="text" id="pcc" name="pcc" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="currency">Currency<span class="required-mark">*</span></label>
+            <select id="currency" name="currency" class="field-input" required>
+              <option value="" disabled selected>Select…</option>
+              <option value="USD">USD</option>
+              <option value="CAD">CAD</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="travelDates">Dates of Travel<span class="required-mark">*</span></label>
+            <div class="field-sub">e.g. Sept 1 – Sept 15, 2026</div>
+            <input type="text" id="travelDates" name="travelDates" class="field-input" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="ccEmails">CC (optional)</label>
+            <input type="text" id="ccEmails" name="ccEmails" class="field-input" placeholder="comma-separate emails" />
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2 -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">II.</span>
+          <h2 class="section-title">Reports Required</h2>
+          <span class="section-tag">Select all that apply</span>
+        </div>
+        <div class="field-sub" style="margin-bottom:18px;">Check each report you need, then specify the reporting date range and any details.</div>
+
+        <!-- Traveller manifest -->
+        <div class="report-block" data-report="manifest">
+          <label class="report-check">
+            <input type="checkbox" name="report_manifest" value="Traveller manifest" />
+            <span class="report-name">Traveller manifest</span>
+          </label>
+          <div class="report-detail">
+            <div class="grid2">
+              <div class="field">
+                <label class="field-label" for="manifest_start">Reporting start date<span class="required-mark">*</span></label>
+                <input type="date" id="manifest_start" name="manifest_start" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="manifest_end">Reporting end date<span class="required-mark">*</span></label>
+                <input type="date" id="manifest_end" name="manifest_end" class="field-input" />
+              </div>
+            </div>
+            <div class="field" style="margin-top:16px;">
+              <label class="field-label" for="manifest_details">Details</label>
+              <div class="field-sub">e.g. specific names, dates, flight numbers</div>
+              <textarea id="manifest_details" name="manifest_details" class="field-textarea"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credit Card reconciliation -->
+        <div class="report-block" data-report="ccrecon">
+          <label class="report-check">
+            <input type="checkbox" name="report_ccrecon" value="Credit Card reconciliation" />
+            <span class="report-name">Credit Card reconciliation</span>
+          </label>
+          <div class="report-detail">
+            <div class="grid2">
+              <div class="field">
+                <label class="field-label" for="ccrecon_start">Reporting start date<span class="required-mark">*</span></label>
+                <input type="date" id="ccrecon_start" name="ccrecon_start" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="ccrecon_end">Reporting end date<span class="required-mark">*</span></label>
+                <input type="date" id="ccrecon_end" name="ccrecon_end" class="field-input" />
+              </div>
+            </div>
+            <div class="field" style="margin-top:16px;">
+              <label class="field-label" for="ccrecon_details">Details</label>
+              <div class="field-sub">e.g. if you need specific card numbers only, etc.</div>
+              <textarea id="ccrecon_details" name="ccrecon_details" class="field-textarea"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unused ticket report -->
+        <div class="report-block" data-report="unused">
+          <label class="report-check">
+            <input type="checkbox" name="report_unused" value="Unused ticket report" />
+            <span class="report-name">Unused ticket report</span>
+          </label>
+          <div class="report-detail">
+            <div class="grid2">
+              <div class="field">
+                <label class="field-label" for="unused_start">Reporting start date<span class="required-mark">*</span></label>
+                <input type="date" id="unused_start" name="unused_start" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="unused_end">Reporting end date<span class="required-mark">*</span></label>
+                <input type="date" id="unused_end" name="unused_end" class="field-input" />
+              </div>
+            </div>
+            <div class="field" style="margin-top:16px;">
+              <label class="field-label" for="unused_details">Details</label>
+              <textarea id="unused_details" name="unused_details" class="field-textarea"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Other -->
+        <div class="report-block" data-report="other">
+          <label class="report-check">
+            <input type="checkbox" name="report_other" value="Other" />
+            <span class="report-name">Other</span>
+          </label>
+          <div class="report-detail">
+            <div class="grid2">
+              <div class="field">
+                <label class="field-label" for="other_start">Reporting start date<span class="required-mark">*</span></label>
+                <input type="date" id="other_start" name="other_start" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="other_end">Reporting end date<span class="required-mark">*</span></label>
+                <input type="date" id="other_end" name="other_end" class="field-input" />
+              </div>
+            </div>
+            <div class="field" style="margin-top:16px;">
+              <label class="field-label" for="other_details">Details</label>
+              <textarea id="other_details" name="other_details" class="field-textarea"></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3 -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">III.</span>
+          <h2 class="section-title">Reporting Fields &amp; Recipients</h2>
+          <span class="section-tag">Delivery</span>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="udidCode">UDID Code</label>
+            <input type="text" id="udidCode" name="udidCode" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="udidNumber">UDID Number</label>
+            <input type="text" id="udidNumber" name="udidNumber" class="field-input" />
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:22px;">
+          <label class="field-label" for="recipients">Who will be receiving the reports?<span class="required-mark">*</span></label>
+          <div class="field-sub">Please specify the email(s) to send reports to. Separate multiple with commas.</div>
+          <textarea id="recipients" name="recipients" class="field-textarea" required placeholder="name@company.com, name2@company.com"></textarea>
+        </div>
+      </section>
+
+      <div class="form-footer">
+        <button type="submit" class="submit-btn">Submit Request</button>
+        <p class="footer-note">Submitting opens a pre-filled email to Corporate Reporting (corporate.reporting@traveledge.com) from your own Outlook — review and send. Do not include full payment card numbers in this form.</p>
+      </div>
+    </form>
+
+    <!-- SUCCESS -->
+    <div class="form-card success" id="success">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">Almost done — <em>send your email</em></h2>
+      <p class="success-text">We've opened a pre-filled email to Corporate Reporting in your mail app. <strong>Review and hit Send</strong> — replies route back to you (and anyone you CC'd). If the draft didn't open, email <strong>corporate.reporting@traveledge.com</strong> directly.</p>
+    </div>
+  </div>
+
+<script>
+  (function () {
+    // Toggle each report block: reveal detail + require its date range when checked.
+    document.querySelectorAll('.report-block').forEach(function (block) {
+      var cb = block.querySelector('input[type="checkbox"]');
+      var starts = block.querySelectorAll('input[type="date"]');
+      cb.addEventListener('change', function () {
+        block.classList.toggle('active', cb.checked);
+        starts.forEach(function (d) {
+          d.required = cb.checked;
+          if (!cb.checked) { d.value = ''; d.classList.remove('field-error'); }
+        });
+      });
+    });
+
+    document.getElementById('reportingForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.target;
+
+      // ── Manual validation (form is novalidate) ──
+      var firstInvalid = null;
+      form.querySelectorAll('[required]').forEach(function (field) {
+        // Skip hidden date inputs inside unchecked report blocks (required=false there).
+        var blank = !String(field.value).trim();
+        if (field.required && blank) { field.classList.add('field-error'); if (!firstInvalid) firstInvalid = field; }
+        else { field.classList.remove('field-error'); }
+      });
+
+      // At least one report must be selected.
+      var anyReport = !!form.querySelector('.report-block input[type="checkbox"]:checked');
+      if (!anyReport) {
+        alert('Please select at least one report.');
+        document.querySelector('.report-block').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { firstInvalid.focus({ preventScroll: true }); } catch (_) {}
+        alert('Please complete all required fields (marked with *) before submitting.');
+        return;
+      }
+
+      var btn = form.querySelector('.submit-btn');
+      btn.textContent = 'Submitting…';
+      btn.disabled = true;
+
+      var data = {};
+      new FormData(form).forEach(function (value, key) { data[key] = value; });
+
+      // Build the report sections that were selected.
+      var reports = [
+        { key: 'manifest', name: 'Traveller manifest' },
+        { key: 'ccrecon',  name: 'Credit Card reconciliation' },
+        { key: 'unused',   name: 'Unused ticket report' },
+        { key: 'other',    name: 'Other' },
+      ];
+      var reportLines = [];
+      reports.forEach(function (r) {
+        if (data['report_' + r.key]) {
+          reportLines.push('■ ' + r.name.toUpperCase());
+          reportLines.push('   Reporting period: ' + (data[r.key + '_start'] || '') + ' to ' + (data[r.key + '_end'] || ''));
+          reportLines.push('   Details: ' + (data[r.key + '_details'] || '(none provided)'));
+          reportLines.push('');
+        }
+      });
+
+      var subject = 'Corporate Reporting Request — ' + (data.companyName || '') + ' / DK ' + (data.dkNumber || '');
+      var body = [
+        'CORPORATE REPORTING REQUEST', '',
+        'DK Number: ' + (data.dkNumber || ''),
+        'Company Name: ' + (data.companyName || ''),
+        'PCC: ' + (data.pcc || ''),
+        'Currency: ' + (data.currency || ''),
+        'Dates of Travel: ' + (data.travelDates || ''),
+        '',
+        '=== REPORTS REQUIRED ===', '',
+      ].concat(reportLines).concat([
+        '=== REPORTING FIELDS ===',
+        'UDID Code: ' + (data.udidCode || ''),
+        'UDID Number: ' + (data.udidNumber || ''),
+        '',
+        'Reports to be sent to:',
+        (data.recipients || ''),
+      ]).join('\n');
+
+      var mailto = 'mailto:corporate.reporting@traveledge.com'
+        + '?cc=' + encodeURIComponent(data.ccEmails || '')
+        + '&subject=' + encodeURIComponent(subject)
+        + '&body=' + encodeURIComponent(body);
+
+      document.getElementById('reportingForm').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.location.href = mailto;
+    });
+  })();
+</script>
+</body>
+</html>
