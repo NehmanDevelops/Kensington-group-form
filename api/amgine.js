@@ -188,7 +188,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       { FieldName: 'Phone', Data: t.phone || null }, { FieldName: 'KnownTravelerNumber', Data: t.ktn || null },
       { FieldName: 'RedressNumber', Data: t.redress || null }, { FieldName: 'CountryOfIssue', Data: t.country || null },
     ] } }],
-    Intent: { Nodes: intentNodes }, DirectToAgent: false, BypassAgent: true,
+    Intent: { Nodes: intentNodes }, DirectToAgent: true, BypassAgent: false,
   };
 
   const amgRes = await fetch(process.env.AMGINE_API_URL, {
