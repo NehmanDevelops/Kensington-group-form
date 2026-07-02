@@ -22,6 +22,7 @@ const CREATE_BRANCH_URL = 'https://app.amgine.ai/publicapi/api/ClientOnboard/bul
 const policyUrl      = (guid) => `https://app.amgine.ai/publicapi/api/servicedEntity/0/Policy?servicedEntityBranchGuid=${guid}`;
 const policyGroupUrl = (guid) => `https://app.amgine.ai/publicapi/api/servicedentity/0/TravelerGroup?servicedEntityBranchGuid=${guid}`;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => String(s == null ? '' : s).trim();
 const splitList = (v) => norm(v) ? norm(v).split(',').map(x => x.trim()).filter(Boolean) : [''];
 
@@ -118,20 +119,34 @@ export default async function handler(req, res) {
         travelServiceType: 'FlightLeg', inPolicy: true,
       }],
     };
-    const polRes = await amg(policyUrl(branchGuid), policyBody);
-    const polJson = await polRes.json().catch(() => ({}));
-    const policyGuid = deepFind(polJson, 'policyGuid') || deepFind(polJson, 'guid');
-    if (!polRes.ok || !policyGuid) {
-      return res.status(502).json({ step: 'CreatePolicyRule', status: polRes.status, error: 'no policy guid', branchGuid, raw: polJson });
+    // A brand-new branch isn't always ready for the policy call immediately, so
+    // give it a moment and retry — this step occasionally returns no guid otherwise.
+    let policyGuid, polJson, polStatus;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await sleep(attempt === 1 ? 1000 : 1800);
+      const polRes = await amg(policyUrl(branchGuid), policyBody);
+      polStatus = polRes.status;
+      polJson = await polRes.json().catch(() => ({}));
+      policyGuid = deepFind(polJson, 'policyGuid') || deepFind(polJson, 'guid');
+      if (polRes.ok && policyGuid) break;
+    }
+    if (!policyGuid) {
+      return res.status(502).json({ step: 'CreatePolicyRule', status: polStatus, error: 'no policy guid', branchGuid, raw: polJson });
     }
 
-    // 3) CreatePolicyGroup
+    // 3) CreatePolicyGroup (retry likewise)
     const groupBody = { groupName: uniqueName, description: name, policyGuid };
-    const pgRes = await amg(policyGroupUrl(branchGuid), groupBody);
-    const pgJson = await pgRes.json().catch(() => ({}));
-    const policyGroupGuid = deepFind(pgJson, 'guid') || policyGuid;
-    if (!pgRes.ok) {
-      return res.status(502).json({ step: 'CreatePolicyGroup', status: pgRes.status, error: 'failed', branchGuid, policyGuid, raw: pgJson });
+    let policyGroupGuid, pgJson, pgStatus, pgOk = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const pgRes = await amg(policyGroupUrl(branchGuid), groupBody);
+      pgStatus = pgRes.status; pgOk = pgRes.ok;
+      pgJson = await pgRes.json().catch(() => ({}));
+      policyGroupGuid = deepFind(pgJson, 'guid') || policyGuid;
+      if (pgRes.ok) break;
+      await sleep(1800);
+    }
+    if (!pgOk) {
+      return res.status(502).json({ step: 'CreatePolicyGroup', status: pgStatus, error: 'failed', branchGuid, policyGuid, raw: pgJson });
     }
 
     // 4) Write GUIDs onto the group row (if a groupId was supplied)
