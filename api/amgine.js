@@ -164,6 +164,17 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   if (origin && dest && toISODate(t.depDate)) intentNodes.push({ Flight: { From: origin, To: dest, DepartureDate: toISODate(t.depDate), stops: ['NonStop'] } });
   if (origin && dest && toISODate(t.retDate)) intentNodes.push({ Flight: { From: dest, To: origin, DepartureDate: toISODate(t.retDate), stops: ['NonStop'] } });
 
+  // Guard: a request with no flight legs (missing airports or travel dates) has
+  // nothing for Amgine to shop and would just land in Suspense. Don't send it —
+  // flag the row so the agent knows what's missing, and leave it re-bookable.
+  if (intentNodes.length === 0) {
+    const missing = (!origin || !dest) ? 'airport codes (IATA)' : 'travel dates';
+    if (M.id('Amgine Status')) {
+      await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells: [{ columnId: M.id('Amgine Status'), value: `Not booked — missing ${missing}` }] }]) });
+    }
+    return { rowId, traveller: who, skipped: true, reason: `missing ${missing}` };
+  }
+
   const payload = {
     ExternalId: { Id: String(rowId), ThreadId: t.groupId || String(rowId) },
     TmcGuid: process.env.AMGINE_TMC_GUID, From: process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
