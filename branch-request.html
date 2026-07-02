@@ -63,7 +63,7 @@
     <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" />
     <div class="hero-eyebrow">Amgine · Client Onboarding</div>
     <h1 class="hero-title">New Branch <em>Request</em></h1>
-    <p class="hero-subtitle">Capture a client's travel parameters so Amgine can build their dedicated branch (and JENi knows what to offer). Submitting opens a pre-filled email to Amgine — review and send.</p>
+    <p class="hero-subtitle">Capture a client's travel parameters and Amgine builds their dedicated branch automatically. Submitting creates the branch instantly and links it to the group — no waiting.</p>
   </header>
 
   <div class="form-wrap">
@@ -164,15 +164,15 @@
       </section>
 
       <div class="form-footer">
-        <button type="submit" class="submit-btn">Submit Branch Request</button>
-        <p class="footer-note">Submitting opens a pre-filled email to Amgine (raymond@amgine.ai) from your own Outlook — review and send. Amgine builds the branch and returns the Branch GUID + Policy GUID to paste into LIVE GROUP MASTERSHEET.</p>
+        <button type="submit" class="submit-btn">Create Branch</button>
+        <p class="footer-note">Submitting creates the client's branch in Amgine automatically and writes the Branch GUID + Policy GUID onto the group's row in LIVE GROUP MASTERSHEET. Takes a few seconds.</p>
       </div>
     </form>
 
     <div class="form-card success" id="success">
       <div class="success-icon">✓</div>
-      <h2 class="success-title">Almost done — <em>send your email</em></h2>
-      <p class="success-text">We've opened a pre-filled branch request to Amgine in your mail app. <strong>Review and hit Send.</strong> Amgine will build the branch and reply with the Branch GUID + Policy GUID — paste those into the group's row in LIVE GROUP MASTERSHEET. If the draft didn't open, email <strong>raymond@amgine.ai</strong> directly.</p>
+      <h2 class="success-title">Branch <em>created</em></h2>
+      <p class="success-text">The branch was created in Amgine and linked to the group.</p>
     </div>
   </div>
 
@@ -190,51 +190,43 @@
       if(!cabins.length){ alert('Please select at least one allowed cabin class.'); document.querySelector('.checkrow').scrollIntoView({behavior:'smooth',block:'center'}); return; }
       if(firstInvalid){ firstInvalid.scrollIntoView({behavior:'smooth',block:'center'}); try{firstInvalid.focus({preventScroll:true});}catch(_){}; alert('Please complete all required fields (marked with *).'); return; }
 
-      var btn = form.querySelector('.submit-btn'); btn.textContent='Submitting…'; btn.disabled=true;
+      var btn = form.querySelector('.submit-btn'); btn.textContent='Creating branch…'; btn.disabled=true;
       var d={}; new FormData(form).forEach(function(v,k){ if(k==='cabin') return; d[k]=v; }); var g=function(k){return d[k]||'';};
 
-      var body = [
-        'NEW AMGINE BRANCH REQUEST','',
-        'Please create a dedicated, fully-configured branch for the client below and reply with the Branch GUID + Policy GUID.','',
-        '--- CLIENT ---',
-        'Client / Company (branch name): '+g('clientName'),
-        'Kensington Group ID(s): '+g('groupIds'),
-        'Company email domain(s): '+g('emailDomains'),
-        'Requested by: '+g('requestedBy'),
-        '',
-        '--- ADDRESS ---',
-        g('addr1'),
-        g('city')+', '+g('province')+'  '+g('postal'),
-        g('country'),
-        '',
-        '--- TRAVEL POLICY ---',
-        'Allowed cabin class(es): '+cabins.join(', '),
-        'Other policy rules: '+(g('policyNotes')||'(none)'),
-        '',
-        '--- AIR ---',
-        'Preferred airlines: '+(g('prefAirlines')||'(none)'),
-        'Excluded airlines: '+(g('exclAirlines')||'(none)'),
-        'Preferred airports: '+(g('prefAirports')||'(none)'),
-        'Preferred fare basis codes: '+(g('fareBasis')||'(none)'),
-        '',
-        '--- HOTEL & CAR ---',
-        'Preferred hotels / keywords: '+(g('hotelKeywords')||'(none)'),
-        'Preferred car vendors: '+(g('carVendors')||'(none)'),
-        '',
-        '--- OFFERINGS / JENi NOTES ---',
-        (g('offerings')||'(none)'),
-      ].join('\n');
+      var payload = {
+        name: g('clientName'),
+        groupId: (g('groupIds').split(',')[0]||'').trim(),
+        emailDomains: g('emailDomains'),
+        addressLine1: g('addr1'), city: g('city'), provinceState: g('province'),
+        postalCode: g('postal'), country: g('country'),
+        preferredAirlines: g('prefAirlines'), excludeAirlines: g('exclAirlines'),
+        preferredAirports: g('prefAirports'), hotelKeywords: g('hotelKeywords'),
+        carVendors: g('carVendors'),
+        cabinClasses: cabins, policyNotes: g('policyNotes'), offerings: g('offerings'),
+        requestedBy: g('requestedBy'), fareBasis: g('fareBasis'),
+      };
 
-      var subject = 'New Amgine Branch Request — '+g('clientName');
-      var mailto = 'mailto:raymond@amgine.ai'
-        + '?cc='+encodeURIComponent(g('requestedBy'))
-        + '&subject='+encodeURIComponent(subject)
-        + '&body='+encodeURIComponent(body);
-
-      form.style.display='none';
-      document.getElementById('success').style.display='block';
-      window.scrollTo({top:0,behavior:'smooth'});
-      window.location.href = mailto;
+      fetch('/api/create-branch', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(res){
+        if(!res.ok || !res.j || res.j.ok!==true){
+          btn.textContent='Create Branch'; btn.disabled=false;
+          alert('Branch creation failed: '+((res.j&&(res.j.error||res.j.step))||'unknown error')+'. Please try again or contact support.');
+          return;
+        }
+        var s=document.getElementById('success');
+        s.querySelector('.success-text').innerHTML =
+          'Branch <strong>'+ (res.j.branchName||g('clientName')) +'</strong> was created in Amgine.'
+          + (res.j.wroteToGroup
+              ? ' The Branch &amp; Policy GUIDs were written to group <strong>'+g('groupIds')+'</strong> automatically — bookings can start now.'
+              : '<br><br>No matching group row was found to auto-fill, so paste these into the group manually:<br>Branch GUID: <strong>'+res.j.branchGuid+'</strong><br>Policy GUID: <strong>'+res.j.policyGroupGuid+'</strong>');
+        form.style.display='none'; s.style.display='block';
+        window.scrollTo({top:0,behavior:'smooth'});
+      }).catch(function(err){
+        btn.textContent='Create Branch'; btn.disabled=false;
+        alert('Network error creating branch: '+err.message);
+      });
     });
   })();
 </script>
