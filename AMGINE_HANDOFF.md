@@ -1,6 +1,18 @@
 # 🧳 AMGINE INTEGRATION — FULL HANDOFF
 
-_Last updated: 2026-06-29_
+_Last updated: 2026-07-02 — ✅ FULL LOOP PROVEN END-TO-END_
+
+## 🎉 STATUS: WORKING (2026-07-02)
+Itinerary 261735 booked → curated to "Direct Traveler" on **Generic Branch** → Amgine fired a live webhook → the sheet auto-wrote `Amgine Status` = "Sent to traveler" + a client approval `Amgine Link`. Send, curate, webhook, and write-back all confirmed.
+
+### 🔑 The Suspense fix (the big one)
+Trips kept dying in **Suspense** because we were booking to self-created **"New Branch Name…"** branches (from the Postman CreateBranch call, which clones `sourceSEB=1687`). Those clones aren't content-configured, so Amgine can't curate them → Suspense every time. The **working** branch is **"Generic Branch"**:
+- **Branch GUID:** `b58b59ea-fd74-4b25-85e4-f3620fc06982`
+- **Policy GUID:** `a3497199-6936-4035-bc3c-8c911f7ebc83`
+
+Put THOSE in a group's row (LIVE GROUP MASTERSHEET `Amgine Branch GUID` / `Amgine Policy GUID`) and trips curate. **For real groups: use the Generic Branch GUID, not a freshly-created one.** Open question for Raymond: should each client get its own configured branch, or all book under Generic Branch?
+
+
 
 ## 1. WHAT IT IS
 Automated pipeline: **Smartsheet → Amgine corporate travel-booking API**. When a traveller is marked "Ready to Book," it auto-sends a booking request to Amgine and writes the itinerary ID back.
