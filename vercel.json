@@ -1,8 +1,5 @@
 {
   "crons": [
     { "path": "/api/reconcile-groups?commit=1", "schedule": "0 13 * * *" }
-  ],
-  "functions": {
-    "api/create-branch.js": { "maxDuration": 60 }
-  }
+  ]
 }
