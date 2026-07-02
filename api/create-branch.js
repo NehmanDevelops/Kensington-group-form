@@ -104,8 +104,15 @@ export default async function handler(req, res) {
     const branchRes = await amg(CREATE_BRANCH_URL, branchBody);
     const branchJson = await branchRes.json().catch(() => ({}));
     const branchGuid = deepFind(branchJson, 'guid');
-    if (!branchRes.ok || !branchGuid) {
-      return res.status(502).json({ step: 'CreateBranch', status: branchRes.status, error: 'no branch guid', raw: branchJson });
+    const ZERO_GUID = '00000000-0000-0000-0000-000000000000';
+    // Amgine returns a zero-GUID when the branch is rejected (most often an invalid
+    // Province/State or Country — they must be 2-letter codes, e.g. ON / NY / CA / US).
+    if (!branchRes.ok || !branchGuid || branchGuid === ZERO_GUID) {
+      return res.status(502).json({
+        step: 'CreateBranch', status: branchRes.status, branchGuid,
+        error: 'Branch was not created by Amgine. Check the address — Province/State and Country must be 2-letter codes (e.g. ON, NY, CA, US), not full names.',
+        raw: branchJson,
+      });
     }
 
     // 2) CreatePolicyRule (default: economy in-policy — refine once client rules are set)
