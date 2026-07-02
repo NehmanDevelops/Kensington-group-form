@@ -70,15 +70,16 @@ Flow: **"When a sheet is updated"** on Traveller MasterSheet → **HTTP POST** t
 ## 10. TEST ITINERARIES CREATED (ask Raymond to clear these)
 `260117`, `260135`, `260284` (PA auto), `260344` (Test Booking), `260345` & `260358` (Raymond Davis, TYS→SNA), `260341` (in agent-app URL).
 
-## 11. 🔴 WEBHOOK — NOT WORKING YET (biggest open item)
-- The webhook half of `/api/amgine.js` is **stubbed** (accepts + logs, awaiting payload spec).
-- **TWO catcher URLs from Raymond** (watch BOTH for a `POST`):
-  - `https://kensingtonamg.requestcatcher.com/`
-  - `https://kensingtonamgs.requestcatcher.com/`  ← **extra "s"**
-- So far only **GET** (your own browser loads) — **no POST webhook** has arrived.
-- **A real webhook = POST with JSON body** containing status + ExternalId (our row id).
-- **NEXT:** Get Raymond to (a) confirm WHICH url the webhook is configured to hit, (b) confirm it's enabled on your branch, (c) fire a test. Once we see one POST payload → build the handler (match by ExternalId → write `Amgine Status`).
-- **Register URL with Amgine:** `https://kensington-group-form.vercel.app/api/amgine`
+## 11. ✅ WEBHOOK — BUILT & TESTED (2026-07-02)
+- Raymond sent `WebhookResponses.txt` with example payloads for every lifecycle state.
+- The webhook half of `/api/amgine.js` is now a **real handler**: detects `ItineraryState`, matches the traveller row by **ExternalId** (our row id) or fallback **ItineraryId**, then writes:
+  - `Amgine Status` — friendly label (e.g. "Ready — agent to action", "Sent to traveler", "Booked", "Booking failed"; unknown states → "Suspense: <state>")
+  - `Amgine Link` — Agent Experience link, or a **client approval link** when the payload has an `AccessHash` (Direct_Traveler / Agent_Approved)
+  - `Amgine Note` — any traveler/agent note
+  - Columns `Amgine Link` + `Amgine Note` were added to the master sheet.
+- **States handled:** Ready, Direct_Traveler, Agent_Approved, Agent_Declined, Client_Declined, Client_Booking, Booked, Booking_Failed; anything else = Suspense.
+- **Tested live** against itinerary 260358 (Ready / Agent_Approved / unknown all matched + wrote correctly). Always returns HTTP 200.
+- **🔴 LAST STEP:** reply to Raymond — *"Web service is ready, please switch my webhook from https://kensingtonamgs.requestcatcher.com/ to https://kensington-group-form.vercel.app/api/amgine"*. He updates it server-side.
 
 ## 12. AGENT APP
 - URL: `https://app.amgine.ai/agentapp/transaction/de167993-6164-4baf-bccb-62b630363808/260341`
