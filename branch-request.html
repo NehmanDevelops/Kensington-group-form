@@ -106,9 +106,9 @@
         </div>
         <div class="grid2">
           <div class="field"><label class="field-label" for="city">City<span class="required-mark">*</span></label><input type="text" id="city" name="city" class="field-input" data-req="1" /></div>
-          <div class="field"><label class="field-label" for="province">Province / State<span class="required-mark">*</span></label><div class="field-sub">2-letter code (e.g. ON, NY, BC) — not the full name</div><input type="text" id="province" name="province" class="field-input" placeholder="ON" maxlength="2" data-req="1" /></div>
+          <div class="field"><label class="field-label" for="province">Province / State<span class="required-mark">*</span></label><div class="field-sub">Full name or 2-letter code (e.g. Ontario or ON) — auto-converted</div><input type="text" id="province" name="province" class="field-input" placeholder="Ontario or ON" data-req="1" /></div>
           <div class="field"><label class="field-label" for="postal">Postal / Zip code<span class="required-mark">*</span></label><input type="text" id="postal" name="postal" class="field-input" data-req="1" /></div>
-          <div class="field"><label class="field-label" for="country">Country<span class="required-mark">*</span></label><div class="field-sub">2-letter code (e.g. CA, US) — not the full name</div><input type="text" id="country" name="country" class="field-input" placeholder="CA" maxlength="2" data-req="1" /></div>
+          <div class="field"><label class="field-label" for="country">Country<span class="required-mark">*</span></label><div class="field-sub">Full name or 2-letter code (e.g. Canada or CA) — auto-converted</div><input type="text" id="country" name="country" class="field-input" placeholder="Canada or CA" data-req="1" /></div>
         </div>
       </section>
 
@@ -179,8 +179,31 @@
 <script>
   (function(){
     var form = document.getElementById('branchForm');
+
+    // Amgine needs 2-letter Province/State + Country codes. Let users type the full
+    // name and auto-convert (on blur + at submit). Unknown values are left as-is.
+    var COUNTRY = { 'canada':'CA','ca':'CA','united states':'US','united states of america':'US','usa':'US','us':'US','america':'US','mexico':'MX','united kingdom':'GB','uk':'GB','england':'GB' };
+    var REGION = {
+      'ontario':'ON','quebec':'QC','québec':'QC','british columbia':'BC','alberta':'AB','manitoba':'MB','saskatchewan':'SK','nova scotia':'NS','new brunswick':'NB','newfoundland and labrador':'NL','newfoundland':'NL','prince edward island':'PE','northwest territories':'NT','nunavut':'NU','yukon':'YT',
+      'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA','colorado':'CO','connecticut':'CT','delaware':'DE','florida':'FL','georgia':'GA','hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA','kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD','massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO','montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH','oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT','virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY','district of columbia':'DC','washington dc':'DC'
+    };
+    function codify(el, map){
+      if(!el) return;
+      var raw = (el.value||'').trim();
+      if(!raw) return;
+      var key = raw.toLowerCase().replace(/\./g,'').replace(/\s+/g,' ').trim();
+      if(map[key]){ el.value = map[key]; return; }
+      if(raw.length === 2){ el.value = raw.toUpperCase(); }
+    }
+    var provinceEl = document.getElementById('province');
+    var countryEl = document.getElementById('country');
+    if(provinceEl) provinceEl.addEventListener('blur', function(){ codify(provinceEl, REGION); });
+    if(countryEl) countryEl.addEventListener('blur', function(){ codify(countryEl, COUNTRY); });
+
     form.addEventListener('submit', function(e){
       e.preventDefault();
+      codify(provinceEl, REGION);   // final safety net in case blur didn't fire
+      codify(countryEl, COUNTRY);
       var firstInvalid = null;
       form.querySelectorAll('[data-req="1"]').forEach(function(f){
         if(!String(f.value).trim()){ f.classList.add('field-error'); if(!firstInvalid) firstInvalid=f; }
