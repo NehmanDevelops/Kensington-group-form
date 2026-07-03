@@ -181,6 +181,11 @@
             <input type="text" id="travelDates" name="travelDates" class="field-input" required />
           </div>
           <div class="field">
+            <label class="field-label" for="destination">Destination<span class="required-mark">*</span></label>
+            <div class="field-sub">e.g. San Francisco, CA</div>
+            <input type="text" id="destination" name="destination" class="field-input" required />
+          </div>
+          <div class="field">
             <label class="field-label" for="ccEmails">CC (optional)</label>
             <input type="text" id="ccEmails" name="ccEmails" class="field-input" placeholder="comma-separate emails" />
           </div>
@@ -409,6 +414,7 @@
         'PCC: ' + (data.pcc || ''),
         'Currency: ' + (data.currency || ''),
         'Dates of Travel: ' + (data.travelDates || ''),
+        'Destination: ' + (data.destination || ''),
         '',
         '=== REPORTS REQUIRED ===', '',
       ].concat(reportLines).concat([
