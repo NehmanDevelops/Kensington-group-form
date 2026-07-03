@@ -67,7 +67,10 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
   const name = norm(body.name);
   if (!name) return res.status(400).json({ error: 'name is required (client / branch name)' });
-  const uniqueName = `${name} ${Date.now()}`; // Amgine requires a unique branch name
+  const groupIdIn = norm(body.groupId);
+  // Amgine requires a unique branch name. Use "Company (Group ID)" for a clean,
+  // readable, unique name; fall back to a timestamp if no group id was supplied.
+  const uniqueName = groupIdIn ? `${name} (${groupIdIn})` : `${name} ${Date.now()}`;
 
   try {
     const token = await getToken();
@@ -110,7 +113,7 @@ export default async function handler(req, res) {
     if (!branchRes.ok || !branchGuid || branchGuid === ZERO_GUID) {
       return res.status(502).json({
         step: 'CreateBranch', status: branchRes.status, branchGuid,
-        error: 'Branch was not created by Amgine. Check the address — Province/State and Country must be 2-letter codes (e.g. ON, NY, CA, US), not full names.',
+        error: 'Branch was not created by Amgine. Most likely the Province/State or Country isn\'t a 2-letter code (e.g. ON, NY, CA, US), or a branch with this name/Group ID already exists.',
         raw: branchJson,
       });
     }
