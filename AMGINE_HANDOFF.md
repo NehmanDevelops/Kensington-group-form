@@ -1,115 +1,120 @@
-# 🧳 AMGINE INTEGRATION — FULL HANDOFF
+# 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-07-02 — ✅ FULL LOOP PROVEN END-TO-END_
+_Last updated: 2026-07-06 — full pipeline built, tested end-to-end, Option 2 + Intent-only live._
 
-## 🎉 STATUS: WORKING (2026-07-02)
-Itinerary 261735 booked → curated to "Direct Traveler" on **Generic Branch** → Amgine fired a live webhook → the sheet auto-wrote `Amgine Status` = "Sent to traveler" + a client approval `Amgine Link`. Send, curate, webhook, and write-back all confirmed.
-
-### 🔑 The Suspense fix (the big one)
-Trips kept dying in **Suspense** because we were booking to self-created **"New Branch Name…"** branches (from the Postman CreateBranch call, which clones `sourceSEB=1687`). Those clones aren't content-configured, so Amgine can't curate them → Suspense every time. The **working** branch is **"Generic Branch"**:
-- **Branch GUID:** `b58b59ea-fd74-4b25-85e4-f3620fc06982`
-- **Policy GUID:** `a3497199-6936-4035-bc3c-8c911f7ebc83`
-
-Put THOSE in a group's row (LIVE GROUP MASTERSHEET `Amgine Branch GUID` / `Amgine Policy GUID`) and trips curate. **For real groups: use the Generic Branch GUID, not a freshly-created one.** Open question for Raymond: should each client get its own configured branch, or all book under Generic Branch?
-
-
-
-## 1. WHAT IT IS
-Automated pipeline: **Smartsheet → Amgine corporate travel-booking API**. When a traveller is marked "Ready to Book," it auto-sends a booking request to Amgine and writes the itinerary ID back.
-
-- **Repo:** `NehmanDevelops/Kensington-group-form` (deployed on Vercel)
-- **Local working dir:** `C:\Users\owner\AppData\Local\Temp\kensington-group-form-3`
-- **The endpoint:** `/api/amgine.js`
-- **Production URL:** `https://kensington-group-form.vercel.app/api/amgine`
-
-## 2. PEOPLE / CONTACTS
-- **Raymond Sobaram** (Amgine engineer) — `raymond@amgine.ai`
-- **Vera Perisic** (Kensington) — `vera.perisic@kensingtoncorporate.com`
-- **You** — `nehman.rahimi@kensingtoncorporate.com`
-
-## 3. KEY SHEET IDs
-| Sheet | ID |
-|---|---|
-| Traveller MasterSheet (where bookings read from) | `8780932377956228` |
-| LIVE GROUP MASTERSHEET (where Branch/Policy GUIDs live) | `4820086761148292` |
-| KCG Agent traveller copy | `7213505705889668` |
-| CVENT Email Parser | `1658234917048196` |
-| Advisor Summary | `4629439471112068` |
-| Numbers By Advisor report | `2981953635569540` |
-| KCG MANAGER workspace | `1374247030417284` |
-
-## 4. AUTH (the part that fought us)
-- **Method: `client_secret_basic`** — client_id:secret go in a **Basic Authorization header**, NOT the body. Body-only → `unauthorized_client`.
-- **Token endpoint (Keycloak):** `login-app.amgine.ai/identity/auth/realms/amgine-realm/protocol/openid-connect/token`
-- **Env vars in Vercel** (all marked Sensitive): `AMGINE_TOKEN_URL`, `AMGINE_CLIENT_ID`, `AMGINE_CLIENT_SECRET`, `AMGINE_GRANT_TYPE`, `AMGINE_SCOPE`, `AMGINE_USERNAME`, `AMGINE_PASSWORD`, `AMGINE_API_URL`, `AMGINE_TMC_GUID`, `AMGINE_HASH`, plus `SMARTSHEET_API_TOKEN`.
-- **Secret gotchas (history):** the secret once had a leading TAB pasted from Postman, and it contains a **lowercase "l"** that looks like a capital "I" — copy it from Postman Console to get the exact value. Secrets live ONLY in Vercel, never in repo/memory.
-
-## 5. WHAT'S A "BRANCH" (Raymond kept asking)
-A **branch = the account/container for ONE Kensington group**, sitting under the Service Entity ("Kensington Corporate").
-- **1 group = 1 branch = 1 Branch GUID.**
-- Every booking must specify a branch (`AmgineServicedEntityBranchGuid`) so Amgine knows the group/policy/billing.
-- **Branch seen today:** Branch ID `1794`, GUID `2935c013-5a8e-42b4-afca-b49092edc4b2`, Name "New Branch Name 20260629165020", Service Entity Kensington Corporate.
-- **Corp profile ID (Vera's note):** `930396495`
-
-## 6. ONBOARDING A GROUP (currently MANUAL via Postman)
-Run in order: **GetToken → CreateBranch → CreatePolicyRule → CreatePolicyGroup**, then paste the returned **Branch GUID** + **Policy GUID** into that group's row on LIVE GROUP MASTERSHEET.
-
-**Columns already added:**
-- Group sheet: `Amgine Branch GUID`, `Amgine Policy GUID`, `Amgine Onboarded`
-- Traveller sheet: `Ready to Book`, `Amgine Itinerary ID`, `Amgine Status`, `Departure Airport (IATA)`, `Arrival Airport (IATA)`
-
-## 7. HOW SENDING WORKS (`/api/amgine.js`)
-**Three trigger modes (POST):**
-- `{"scan": true}` → books EVERY row where `Ready to Book` is checked AND `Amgine Itinerary ID` is empty (loop guard: once ID is written, won't re-fire)
-- `{"rowId": <id>}` → book one row
-- `{"email": "..."}` or `{"firstName","lastName","groupId"}` → lookup test
-
-**Payload built per traveller:** GuestSettings (FirstName, MiddleName, LastName, Gender→M/F, DateOfBirth→DD-MM-YYYY, Email, Phone, KnownTravelerNumber, RedressNumber, CountryOfIssue), Intent (Flight nodes: From/To IATA, DepartureDate ISO, NonStop), **ExternalId = {Id: Smartsheet row id, ThreadId: groupId}** (this is the webhook match key), TmcGuid, Hash, TravelerRequested (branch GUID + policy GUID).
-
-**Helpers:** `toGender()` Male→M/Female→F · `toDOB()` → DD-MM-YYYY · `toISODate()` → YYYY-MM-DDT00:00:00 · `toIATA()` extracts 3-letter code.
-
-## 8. ⚠️ LAST CHANGE (already committed + pushed)
-Flipped the Suspense flags in the payload:
-```
-WAS:  DirectToAgent: true,  BypassAgent: false   ← parked everything in agent Suspense queue
-NOW:  DirectToAgent: false, BypassAgent: true    ← bypasses the agent queue
-```
-**Why:** every request was landing in "Suspense" (agent to-do queue). Raymond was puzzled too. This makes Amgine process instead of parking. **Commit pushed; Vercel auto-redeploys (~30s).** ⏳ **Needs re-test to confirm Suspense is gone.**
-
-## 9. POWER AUTOMATE TRIGGER (built, working)
-Flow: **"When a sheet is updated"** on Traveller MasterSheet → **HTTP POST** to `https://kensington-group-form.vercel.app/api/amgine` with body `{"scan": true}`, header `Content-Type: application/json`. No dynamic content needed. **Proven:** itinerary 260284 auto-booked in ~18s.
-
-## 10. TEST ITINERARIES CREATED (ask Raymond to clear these)
-`260117`, `260135`, `260284` (PA auto), `260344` (Test Booking), `260345` & `260358` (Raymond Davis, TYS→SNA), `260341` (in agent-app URL).
-
-## 11. ✅ WEBHOOK — BUILT & TESTED (2026-07-02)
-- Raymond sent `WebhookResponses.txt` with example payloads for every lifecycle state.
-- The webhook half of `/api/amgine.js` is now a **real handler**: detects `ItineraryState`, matches the traveller row by **ExternalId** (our row id) or fallback **ItineraryId**, then writes:
-  - `Amgine Status` — friendly label (e.g. "Ready — agent to action", "Sent to traveler", "Booked", "Booking failed"; unknown states → "Suspense: <state>")
-  - `Amgine Link` — Agent Experience link, or a **client approval link** when the payload has an `AccessHash` (Direct_Traveler / Agent_Approved)
-  - `Amgine Note` — any traveler/agent note
-  - Columns `Amgine Link` + `Amgine Note` were added to the master sheet.
-- **States handled:** Ready, Direct_Traveler, Agent_Approved, Agent_Declined, Client_Declined, Client_Booking, Booked, Booking_Failed; anything else = Suspense.
-- **Tested live** against itinerary 260358 (Ready / Agent_Approved / unknown all matched + wrote correctly). Always returns HTTP 200.
-- **🔴 LAST STEP:** reply to Raymond — *"Web service is ready, please switch my webhook from https://kensingtonamgs.requestcatcher.com/ to https://kensington-group-form.vercel.app/api/amgine"*. He updates it server-side.
-
-## 12. AGENT APP
-- URL: `https://app.amgine.ai/agentapp/transaction/de167993-6164-4baf-bccb-62b630363808/260341`
-- **Need login from Raymond** to visually verify bookings.
-
-## 13. ⚙️ VERCEL CONSTRAINT
-Hobby plan = **12-function cap**, currently near it (~11). A 13th file silently breaks ALL deploys. Adding `create-branch.js` may need a slot freed or **upgrade to Vercel Pro**.
-
-## 14. PARALLEL-SESSION RULE
-Your laptop Claude pushes to the SAME repo. **Always `git fetch` + `git reset --hard origin/main` BEFORE editing**, and push promptly, or you'll collide.
+**To read this on your work laptop:** `git pull` in the repo, open this file.
 
 ---
 
-## ✅ WHAT'S NEXT (priority order)
-1. **Confirm Suspense fix** — wait for redeploy, clear Raymond Davis's `Amgine Itinerary ID`, fire `{"scan":true}`, check if it skips Suspense.
-2. **Webhook** — get Raymond to confirm the exact URL + enable + fire a test; capture the POST payload; build the handler.
-3. **Build branch-creation form** (chosen) → `/api/create-branch.js` calling Amgine CreateBranch automatically. **BLOCKED until you paste the Postman specs for: CreateBranch, CreatePolicyRule, CreatePolicyGroup (URL + body of each).** Watch the Vercel function cap.
-4. **Onboard real groups** — paste Branch/Policy GUIDs into LIVE GROUP MASTERSHEET.
-5. **Fill IATA airport codes** for real travellers (else flight legs are empty).
-6. **Get Agent App login** from Raymond.
-7. **Clear test itineraries** (260117, 260135, 260284, 260341, 260344, 260345, 260358).
+## 0. TL;DR — what this is
+Automated **Smartsheet → Amgine** travel-booking pipeline. Onboard a client from one form; then agents just check a box and the trip is created in Amgine, curated, and its status/link flow back to the sheet automatically.
+
+**Repo:** `NehmanDevelops/Kensington-group-form` (deployed on Vercel)
+**Local dir:** `C:\Users\owner\AppData\Local\Temp\kensington-group-form-3`
+**Live base URL:** `https://kensington-group-form.vercel.app`
+**Amgine contacts:** Raymond Sobaram (engineer) raymond@amgine.ai · Anna Spina (account mgr) · internal: Vera Perisic, Joselynn Alderson.
+
+---
+
+## 1. THE FULL PIPELINE (how it works)
+
+**A. Onboard a client (one-time per group)**
+1. Group must exist in LIVE GROUP MASTERSHEET (auto-created by the Group Travel Request form, or added manually — Group ID + company).
+2. Fill the **Branch Request form** → it runs Amgine CreateBranch → CreatePolicyRule → CreatePolicyGroup automatically and writes the **Branch GUID + Policy GUID** onto that group's row.
+
+**B. Every booking (automatic)**
+3. Traveller lands in Traveller MasterSheet (profile form / CVENT-Swoogo parser / Excel upload).
+4. Agent checks **Ready to Book**.
+5. **Power Automate** ("Amgine, Auto Book" flow) polls Smartsheet, sees the change, POSTs `{"scan":true}` to `/api/amgine`.
+6. `/api/amgine` finds Ready-to-Book + unbooked + named rows, looks up the group's Branch/Policy GUIDs, sends the New Request to Amgine, gets an **Itinerary ID**, writes it + status "Sent" back.
+7. Amgine curates → fires a **webhook** to `/api/amgine` → handler writes **Amgine Status** + **Amgine Link** back.
+8. Trip lands in the agent's Amgine queue as **"Ready"** (Option 2). Agent reviews, promotes to traveller, traveller approves, it books. Each status flows back.
+
+**Key roles:** Power Automate = trigger/messenger only. `/api/amgine` = does the actual booking + write-back. Amgine webhook = status updates.
+
+---
+
+## 2. KEY DECISIONS (locked in)
+- **Option 2 — agent reviews first.** Payload: `DirectToAgent: true, BypassAgent: false`. Trips go to the agent ("Ready"), agent promotes to traveller. (Vera's choice, 2026-07-02.)
+- **Intent-only mode.** Payload includes `IntentOnly: true` → traveller fills their own trip in JENi; **airports/dates are optional** on the traveller row. (Raymond's recipe, 2026-07-06.)
+- **Entity = Kensington.** `servicedEntityId = 918` is correct (Raymond renamed it from "Generic Entity" to Kensington). One entity covers all branches.
+- **Self-serve branches work** — the full 3-step onboarding via `/api/create-branch` produces curating branches. No need to email Amgine per client. (White-label form was the alternative but needs every traveller's email registered — we chose Intent-only.)
+- **Branch naming:** `Company (Group ID)`; auto-appends a timestamp only if that name already exists.
+
+---
+
+## 3. FORMS / PAGES (all at the live base URL)
+| Page | Purpose |
+|---|---|
+| `branch-request.html` | **Create a branch** (onboard a client). Calls `/api/create-branch`. Required: client name, Group ID, address (Province/Country auto-convert to 2-letter), 1 cabin class. Air/Hotel/Car fields optional. |
+| `book-now.html` | **Demo/manual "Book Now" button** — fires `{scan:true}` instantly, bypassing Power Automate's polling delay. Shows itinerary IDs. |
+| `index.html` | Group Travel Request form (auto-creates group row + reporting email fields: mandatory Confirmation CC + conditional Reporting Recipient). |
+| `reporting-request.html` | Corporate Reporting Request (Vera/Jos). Has Destination field + repeatable **UDID # / Client data** list → renders as a table in the email to corporate.reporting@traveledge.com. |
+| `finance-request.html` | Finance Request (Jos). Dropdown: General / ADM (routes BSP vs ARC) / Payment Change / Payout / Refund. mailto to finance inboxes. |
+| `udid-update.html` | UDID finance form (mailto to finance.support@traveledge.com). |
+| `upload-excel.html` | Bulk group Excel upload (fixed dropzone rendering). |
+| `traveller-profile.html`, `agentform.html`, `register.html` | Traveller/agent intake. |
+
+## 4. API ENDPOINTS (`api/`, Vercel — 12-function cap, currently AT 12)
+| File | Purpose |
+|---|---|
+| `amgine.js` | The integration. SEND: `{scan:true}` / `{rowId}` / `{email}` / `{firstName,lastName,groupId}`. WEBHOOK: handles `ItineraryState` → writes Status/Link/Note. |
+| `create-branch.js` | Full 3-step branch onboarding + writes GUIDs to group row. `maxDuration: 60s`. |
+| `submit.js` | Group Travel Request form intake. |
+| `submit-profile.js`, `submit-udid.js` | Profile / UDID intake. |
+| `parse-email.py` | CVENT/Swoogo email parser. |
+| `sync-groups.js`, `sync-travellers.js`, `reconcile-groups.js` (daily cron), `upload-groups.js`, `hotel-dedup.js`, `agentform.js` | Supporting sync/util. |
+
+**⚠️ At the 12-function cap.** Adding another api file breaks deploys — remove one or upgrade to Vercel Pro. (Static .html pages do NOT count.)
+
+---
+
+## 5. SHEET IDs
+- Traveller MasterSheet: `8780932377956228`
+- LIVE GROUP MASTERSHEET: `4820086761148292`
+- KCG Agent traveller copy: `7213505705889668` · CVENT parser: `1658234917048196`
+- Advisor Summary: `4629439471112068` · Numbers By Advisor report: `2981953635569540`
+
+## 6. AMGINE CONFIG
+- **servicedEntityId = 918** (Kensington). tmcId = 116. sourceSEB = 1687 (branch config template). All hardcoded in `create-branch.js` with env overrides (`AMGINE_SOURCE_SEB/TMC_ID/SOURCE_SE`).
+- **Auth:** `client_secret_basic` (client_id:secret in Basic header). Token endpoint (Keycloak): `login-app.amgine.ai/identity/auth/realms/amgine-realm/protocol/openid-connect/token`.
+- **Env vars (Vercel, all Sensitive):** AMGINE_TOKEN_URL, AMGINE_CLIENT_ID, AMGINE_CLIENT_SECRET, AMGINE_GRANT_TYPE, AMGINE_SCOPE, AMGINE_USERNAME, AMGINE_PASSWORD, AMGINE_API_URL, AMGINE_TMC_GUID, AMGINE_HASH, SMARTSHEET_API_TOKEN. (Secrets live only in Vercel.)
+- **Onboarding API URLs:** CreateBranch `app.amgine.ai/publicapi/api/ClientOnboard/bulkUploadServicedEntityBranch?returnSuccess=true` · CreatePolicyRule `.../servicedEntity/0/Policy?servicedEntityBranchGuid={guid}` · CreatePolicyGroup `.../servicedentity/0/TravelerGroup?servicedEntityBranchGuid={guid}`.
+- **Webhook** points at `https://kensington-group-form.vercel.app/api/amgine`.
+- **Agent App:** `app.amgine.ai/agentapp` (you have a login).
+
+---
+
+## 7. GOTCHAS / KNOWN BEHAVIOR
+- **Booking is a few seconds; the lag is Power Automate polling** (was ~7 min). Fix: lower the PA trigger poll interval to 1 min, or use `book-now.html` for instant.
+- **A traveller row needs a NAME** (First or Last) to be picked up — no name = "nothing to book."
+- **Airports/dates are now OPTIONAL** (Intent-only). But the group must be onboarded (branch GUIDs present).
+- **Province/State + Country must be 2-letter codes** (ON, CA) — the branch form auto-converts full names.
+- **Branch form: add the group row FIRST and let it save**, then run the form (endpoint retries the group lookup, but still).
+- **Duplicate branch name** auto-retries with a timestamp suffix. **Suspense** historically = wrong/unconfigured branch; resolved by using properly-onboarded branches.
+
+## 8. PENDING (not dev work)
+- **Vera:** real per-client travel-policy rules (branches use a default now). Client-communication email examples for template setup.
+- **Amgine/Raymond:** staging environment; clear junk test branches/itineraries.
+- **Team:** pick pilot group(s); write the agent SOP (what to do at each status).
+- **Discuss:** white-label form (vs Intent-only).
+
+---
+
+## 9. DEMO
+- **Runbook (visual one-pager):** https://claude.ai/code/artifact/e2129260-bf6a-4af2-b2fc-5e5c4b4a6948
+- **Flow:** onboard via branch form → add traveller (name + onboarded Group ID) → Ready to Book → **use book-now.html for instant** → show status/link + Agent App trip.
+- **Pre-run one booking ~10 min before** so you have a completed row to show while the live one processes.
+- **Framing line:** "Our automation gets the trip to Amgine and tracks it. The agent takes it from there."
+
+### Likely Q&A (short)
+- *Built with?* Smartsheet + a Vercel service + Power Automate + Amgine API/webhook.
+- *Onboard a client?* One form creates the branch automatically.
+- *Agent's job?* Check a box, then review + send in Amgine.
+- *Travellers come from?* Forms / parser / Excel upload — auto.
+- *Traveller builds own trip?* Yes, Intent-only in JENi.
+- *Why the delay?* Power Automate polling + Amgine curation, not our code.
+- *Booking fails?* State comes back on the row; re-bookable.
+- *Policy per client?* Default now; real rules plug in (waiting on Vera).
+- *Secure?* Keys only in the server env.
+- *Staging / white-label / GDS availability?* Punt to Amgine.
