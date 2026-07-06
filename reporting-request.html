@@ -308,15 +308,16 @@
           <span class="section-tag">Delivery</span>
         </div>
 
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="udidCode">UDID Code</label>
-            <input type="text" id="udidCode" name="udidCode" class="field-input" />
+        <div class="field">
+          <label class="field-label">Reporting fields (UDID)</label>
+          <div class="field-sub">List each UDID number and its client data. Add as many rows as you need.</div>
+          <div style="display:flex; gap:10px; margin-bottom:6px;">
+            <div style="flex:1; font-size:12px; font-weight:500; color:var(--ink-mute);">UDID #</div>
+            <div style="flex:2; font-size:12px; font-weight:500; color:var(--ink-mute);">Client data</div>
+            <div style="flex:0 0 auto; width:34px;"></div>
           </div>
-          <div class="field">
-            <label class="field-label" for="udidNumber">UDID Number</label>
-            <input type="text" id="udidNumber" name="udidNumber" class="field-input" />
-          </div>
+          <div id="udidList"></div>
+          <button type="button" id="addUdid" style="cursor:pointer; width:auto; padding:8px 16px; margin-top:6px; background:var(--cream); border:1px solid var(--gold); border-radius:6px; color:var(--gold-deep); font-family:inherit; font-size:14px; font-weight:500;">+ Add UDID</button>
         </div>
 
         <div class="field" style="margin-top:22px;">
@@ -354,6 +355,21 @@
         });
       });
     });
+
+    // UDID list — repeatable rows (UDID # + client data), add/remove as needed.
+    function addUdidRow() {
+      var row = document.createElement('div');
+      row.className = 'udid-row';
+      row.style.cssText = 'display:flex; gap:10px; margin-bottom:8px; align-items:center;';
+      row.innerHTML =
+        '<input type="text" class="field-input udid-num" placeholder="e.g. UD01" style="flex:1;" />' +
+        '<input type="text" class="field-input udid-client" placeholder="client number / data" style="flex:2;" />' +
+        '<button type="button" class="udid-remove" aria-label="Remove" style="flex:0 0 auto; width:34px; height:40px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; color:var(--error); font-size:20px; line-height:1;">&times;</button>';
+      row.querySelector('.udid-remove').addEventListener('click', function () { row.remove(); });
+      document.getElementById('udidList').appendChild(row);
+    }
+    document.getElementById('addUdid').addEventListener('click', addUdidRow);
+    addUdidRow(); // start with one empty row
 
     document.getElementById('reportingForm').addEventListener('submit', function (e) {
       e.preventDefault();
@@ -406,6 +422,15 @@
         }
       });
 
+      // Collect the UDID rows into aligned "UDID # | Client Data" lines.
+      var pad = function (s, n) { s = String(s || ''); while (s.length < n) s += ' '; return s; };
+      var udidLines = [];
+      document.querySelectorAll('#udidList .udid-row').forEach(function (r) {
+        var num = r.querySelector('.udid-num').value.trim();
+        var client = r.querySelector('.udid-client').value.trim();
+        if (num || client) udidLines.push(pad(num || '-', 18) + '|  ' + (client || '-'));
+      });
+
       var subject = 'Corporate Reporting Request — ' + (data.companyName || '') + ' / DK ' + (data.dkNumber || '');
       var body = [
         'CORPORATE REPORTING REQUEST', '',
@@ -417,10 +442,10 @@
         'Destination: ' + (data.destination || ''),
         '',
         '=== REPORTS REQUIRED ===', '',
-      ].concat(reportLines).concat([
-        '=== REPORTING FIELDS ===',
-        'UDID Code: ' + (data.udidCode || ''),
-        'UDID Number: ' + (data.udidNumber || ''),
+      ].concat(reportLines).concat(
+        ['=== REPORTING FIELDS (UDID) ===', 'UDID #            |  Client Data', '------------------+------------------']
+          .concat(udidLines.length ? udidLines : ['(none provided)'])
+      ).concat([
         '',
         'Reports to be sent to:',
         (data.recipients || ''),
