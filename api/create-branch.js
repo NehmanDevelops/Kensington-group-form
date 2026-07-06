@@ -177,15 +177,21 @@ export default async function handler(req, res) {
       const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
         ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
       });
-      const sheet = await (await ss(`/sheets/${GROUPS}`)).json();
-      const idByTitle = {};
-      for (const c of sheet.columns) idByTitle[c.title.trim().toLowerCase()] = c.id;
-      const colId = (t) => idByTitle[t.trim().toLowerCase()];
-      const gidCol = colId('group id');
-      const gRow = (sheet.rows || []).find(r => {
-        const c = (r.cells || []).find(x => x.columnId === gidCol);
-        return c && norm(c.value ?? c.displayValue).toLowerCase() === groupId.toLowerCase();
-      });
+      // Retry the group lookup a few times — a group row added moments before may
+      // still be saving when we first read the sheet (avoids "no matching row").
+      let gRow, colId;
+      for (let attempt = 1; attempt <= 4 && !gRow; attempt++) {
+        if (attempt > 1) await sleep(2000);
+        const sheet = await (await ss(`/sheets/${GROUPS}`)).json();
+        const idByTitle = {};
+        for (const c of sheet.columns) idByTitle[c.title.trim().toLowerCase()] = c.id;
+        colId = (t) => idByTitle[t.trim().toLowerCase()];
+        const gidCol = colId('group id');
+        gRow = (sheet.rows || []).find(r => {
+          const c = (r.cells || []).find(x => x.columnId === gidCol);
+          return c && norm(c.value ?? c.displayValue).toLowerCase() === groupId.toLowerCase();
+        });
+      }
       if (gRow) {
         const cells = [];
         if (colId('amgine branch guid')) cells.push({ columnId: colId('amgine branch guid'), value: branchGuid });
