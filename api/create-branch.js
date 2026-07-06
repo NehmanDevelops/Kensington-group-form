@@ -104,23 +104,33 @@ export default async function handler(req, res) {
       preferredFlightFareBasisCode: [''],
       preferredAirports: splitList(body.preferredAirports),
     }];
-    const branchRes = await amg(CREATE_BRANCH_URL, branchBody);
-    const branchJson = await branchRes.json().catch(() => ({}));
-    const branchGuid = deepFind(branchJson, 'guid');
     const ZERO_GUID = '00000000-0000-0000-0000-000000000000';
-    // Amgine returns a zero-GUID when the branch is rejected (most often an invalid
-    // Province/State or Country — they must be 2-letter codes, e.g. ON / NY / CA / US).
-    if (!branchRes.ok || !branchGuid || branchGuid === ZERO_GUID) {
+    // Try the clean name first. Amgine returns a zero-GUID when it rejects the
+    // branch — most often a bad Province/State or Country code, OR a duplicate
+    // branch name. If the clean name collides, retry once with a unique suffix so
+    // re-onboarding the same client never hard-fails.
+    let finalName = uniqueName, branchGuid, branchJson, branchStatus;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      branchBody[0].name = finalName;
+      const branchRes = await amg(CREATE_BRANCH_URL, branchBody);
+      branchStatus = branchRes.status;
+      branchJson = await branchRes.json().catch(() => ({}));
+      branchGuid = deepFind(branchJson, 'guid');
+      if (branchRes.ok && branchGuid && branchGuid !== ZERO_GUID) break;
+      finalName = `${uniqueName} ${Date.now()}`; // collision → make it unique and retry
+      branchGuid = null;
+    }
+    if (!branchGuid) {
       return res.status(502).json({
-        step: 'CreateBranch', status: branchRes.status, branchGuid,
-        error: 'Branch was not created by Amgine. Most likely the Province/State or Country isn\'t a 2-letter code (e.g. ON, NY, CA, US), or a branch with this name/Group ID already exists.',
+        step: 'CreateBranch', status: branchStatus, branchGuid,
+        error: 'Branch was not created by Amgine. Most likely the Province/State or Country isn\'t a 2-letter code (e.g. ON, NY, CA, US).',
         raw: branchJson,
       });
     }
 
     // 2) CreatePolicyRule (default: economy in-policy — refine once client rules are set)
     const policyBody = {
-      policyName: uniqueName,
+      policyName: finalName,
       policyElements: [{
         policyInputs: [{
           equalToNumeric: [2], equalToString: [], notEqualToNumeric: [], notEqualToString: [],
@@ -145,7 +155,7 @@ export default async function handler(req, res) {
     }
 
     // 3) CreatePolicyGroup (retry likewise)
-    const groupBody = { groupName: uniqueName, description: name, policyGuid };
+    const groupBody = { groupName: finalName, description: name, policyGuid };
     let policyGroupGuid, pgJson, pgStatus, pgOk = false;
     for (let attempt = 1; attempt <= 6; attempt++) {
       const pgRes = await amg(policyGroupUrl(branchGuid), groupBody);
@@ -185,7 +195,7 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ ok: true, branchName: uniqueName, branchGuid, policyGuid, policyGroupGuid, wroteToGroup });
+    return res.status(200).json({ ok: true, branchName: finalName, branchGuid, policyGuid, policyGroupGuid, wroteToGroup });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
