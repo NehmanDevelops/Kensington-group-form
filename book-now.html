@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington — Book Now (Amgine)</title>
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  :root{--ink:#3a2f3c;--ink-mute:#8b8678;--bone:#fdf9ec;--paper:#fffdf8;--cream:#f3eedf;--gold:#767260;--green:#1a3e32;--line:#e4ddcc;--error:#b03a3a;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'SangBleu Republic',Georgia,-apple-system,serif;background:var(--bone);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(58,47,60,.10);max-width:460px;width:100%;padding:40px 36px;text-align:center;}
+  .eyebrow{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);font-weight:500;margin-bottom:12px;}
+  h1{font-family:'SangBleu Sunrise',Georgia,serif;font-weight:400;font-size:30px;margin-bottom:8px;}
+  h1 em{font-style:italic;color:var(--green);}
+  .sub{font-size:14px;color:var(--ink-mute);margin-bottom:28px;line-height:1.6;}
+  .btn{font-family:inherit;font-size:17px;font-weight:500;background:var(--green);color:var(--bone);border:none;border-radius:10px;padding:18px 44px;cursor:pointer;letter-spacing:.02em;transition:background .15s,transform .1s;width:100%;}
+  .btn:hover{background:#215040;}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .result{margin-top:24px;text-align:left;font-size:14px;display:none;}
+  .result.show{display:block;}
+  .result .headline{font-family:'SangBleu Sunrise',Georgia,serif;font-size:18px;margin-bottom:12px;text-align:center;}
+  .row{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;}
+  .row .name{font-weight:500;}
+  .row .id{font-family:ui-monospace,Menlo,monospace;color:var(--green);font-size:13px;}
+  .row.err .id{color:var(--error);}
+  .muted{color:var(--ink-mute);text-align:center;font-size:13px;}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(253,249,236,.4);border-top-color:var(--bone);border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:8px;}
+  @keyframes s{to{transform:rotate(360deg);}}
+  @media(prefers-reduced-motion:reduce){.spin{animation:none;}}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow">Amgine · Group Bookings</div>
+    <h1>Book <em>Now</em></h1>
+    <p class="sub">Sends every traveller marked <strong>Ready to Book</strong> (not yet booked) to Amgine right now — no waiting for the automatic trigger.</p>
+    <button class="btn" id="go">Book ready travellers</button>
+    <div class="result" id="result"></div>
+  </div>
+
+<script>
+  var ENDPOINT = '/api/amgine';
+  var btn = document.getElementById('go');
+  var out = document.getElementById('result');
+
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    var original = btn.textContent;
+    btn.innerHTML = '<span class="spin"></span>Booking…';
+    out.className = 'result';
+    out.innerHTML = '';
+
+    fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scan: true }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var n = d.processed || 0;
+        var html = '<div class="headline">' + (n > 0 ? ('Booked ' + n + ' traveller' + (n === 1 ? '' : 's')) : 'Nothing to book') + '</div>';
+        if (n > 0 && d.results) {
+          d.results.forEach(function (r) {
+            if (r.ok) html += '<div class="row"><span class="name">' + (r.traveller || 'Traveller') + '</span><span class="id">#' + (r.itineraryId || '—') + '</span></div>';
+            else if (r.skipped) html += '<div class="row err"><span class="name">' + (r.traveller || 'Traveller') + '</span><span class="id">' + (r.reason || 'skipped') + '</span></div>';
+            else html += '<div class="row err"><span class="name">' + (r.traveller || 'Traveller') + '</span><span class="id">' + (r.error || 'failed') + '</span></div>';
+          });
+        } else {
+          html += '<p class="muted">' + (d.note || 'No travellers were ready to book.') + '</p>';
+        }
+        out.innerHTML = html;
+        out.className = 'result show';
+      })
+      .catch(function (e) {
+        out.innerHTML = '<p class="muted" style="color:var(--error)">Error: ' + e.message + '</p>';
+        out.className = 'result show';
+      })
+      .finally(function () { btn.disabled = false; btn.textContent = original; });
+  });
+</script>
+</body>
+</html>
