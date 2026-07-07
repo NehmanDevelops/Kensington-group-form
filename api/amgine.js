@@ -20,6 +20,11 @@ const GROUPS = '4820086761148292';      // LIVE GROUP MASTERSHEET
 const SENDING = 'Sending...';
 // How many travellers we fire at Amgine at once inside one batch (rest queue).
 const CONCURRENCY = 5;
+// Kensington's Amgine workspace GUID — constant for the tenant. Used to build the
+// agent-app link immediately at send time, since Amgine's webhook doesn't always
+// include a WorkspaceGuid. Override via env if the workspace ever changes.
+const AMGINE_WORKSPACE_GUID = process.env.AMGINE_WORKSPACE_GUID || '8f4a9dd8-d0c9-49cd-aded-000485f5deae';
+const agentLink = (itinId) => `https://app.amgine.ai/agentapp/transaction/${AMGINE_WORKSPACE_GUID}/${itinId}`;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const ss = (token) => (path, opts = {}) =>
@@ -109,7 +114,7 @@ function amgineStatus(b) {
 // link. Honours the Environment field (prod vs staging).
 function amgineLink(b) {
   const base = norm(b.Environment).toLowerCase() === 'staging' ? 'https://staging.amgine.ai' : 'https://app.amgine.ai';
-  const ws = norm(b.WorkspaceGuid);
+  const ws = norm(b.WorkspaceGuid) || AMGINE_WORKSPACE_GUID;  // fall back to tenant workspace
   const id = b.ItineraryId != null ? String(b.ItineraryId) : '';
   if (!ws || !id) return '';
   if (b.AccessHash) return `${base}/clienttool/approval/${ws}/${id}/${id}/${norm(b.AccessHash)}`;
@@ -228,6 +233,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const itinId = amgJson.itineraryId ?? amgJson.ItineraryId ?? '';
   const cells = [];
   if (M.id('Amgine Itinerary ID') && itinId !== '') cells.push({ columnId: M.id('Amgine Itinerary ID'), value: String(itinId) });
+  if (M.id('Amgine Link') && itinId !== '') cells.push({ columnId: M.id('Amgine Link'), value: agentLink(itinId) });
   if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: 'Sent' });
   if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells }]) });
 
