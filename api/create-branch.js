@@ -68,9 +68,10 @@ export default async function handler(req, res) {
   const name = norm(body.name);
   if (!name) return res.status(400).json({ error: 'name is required (client / branch name)' });
   const groupIdIn = norm(body.groupId);
-  // Amgine requires a unique branch name. Use "Company (Group ID)" for a clean,
-  // readable, unique name; fall back to a timestamp if no group id was supplied.
-  const uniqueName = groupIdIn ? `${name} (${groupIdIn})` : `${name} ${Date.now()}`;
+  // Manager's call (2026-07-07): the branch NAME is the Group ID itself. Group IDs are
+  // unique, so they satisfy Amgine's unique-name requirement. Fall back to the client
+  // name + timestamp only when no Group ID was supplied.
+  const uniqueName = groupIdIn ? groupIdIn : `${name} ${Date.now()}`;
 
   try {
     const token = await getToken();
