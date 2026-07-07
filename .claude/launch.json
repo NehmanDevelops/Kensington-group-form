@@ -2,16 +2,20 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "kensington-forms",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
-    },
-    {
-      "name": "calc",
+      "name": "static",
       "runtimeExecutable": "pwsh",
       "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".preview-server.ps1"],
-      "port": 8777
+      "port": 8123
+    },
+    {
+      "name": "romp",
+      "runtimeExecutable": "pwsh",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "$env:PATH = \"$env:LOCALAPPDATA\\node24\\node-v24.18.0-win-x64;$env:PATH\"; Set-Location romp; npm run dev"
+      ],
+      "port": 5173
     }
   ]
 }

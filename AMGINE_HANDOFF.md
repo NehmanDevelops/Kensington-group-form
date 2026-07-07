@@ -1,8 +1,10 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-07-06 — full pipeline built, tested end-to-end, Option 2 + Intent-only live._
+_Last updated: 2026-07-07 — reliability hardening, instant Smartsheet webhook, per-group flags + Sabre profiles, branch=GroupID, dupe fix. See `CHANGELOG-2026-07-07.md` for the full write-up._
 
-**To read this on your work laptop:** `git pull` in the repo, open this file.
+**To read this on your work laptop:** `git pull` in the repo, open this file (and `CHANGELOG-2026-07-07.md` for the latest changes).
+
+> **Open items (2026-07-07), both need Amgine:** (1) correct `policygroupguid` for the Policy Tool link; (2) how to control **Show Price**. Everything else this session is live.
 
 ---
 
