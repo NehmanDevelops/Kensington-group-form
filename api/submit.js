@@ -113,9 +113,13 @@ export default async function handler(req, res) {
       masterCells.push({ columnId: MASTER.endDate, value: cellMap[INTAKE.departureDate] });
     }
 
-    // ── Find the last row WITH DATA so we can insert right after it ──────
-    // (avoids placing the new row at the bottom past empty placeholder rows)
+    // ── Find the last row WITH DATA so we can insert right after it, AND guard
+    // against duplicates: if this GROUP ID already exists on the master, skip the
+    // insert. Repeat/edited/double-fired submissions were creating dupe rows here
+    // (submit.js was the only writer without a dedup check).
     let insertPayload = [{ toBottom: true, cells: masterCells }];
+    const submittedGid = cellMap[INTAKE.groupId] ? String(cellMap[INTAKE.groupId]).trim().toLowerCase() : '';
+    let masterHasGroup = false;
 
     try {
       const sheetRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${MASTER_SHEET_ID}`, {
@@ -130,8 +134,11 @@ export default async function handler(req, res) {
         let lastDataRowId = null;
         for (const row of sheetData.rows) {
           const groupIdCell = row.cells?.find(c => c.columnId === GROUP_ID_COL);
-          const hasGroupId = groupIdCell && groupIdCell.value !== undefined && groupIdCell.value !== null && String(groupIdCell.value).trim() !== '';
-          if (hasGroupId) lastDataRowId = row.id;
+          const gidVal = groupIdCell && groupIdCell.value != null ? String(groupIdCell.value).trim() : '';
+          if (gidVal !== '') {
+            lastDataRowId = row.id;
+            if (submittedGid && gidVal.toLowerCase() === submittedGid) masterHasGroup = true;
+          }
         }
         if (lastDataRowId) {
           insertPayload = [{ siblingId: lastDataRowId, cells: masterCells }];
@@ -141,19 +148,23 @@ export default async function handler(req, res) {
       console.error('Master row position lookup failed, falling back to toBottom:', lookupErr.message);
     }
 
-    const masterRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${MASTER_SHEET_ID}/rows`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(insertPayload)
-    });
+    if (masterHasGroup) {
+      console.log(`Skipped MASTER insert — group "${submittedGid}" already exists (dedup).`);
+    } else {
+      const masterRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${MASTER_SHEET_ID}/rows`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(insertPayload)
+      });
 
-    if (!masterRes.ok) {
-      const masterErr = await masterRes.json();
-      // Don't fail the whole request — intake row is already saved
-      console.error('MASTER TRACKER write failed:', masterErr.message);
+      if (!masterRes.ok) {
+        const masterErr = await masterRes.json();
+        // Don't fail the whole request — intake row is already saved
+        console.error('MASTER TRACKER write failed:', masterErr.message);
+      }
     }
 
     // ── Step 3: Mirror the same row into KC AGENT GROUPS MASTERSHEET ───────
@@ -173,7 +184,9 @@ export default async function handler(req, res) {
       4893411139424132: 5804429717835652, // Travel Start Date
       2641611325738884: 3552629904150404, // Travel End Date
     };
-    try {
+    if (masterHasGroup) {
+      console.log('Skipped AGENT insert — group already exists (dedup).');
+    } else try {
       const agentCells = masterCells
         .filter(c => MASTER_TO_AGENT[c.columnId])  // only mapped columns
         .map(c => ({ columnId: MASTER_TO_AGENT[c.columnId], value: c.value }));
