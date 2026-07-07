@@ -189,15 +189,23 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const policyGuid = norm(G.val(grow, 'Amgine Policy GUID'));
   if (!branchGuid) { await setStatus(`Booking failed: group "${t.groupId}" not onboarded`); return { rowId, traveller: who, error: `group "${t.groupId}" not onboarded` }; }
 
-  // Per-group flow control (manager's new group columns). "Direct to traveller" sends
-  // the trip straight to the traveller and skips the agent queue; otherwise it lands
-  // in the agent queue for review first (Option 2 — our default, i.e. "Agent
-  // internvention"). Column name typo "Direct to traveller" matched exactly.
+  // Per-group flow control (manager's new group columns). DirectToAgent must stay
+  // TRUE: with Intent specified it bypasses Amgine's AI, and false makes the request
+  // EXPIRE (per Amgine's API notes). Only BypassAgent toggles — "Direct to traveller"
+  // checked => BypassAgent true (skip the agent, straight to Agent_Approved ->
+  // traveller); unchecked => agent reviews first (Option 2 default / "Agent
+  // internvention"). Column name "Direct to traveller" matched exactly.
   const truthy = (v) => v === true || v === 'true';
   const directToTraveller = truthy(G.val(grow, 'Direct to traveller'));
-  const flow = directToTraveller
-    ? { DirectToAgent: false, BypassAgent: true }
-    : { DirectToAgent: true, BypassAgent: false };
+  const flow = { DirectToAgent: true, BypassAgent: directToTraveller };
+
+  // GDS booking profile (manager's Sabre columns). When a group is flagged "Profiled
+  // Travellers" AND has a Sabre Profile ID + PCC, pass a BookingProfile so Amgine
+  // pulls that GDS profile into the PNR. Sabre wants the profile ID (not the name).
+  // Type defaults to "Traveler" — confirm with Amgine if group profiles are "Corporate".
+  const bookingProfile = (truthy(G.val(grow, 'Profiled Travellers')) && norm(G.val(grow, 'Sabre Profile ID')) && norm(G.val(grow, 'PCC')))
+    ? [{ Pcc: norm(G.val(grow, 'PCC')), GdsProfileId: norm(G.val(grow, 'Sabre Profile ID')), GdsProfileType: 'Traveler' }]
+    : null;
 
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
   const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
@@ -220,7 +228,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       { FieldName: 'DateOfBirth', Data: t.dob || null }, { FieldName: 'Email', Data: t.email || null },
       { FieldName: 'Phone', Data: t.phone || null }, { FieldName: 'KnownTravelerNumber', Data: t.ktn || null },
       { FieldName: 'RedressNumber', Data: t.redress || null }, { FieldName: 'CountryOfIssue', Data: t.country || null },
-    ] } }],
+    ] }, ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
     Intent: { Nodes: intentNodes }, IntentOnly: true, ...flow,
   };
 
