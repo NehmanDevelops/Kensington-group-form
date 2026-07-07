@@ -189,6 +189,16 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const policyGuid = norm(G.val(grow, 'Amgine Policy GUID'));
   if (!branchGuid) { await setStatus(`Booking failed: group "${t.groupId}" not onboarded`); return { rowId, traveller: who, error: `group "${t.groupId}" not onboarded` }; }
 
+  // Per-group flow control (manager's new group columns). "Direct to traveller" sends
+  // the trip straight to the traveller and skips the agent queue; otherwise it lands
+  // in the agent queue for review first (Option 2 — our default, i.e. "Agent
+  // internvention"). Column name typo "Direct to traveller" matched exactly.
+  const truthy = (v) => v === true || v === 'true';
+  const directToTraveller = truthy(G.val(grow, 'Direct to traveller'));
+  const flow = directToTraveller
+    ? { DirectToAgent: false, BypassAgent: true }
+    : { DirectToAgent: true, BypassAgent: false };
+
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
   const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
   const intentNodes = [];
@@ -211,7 +221,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       { FieldName: 'Phone', Data: t.phone || null }, { FieldName: 'KnownTravelerNumber', Data: t.ktn || null },
       { FieldName: 'RedressNumber', Data: t.redress || null }, { FieldName: 'CountryOfIssue', Data: t.country || null },
     ] } }],
-    Intent: { Nodes: intentNodes }, IntentOnly: true, DirectToAgent: true, BypassAgent: false,
+    Intent: { Nodes: intentNodes }, IntentOnly: true, ...flow,
   };
 
   let amgRes, amgJson;
