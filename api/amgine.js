@@ -1,11 +1,12 @@
-// Amgine integration — single endpoint, two jobs:
-//   1. SEND   (POST { rowId })          → build + fire a New Request for a traveller,
-//                                          then write the itinerary id back to the row.
-//   2. WEBHOOK (POST from Amgine)        → status update flows back onto the row.
-//        (webhook half is stubbed until the vendor sends the payload spec.)
-//
-// Triggered by Power Automate when a traveller's "Ready to Book" is checked:
-// PA calls  POST /api/amgine  { "rowId": <traveller row id> }.
+// Amgine integration — single endpoint, several jobs:
+//   1. SEND    (POST { scan:true } / { rowId } / { email } / {first,last,groupId})
+//              → build + fire a New Request per traveller, write the itinerary id back.
+//   2. WEBHOOK  (POST from Amgine, identified by ItineraryState)
+//              → status/link/PNR update flows back onto the traveller row.
+//   3. SMARTSHEET WEBHOOK (POST from Smartsheet, identified by a challenge header
+//              or an `events` array) → the instant "Ready to Book" is checked,
+//              Smartsheet calls us and we run the scan. Removes the Power Automate
+//              polling lag. (Register the webhook once — see registerSmartsheetHook.)
 //
 // Env vars (Vercel): AMGINE_TOKEN_URL, AMGINE_CLIENT_ID, AMGINE_CLIENT_SECRET,
 // AMGINE_GRANT_TYPE, AMGINE_SCOPE, AMGINE_USERNAME, AMGINE_PASSWORD,
@@ -13,6 +14,12 @@
 
 const MASTER = '8780932377956228';      // Traveller Profile MasterSheet
 const GROUPS = '4820086761148292';      // LIVE GROUP MASTERSHEET
+
+// Written to a row's "Amgine Status" the moment we claim it for a send, so a
+// second overlapping scan (PA poll + Book-Now click) skips it → no double booking.
+const SENDING = 'Sending...';
+// How many travellers we fire at Amgine at once inside one batch (rest queue).
+const CONCURRENCY = 5;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const ss = (token) => (path, opts = {}) =>
@@ -34,6 +41,7 @@ function indexSheet(sheet) {
 }
 
 const norm = (s) => String(s == null ? '' : s).trim();
+const isTrue = (v) => v === true || v === 'true';
 
 // "Male" -> "M", "Female" -> "F"
 const toGender = (g) => {
@@ -133,10 +141,28 @@ async function getAmgineToken(mode) {
   return { ok: r.ok && !!j.access_token, token: j.access_token, status: r.status, detail: j };
 }
 
+// Which traveller rows are eligible for an automatic send: Ready to Book, has a
+// name, not already sent (no itinerary id), and not currently mid-send (SENDING).
+function scanRows(master, M) {
+  return (master.rows || []).filter(r => {
+    const named = norm(M.val(r, 'First Name')) || norm(M.val(r, 'Last Name'));
+    if (!isTrue(M.val(r, 'Ready to Book')) || !named) return false;
+    if (norm(M.val(r, 'Amgine Itinerary ID'))) return false;               // already sent
+    if (norm(M.val(r, 'Amgine Status')).toLowerCase() === SENDING.toLowerCase()) return false; // in flight
+    return true;
+  });
+}
+
 // Build + fire a New Request for one traveller row, then write the itinerary id
-// back. Returns a per-row result; never throws (so a batch keeps going).
+// back. On any failure, write a visible "Booking failed: <reason>" onto the row
+// so an agent sees it (instead of a silent blank). Never throws.
 async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const rowId = mrow.id;
+  const setStatus = async (s) => {
+    if (!M.id('Amgine Status')) return;
+    await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells: [{ columnId: M.id('Amgine Status'), value: String(s).slice(0, 4000) }] }]) });
+  };
+
   const t = {
     first: norm(M.val(mrow, 'First Name')), middle: norm(M.val(mrow, 'Middle Name')),
     last: norm(M.val(mrow, 'Last Name')), gender: toGender(M.val(mrow, 'Gender')),
@@ -150,13 +176,13 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     retTrip: norm(M.val(mrow, 'Return Trip/City')),
   };
   const who = `${t.first} ${t.last}`.trim();
-  if (!t.first && !t.last) return { rowId, error: 'no name' };
+  if (!t.first && !t.last) { await setStatus('Booking failed: missing traveller name'); return { rowId, error: 'no name' }; }
 
   const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === t.groupId.toLowerCase());
-  if (!grow) return { rowId, traveller: who, error: `group "${t.groupId}" not found` };
+  if (!grow) { await setStatus(`Booking failed: group "${t.groupId}" not found`); return { rowId, traveller: who, error: `group "${t.groupId}" not found` }; }
   const branchGuid = norm(G.val(grow, 'Amgine Branch GUID'));
   const policyGuid = norm(G.val(grow, 'Amgine Policy GUID'));
-  if (!branchGuid) return { rowId, traveller: who, error: `group "${t.groupId}" not onboarded` };
+  if (!branchGuid) { await setStatus(`Booking failed: group "${t.groupId}" not onboarded`); return { rowId, traveller: who, error: `group "${t.groupId}" not onboarded` }; }
 
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
   const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
@@ -166,8 +192,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
 
   // IntentOnly mode: the traveller fills in their own trip via JENi's "Modify
   // Intent" screen, so flight legs are OPTIONAL. We prepopulate any legs we do
-  // have (from airports/dates on the row), but an empty Intent is fine now — no
-  // missing-dates guard needed.
+  // have (from airports/dates on the row), but an empty Intent is fine now.
   const payload = {
     ExternalId: { Id: String(rowId), ThreadId: t.groupId || String(rowId) },
     TmcGuid: process.env.AMGINE_TMC_GUID, From: process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
@@ -184,11 +209,21 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     Intent: { Nodes: intentNodes }, IntentOnly: true, DirectToAgent: true, BypassAgent: false,
   };
 
-  const amgRes = await fetch(process.env.AMGINE_API_URL, {
-    method: 'POST', headers: { Authorization: `Bearer ${amgToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-  });
-  const amgJson = await amgRes.json().catch(() => ({}));
-  if (!amgRes.ok) return { rowId, traveller: who, error: 'Amgine request failed', status: amgRes.status, detail: amgJson };
+  let amgRes, amgJson;
+  try {
+    amgRes = await fetch(process.env.AMGINE_API_URL, {
+      method: 'POST', headers: { Authorization: `Bearer ${amgToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    amgJson = await amgRes.json().catch(() => ({}));
+  } catch (err) {
+    await setStatus(`Booking failed: ${norm(err.message) || 'network error'}`);
+    return { rowId, traveller: who, error: 'Amgine request threw', detail: err.message };
+  }
+  if (!amgRes.ok) {
+    const reason = norm(amgJson.message || amgJson.error || amgJson.title) || `HTTP ${amgRes.status}`;
+    await setStatus(`Booking failed: ${reason}`);
+    return { rowId, traveller: who, error: 'Amgine request failed', status: amgRes.status, detail: amgJson };
+  }
 
   const itinId = amgJson.itineraryId ?? amgJson.ItineraryId ?? '';
   const cells = [];
@@ -197,6 +232,45 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells }]) });
 
   return { rowId, traveller: who, ok: true, itineraryId: itinId, flightLegs: intentNodes.length, airports: { origin, dest } };
+}
+
+// Claim the rows (dup guard) → get token + groups once → fire in small parallel
+// batches so a big group doesn't run 40 calls back-to-back and time out.
+async function bookRows({ api, rows, M }) {
+  if (!rows.length) return { ok: true, processed: 0, results: [], note: 'no matching travellers to book' };
+
+  // (#2) Stamp every selected row SENDING up front so an overlapping scan skips them.
+  if (M.id('Amgine Status')) {
+    await api(`/sheets/${MASTER}/rows`, {
+      method: 'PUT',
+      body: JSON.stringify(rows.map(r => ({ id: r.id, cells: [{ columnId: M.id('Amgine Status'), value: SENDING }] }))),
+    });
+  }
+
+  let auth = await getAmgineToken('basic');
+  if (!auth.ok) auth = await getAmgineToken('post');
+  if (!auth.ok) {
+    // Token failed — nothing was sent; clear the SENDING marks so the next scan retries.
+    if (M.id('Amgine Status')) {
+      await api(`/sheets/${MASTER}/rows`, {
+        method: 'PUT',
+        body: JSON.stringify(rows.map(r => ({ id: r.id, cells: [{ columnId: M.id('Amgine Status'), value: 'Booking failed: Amgine login failed' }] }))),
+      });
+    }
+    return { ok: false, processed: 0, error: 'Amgine token failed', detail: auth.detail };
+  }
+
+  const groups = await (await api(`/sheets/${GROUPS}`)).json();
+  const G = indexSheet(groups);
+
+  // (#4) parallel batches of CONCURRENCY; sendOne never throws.
+  const results = [];
+  for (let i = 0; i < rows.length; i += CONCURRENCY) {
+    const chunk = rows.slice(i, i + CONCURRENCY);
+    const settled = await Promise.all(chunk.map(mrow => sendOne({ api, amgToken: auth.token, mrow, M, groups, G })));
+    results.push(...settled);
+  }
+  return { ok: true, processed: results.length, results };
 }
 
 export default async function handler(req, res) {
@@ -210,11 +284,18 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // ── SMARTSHEET webhook: verification challenge ──────────────────────────
+  // When the webhook is enabled, Smartsheet POSTs a challenge header; echo it.
+  const hookChallenge = req.headers['smartsheet-hook-challenge'];
+  if (hookChallenge) {
+    res.setHeader('Smartsheet-Hook-Response', hookChallenge);
+    return res.status(200).json({ smartsheetHookResponse: hookChallenge });
+  }
+
   // ── WEBHOOK half (Amgine -> us) ─────────────────────────────────────────
   // Amgine posts a lifecycle state change (identified by ItineraryState). Match
   // the traveller row by ExternalId (the row id we sent) or, as a fallback, by
-  // ItineraryId (some states like Direct_Traveler omit ExternalId), then write
-  // the status + a clickable agent/traveler link + any Note back onto the row.
+  // ItineraryId, then write status + a clickable link + Note + PNR back.
   // Always answer 200 so Amgine doesn't retry on our bookkeeping hiccups.
   if (body.ItineraryState) {
     try {
@@ -235,12 +316,14 @@ export default async function handler(req, res) {
       const status = amgineStatus(body);
       const link = amgineLink(body);
       const note = norm(body.Note);
+      const pnr = norm(body.Pnr || body.PNR || body.RecordLocator);
 
       const cells = [];
       if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: status });
       if (M.id('Amgine Itinerary ID') && itinId && !norm(M.val(row, 'Amgine Itinerary ID'))) cells.push({ columnId: M.id('Amgine Itinerary ID'), value: itinId });
       if (link && M.id('Amgine Link')) cells.push({ columnId: M.id('Amgine Link'), value: link });
       if (note && M.id('Amgine Note')) cells.push({ columnId: M.id('Amgine Note'), value: note });
+      if (pnr && M.id('PNR')) cells.push({ columnId: M.id('PNR'), value: pnr });
       if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells }]) });
 
       return res.status(200).json({ ok: true, matched: true, rowId: row.id, state: body.ItineraryState, status });
@@ -250,23 +333,41 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── SMARTSHEET webhook: change event (us <- Smartsheet) ──────────────────
+  // Smartsheet POSTs { scope:'sheet', events:[...] } when the master changes.
+  // If a "Ready to Book" cell changed (or a row was added), run the scan now —
+  // this is what replaces the ~7-min Power Automate poll. (#3)
+  if (Array.isArray(body.events) && body.scope === 'sheet') {
+    try {
+      const master = await (await api(`/sheets/${MASTER}`)).json();
+      const M = indexSheet(master);
+      const readyCol = M.id('Ready to Book');
+      const relevant = body.events.some(e =>
+        (readyCol && e.columnId === readyCol) ||
+        (e.objectType === 'row' && e.eventType === 'created')
+      );
+      if (!relevant) return res.status(200).json({ ok: true, scanned: false, note: 'no Ready-to-Book change' });
+      const result = await bookRows({ api, rows: scanRows(master, M), M });
+      return res.status(200).json({ ok: true, scanned: true, ...result });
+    } catch (err) {
+      console.log('Smartsheet webhook error:', err.message);
+      return res.status(200).json({ ok: false, error: err.message });
+    }
+  }
+
   // ── SEND half (us -> Amgine) ────────────────────────────────────────────
   // Modes:
-  //   { scan: true }                              → book every "Ready to Book" + not-yet-sent traveller
-  //   { rowId }                                   → book that one row
-  //   { email } / { firstName,lastName, groupId } → book a looked-up row (testing)
+  //   { scan: true }                              → book every eligible traveller
+  //   { rowId }                                   → book that one row (ignores skips → manual retry)
+  //   { email } / { firstName,lastName, groupId } → book a looked-up row (testing/manual)
   try {
     const master = await (await api(`/sheets/${MASTER}`)).json();
     const M = indexSheet(master);
     const allRows = master.rows || [];
-    const isTrue = (v) => v === true || v === 'true';
 
     let rows = [];
-    if (body.scan === true || body.scan === 'true') {
-      rows = allRows.filter(r => {
-        const named = norm(M.val(r, 'First Name')) || norm(M.val(r, 'Last Name'));
-        return isTrue(M.val(r, 'Ready to Book')) && !norm(M.val(r, 'Amgine Itinerary ID')) && named;
-      });
+    if (isTrue(body.scan)) {
+      rows = scanRows(master, M);
     } else if (body.rowId) {
       const r = allRows.find(x => String(x.id) === String(body.rowId));
       if (r) rows = [r];
@@ -285,20 +386,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Provide scan:true, rowId, email, or firstName+lastName' });
     }
 
-    if (!rows.length) {
-      return res.status(200).json({ ok: true, processed: 0, note: 'no matching travellers to book' });
-    }
-
-    // Token + groups sheet fetched once for the whole batch.
-    let auth = await getAmgineToken('basic');
-    if (!auth.ok) auth = await getAmgineToken('post');
-    if (!auth.ok) return res.status(502).json({ error: 'Amgine token failed', detail: auth.detail });
-    const groups = await (await api(`/sheets/${GROUPS}`)).json();
-    const G = indexSheet(groups);
-
-    const results = [];
-    for (const mrow of rows) results.push(await sendOne({ api, amgToken: auth.token, mrow, M, groups, G }));
-    return res.status(200).json({ ok: true, processed: results.length, results });
+    const result = await bookRows({ api, rows, M });
+    return res.status(result.ok === false ? 502 : 200).json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
