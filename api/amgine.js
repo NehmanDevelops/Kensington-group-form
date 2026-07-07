@@ -202,9 +202,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   // GDS booking profile (manager's Sabre columns). When a group is flagged "Profiled
   // Travellers" AND has a Sabre Profile ID + PCC, pass a BookingProfile so Amgine
   // pulls that GDS profile into the PNR. Sabre wants the profile ID (not the name).
-  // Type defaults to "Traveler" — confirm with Amgine if group profiles are "Corporate".
+  // Group profiles are shared / account-level, so GdsProfileType is "Corporate"
+  // (manager's call, 2026-07-07). Profile is optional — no checkbox/ID/PCC = book as guest.
   const bookingProfile = (truthy(G.val(grow, 'Profiled Travellers')) && norm(G.val(grow, 'Sabre Profile ID')) && norm(G.val(grow, 'PCC')))
-    ? [{ Pcc: norm(G.val(grow, 'PCC')), GdsProfileId: norm(G.val(grow, 'Sabre Profile ID')), GdsProfileType: 'Traveler' }]
+    ? [{ Pcc: norm(G.val(grow, 'PCC')), GdsProfileId: norm(G.val(grow, 'Sabre Profile ID')), GdsProfileType: 'Corporate' }]
     : null;
 
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
