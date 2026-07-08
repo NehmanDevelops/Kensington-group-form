@@ -111,10 +111,14 @@ export default async function handler(req, res) {
     // (the *PccId fields look like internal ids); anything else is passed as-is
     // so the API's echo/errorList can tell us what it wants.
     const pccIn = norm(body.pcc);
-    if (pccIn) {
-      const pccVal = /^\d+$/.test(pccIn) ? Number(pccIn) : pccIn;
+    // The branch-level *PccId fields are INTEGER internal Amgine ids (a raw Sabre
+    // PCC like "AB1C" is rejected with "Could not convert string to integer").
+    // Only set them when a numeric internal id was provided; a raw PCC code is
+    // still written to the group row below, where it drives the per-booking
+    // BookingProfile (which is what actually pulls the Sabre profiles).
+    if (pccIn && /^\d+$/.test(pccIn)) {
       for (const f of ['flightBookingPccId','hotelBookingPccId','carBookingPccId','ticketingPccId','profilePccId','flightSearchPccId','hotelSearchPccId','carSearchPccId','travelerProfilePccId','travelerProfileReadPccId']) {
-        branchBody[0][f] = pccVal;
+        branchBody[0][f] = Number(pccIn);
       }
     }
     // Two account-level Sabre profiles (Vera 2026-07-08): the COMPANY profile ID and
