@@ -51,7 +51,10 @@ FIELD_ALIASES = {
                             'Reservation Number', 'PNR', 'Itinerary Number',
                             'Registration Code', 'Registration ID', 'Registration Number',
                             'Order Number', 'Order #', 'Conference Code'],
-    'group_id':            ['Kensington Group ID', 'KCG Group ID', 'Group ID', 'GROUP ID'],
+    # CVENT emails carry the Kensington group id as "Event ID:" (or "Group ID:")
+    # pasted at the very top of the email; Swoogo uses "Kensington Group ID:".
+    'group_id':            ['Kensington Group ID', 'KCG Group ID', 'Group ID', 'GROUP ID',
+                            'Event ID', 'EVENT ID'],
     'event_title':         ['Event Title', 'Event Name', 'Meeting Name', 'Tour Name', 'Trip Name',
                             'Package Name', 'Itinerary Name', 'Conference Name', 'Trip Title',
                             'Group Name', 'Program Name'],
@@ -104,11 +107,12 @@ FIELD_ALIASES = {
     'airline_preference_3':['Airline Preference 3', 'Preferred Airline 3', 'Airline 3',
                             'Carrier Preference 3', 'Preferred Carrier 3'],
     'frequent_flyer_number_1':['Rewards Number 1', 'Frequent Flyer 1', 'FF Number 1',
-                            'Loyalty Number 1', 'Mileage Number 1', 'FF#1', 'Frequent Flyer Number'],
+                            'Loyalty Number 1', 'Loyalty Program Number 1', 'Loyalty Program 1',
+                            'Mileage Number 1', 'FF#1', 'Frequent Flyer Number'],
     'frequent_flyer_number_2':['Rewards Number 2', 'Frequent Flyer 2', 'FF Number 2',
-                            'Loyalty Number 2', 'FF#2'],
+                            'Loyalty Number 2', 'Loyalty Program Number 2', 'Loyalty Program 2', 'FF#2'],
     'frequent_flyer_number_3':['Rewards Number 3', 'Frequent Flyer 3', 'FF Number 3',
-                            'Loyalty Number 3', 'FF#3'],
+                            'Loyalty Number 3', 'Loyalty Program Number 3', 'Loyalty Program 3', 'FF#3'],
 }
 
 SECTION_ALIASES = {
@@ -471,6 +475,20 @@ def _capture_value_from(text):
     return _collect_multiline_value(next_line, rest_after)
 
 
+def _strip_trailing_empty_labels(value):
+    """Strip trailing 'Label:' chains with no value glued onto a captured field.
+
+    CVENT added Designation / Source ID rows to the contact table; when empty,
+    the HTML->text flattening glues them to the previous value, producing e.g.
+    last_name = 'Guenat Designation: Source ID:'. Repeatedly trim a trailing
+    '<Word[ Word]>:' with nothing after it."""
+    prev = None
+    while prev != value:
+        prev = value
+        value = re.sub(r'\s*[A-Za-z][A-Za-z .#/]{0,30}:\s*$', '', value).strip()
+    return value
+
+
 def extract_field(section_text, field_key, exclude_prefixes=None):
     aliases = FIELD_ALIASES[field_key]
     for alias in aliases:
@@ -484,7 +502,8 @@ def extract_field(section_text, field_key, exclude_prefixes=None):
             continue
         rest = section_text[match.end():]
         value = _capture_value_from(rest)
-        if not is_junk(value) and not has_signature_text(value):
+        value = _strip_trailing_empty_labels(value)
+        if value and not is_junk(value) and not has_signature_text(value):
             return value
     return ''
 
@@ -682,6 +701,23 @@ def parse_email(html_email_body, email_subject=''):
     extract_emails_fallback(text, output)
     extract_name_fallback(text, output)
 
+    # ── Guest bookings: the traveller's name wins ────────────────────────────
+    # The Contact Information block is the BOOKER; Request Details' "Full Name"
+    # is the person actually travelling (e.g. Kristy Ward booking for guest
+    # Mary Stevens). When first+last clearly differ, use the Full Name as the
+    # traveller's first/middle/last so the master row names the right person.
+    _fn = (output.get('full_name') or '').strip()
+    _fn_parts = _fn.split()
+    if len(_fn_parts) >= 2:
+        _c_first = (output.get('first_name') or '').strip().lower()
+        _c_last = (output.get('last_name') or '').strip().lower()
+        _g_first, _g_last = _fn_parts[0].lower(), _fn_parts[-1].lower()
+        if (_c_first or _c_last) and _g_first != _c_first and _g_last != _c_last:
+            output['first_name'] = _fn_parts[0]
+            output['last_name'] = _fn_parts[-1]
+            if len(_fn_parts) >= 3:
+                output['middle_name'] = ' '.join(_fn_parts[1:-1])
+
     # ── Group ID sanitization ───────────────────────────────────────────────────
     # Group IDs are compact alphanumeric codes (e.g. "1OEGLOASEP26"). If the
     # extractor bled into adjacent text (e.g. "1OEGLOASEP26 Registrant Type: Veteran"),
@@ -867,7 +903,7 @@ MASTER_COLUMN_MAP = {
     # column was removed from the master sheet, so writing it returns
     # INVALID_COLUMN_ID 1036 and rejects the whole row. First/Middle/Last
     # cover the name; full_name is not needed on the master.
-    'known_traveller_number':   8259788067868548,   # "Known Traveller Number" column
+    'known_traveller_number':   652472233529220,    # "Global Entry Number" (consolidated; the old "Known Traveller Number" col 8259788067868548 was deleted)
     'redress_number':           3756188440498052,    # "Redress Number" column (separate from KTN)
     'departure_time':           6797642721169284,   # "Departure Date" column (holds the date)
     'departure_time_pref':      2117685625524100,   # "Departure Time" column (time-of-day window)
@@ -1027,7 +1063,10 @@ def _live_column_ids(token, sheet_id):
     )
     try:
         data = json.loads(urlopen(req).read().decode())
-        ids = {c['id'] for c in data.get('columns', [])}
+        # Exclude column-formula columns too: writing to one rejects the whole
+        # row just like a dead id (e.g. the CVENT sheet's Group ID column while
+        # it still carried the =[Event Code]@row formula).
+        ids = {c['id'] for c in data.get('columns', []) if not c.get('formula')}
         _LIVE_COLS_CACHE[key] = ids
         return ids
     except Exception:
