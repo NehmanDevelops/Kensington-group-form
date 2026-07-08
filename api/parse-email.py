@@ -1006,6 +1006,35 @@ def _consolidate_master_cells(cells):
     return out
 
 
+_LIVE_COLS_CACHE = {}
+
+
+def _live_column_ids(token, sheet_id):
+    """Column ids that actually exist on the sheet right now (cached per run).
+
+    Agents delete/recreate master columns, and ONE stale id in the map rejects
+    the ENTIRE row (INVALID_COLUMN_ID 1036). This bit us 2026-07-08: 16 dead
+    master ids meant every CVENT traveller silently never reached the master.
+    Filtering cells to live ids makes writes self-healing — a deleted column
+    costs that one field, never the whole row. Returns None on lookup failure
+    (caller then writes unfiltered, same as before)."""
+    key = str(sheet_id)
+    if key in _LIVE_COLS_CACHE:
+        return _LIVE_COLS_CACHE[key]
+    req = Request(
+        f'https://api.smartsheet.com/2.0/sheets/{sheet_id}?pageSize=1',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    try:
+        data = json.loads(urlopen(req).read().decode())
+        ids = {c['id'] for c in data.get('columns', [])}
+        _LIVE_COLS_CACHE[key] = ids
+        return ids
+    except Exception:
+        _LIVE_COLS_CACHE[key] = None
+        return None
+
+
 def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     cells = []
     for field, col_id in column_map.items():
@@ -1018,6 +1047,9 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
         cells.extend(extra_cells)
     if str(sheet_id) == str(MASTER_SHEET_ID):
         cells = _consolidate_master_cells(cells)
+    live = _live_column_ids(token, sheet_id)
+    if live is not None:
+        cells = [c for c in cells if c['columnId'] in live]
     if not cells:
         return 'skipped — no data'
     # Append new rows at the BOTTOM, not the top. Inserting at top shifts every
@@ -1216,6 +1248,9 @@ def _update_row(token, sheet_id, row_id, column_map, parsed, extra_cells=None):
         cells.extend(extra_cells)
     if str(sheet_id) == str(MASTER_SHEET_ID):
         cells = _consolidate_master_cells(cells)
+    live = _live_column_ids(token, sheet_id)
+    if live is not None:
+        cells = [c for c in cells if c['columnId'] in live]
     if not cells:
         return 'skipped — no data'
     payload = json.dumps([{'id': row_id, 'cells': cells}]).encode()

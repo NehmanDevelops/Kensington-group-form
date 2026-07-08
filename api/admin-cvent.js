@@ -111,8 +111,16 @@ export default async function handler(req, res) {
     }
 
     if (action === 'backfill') {
-      if (!missing.length) return res.status(200).json({ action, created: 0, note: 'nothing missing' });
-      const newRows = missing.map(m => {
+      // Dedupe within the missing set (the CVENT sheet itself can hold dupes).
+      const seenK = new Set();
+      const unique = missing.filter(m => {
+        const k = (m.email || m.name).toLowerCase();
+        if (seenK.has(k)) return false;
+        seenK.add(k);
+        return true;
+      });
+      if (!unique.length) return res.status(200).json({ action, created: 0, note: 'nothing missing' });
+      const newRows = unique.map(m => {
         const cells = [];
         for (const [field, mCol] of Object.entries(MASTER_MAP)) {
           if (!masterColIds.has(mCol)) continue;             // skip dead columns
@@ -131,7 +139,7 @@ export default async function handler(req, res) {
         const r = await ss(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify(batch) });
         if (r.message === 'SUCCESS') created += batch.length; else errors.push(r);
       }
-      return res.status(200).json({ action, created, of: missing.length, errors: errors.slice(0, 2) });
+      return res.status(200).json({ action, created, of: unique.length, dupesSkipped: missing.length - unique.length, errors: errors.slice(0, 2) });
     }
 
     return res.status(400).json({ error: 'unknown action' });
