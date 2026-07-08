@@ -73,7 +73,56 @@ export default async function handler(req, res) {
     return out;
   };
 
+  // ── Status self-heal (Vera 2026-07-08) ────────────────────────────────────
+  // The GROUPS dashboard report only shows rows that have a Status; manually
+  // added groups arrive with a blank one and silently vanish from the widget.
+  // Fix: any master row with a GROUP ID but no Status gets 'New'. Runs (a)
+  // instantly via a Smartsheet webhook on the master (register once with
+  // ?registerHook=1), (b) on the daily cron, (c) on any manual run.
+  async function backfillStatus() {
+    const master = await api(`/sheets/${MASTER_SHEET}`);
+    if (master.error || !master.columns) return { backfillError: 'could not read master' };
+    const M = resolve(master, MASTER_TITLES);
+    if (!M.groupId || !M.status) return { backfillError: 'missing GROUP ID / Status column' };
+    const fixes = (master.rows || [])
+      .filter(r => norm(cellVal(r, M.groupId)) && !norm(cellVal(r, M.status)))
+      .map(r => ({ id: r.id, cells: [{ columnId: M.status, value: 'New' }] }));
+    if (fixes.length) await api(`/sheets/${MASTER_SHEET}/rows`, { method: 'PUT', body: JSON.stringify(fixes) });
+    return { statusBackfilled: fixes.length };
+  }
+
+  // Smartsheet webhook verification challenge — echo it.
+  const hookChallenge = req.headers['smartsheet-hook-challenge'];
+  if (hookChallenge) {
+    res.setHeader('Smartsheet-Hook-Response', hookChallenge);
+    return res.status(200).json({ smartsheetHookResponse: hookChallenge });
+  }
+
+  // Smartsheet webhook change event on the master → self-heal right now.
+  // (The backfill's own PUT re-fires the webhook once; the second pass finds
+  // nothing blank and writes nothing, so it converges immediately.)
+  const pbody = typeof req.body === 'string' ? (() => { try { return JSON.parse(req.body); } catch { return {}; } })() : (req.body || {});
+  if (req.method === 'POST' && Array.isArray(pbody.events)) {
+    const out = await backfillStatus();
+    return res.status(200).json({ ok: true, ...out });
+  }
+
+  // One-time self-registration of that webhook: GET ?registerHook=1
+  if (req.query?.registerHook === '1') {
+    const hooks = await api(`/webhooks?includeAll=true`);
+    let hook = (hooks.data || []).find(h => String(h.scopeObjectId) === MASTER_SHEET && (h.callbackUrl || '').includes('/api/reconcile-groups'));
+    if (!hook) {
+      const cr = await api(`/webhooks`, { method: 'POST', body: JSON.stringify({ name: 'Groups status self-heal', callbackUrl: 'https://kensington-group-form.vercel.app/api/reconcile-groups', scope: 'sheet', scopeObjectId: Number(MASTER_SHEET), events: ['*.*'], version: 1 }) });
+      hook = cr.result;
+      if (!hook) return res.status(502).json({ error: 'webhook create failed', detail: cr });
+    }
+    const en = hook.enabled ? { result: hook } : await api(`/webhooks/${hook.id}`, { method: 'PUT', body: JSON.stringify({ enabled: true }) });
+    const bf = await backfillStatus();
+    return res.status(200).json({ ok: true, webhook: { id: hook.id, enabled: en.result?.enabled ?? hook.enabled, status: en.result?.status ?? hook.status }, ...bf });
+  }
+
   try {
+    const heal = await backfillStatus();
     const [intake, master] = await Promise.all([api(`/sheets/${INTAKE_SHEET}`), api(`/sheets/${MASTER_SHEET}`)]);
     if (intake.error || !intake.columns) return res.status(502).json({ error: 'Could not read intake sheet', detail: intake });
     if (master.error || !master.columns) return res.status(502).json({ error: 'Could not read master sheet', detail: master });
@@ -113,6 +162,7 @@ export default async function handler(req, res) {
     if (!commit) {
       return res.status(200).json({
         dryRun: true,
+        ...heal,
         intakeRows: intake.rows.length,
         masterGroups: masterIds.size,
         missingFromMaster: missing.length,
@@ -123,7 +173,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (missing.length === 0) return res.status(200).json({ committed: true, created: 0, message: 'Master already has every intake group.' });
+    if (missing.length === 0) return res.status(200).json({ committed: true, created: 0, ...heal, message: 'Master already has every intake group.' });
 
     const newRows = missing.map(g => {
       const cells = [
