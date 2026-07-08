@@ -18,9 +18,13 @@ FIELD_ALIASES = {
                             'Client Last Name', 'Guest Last Name', 'Passenger Last Name',
                             'Attendee Last Name', 'Registrant Last Name', 'Traveler Last Name'],
     'full_name':           ['Full Name', 'Traveler Name', 'Passenger Name', 'Complete Name',
-                            'Guest Name', 'Client Name', 'Lead Passenger', 'Primary Traveler',
+                            'Client Name', 'Lead Passenger', 'Primary Traveler',
                             'Attendee Name', 'Registrant Name', 'Name as per Passport',
                             'Name as per passport', 'Passport Name', 'Legal Name', 'Name'],
+    # Dedicated guest-name field (Vera 2026-07-08): the accompanying guest on a
+    # registration. 'Guest Name' used to be a full_name alias — moved here.
+    'guest_name':          ['Guest Name', 'Guest Full Name', 'Companion Name',
+                            'Travel Partner Name', 'Plus One Name'],
     'email_address':       ['Email Address', 'E-mail Address', 'E-mail', 'E mail', 'Email ID',
                             'Contact Email', 'Primary Email', 'Attendee Email', 'Registrant Email',
                             'Traveler Email', 'Email'],
@@ -135,7 +139,7 @@ SECTION_FIELDS = {
     'contact': ['prefix', 'first_name', 'middle_name', 'last_name', 'email_address',
                 'cc_email_address', 'company', 'title', 'work_phone', 'home_phone',
                 'mobile_phone', 'passport_number', 'passport_nationality',
-                'passport_expiration_date', 'guest_email', 'guest_mobile_phone'],
+                'passport_expiration_date', 'guest_email', 'guest_mobile_phone', 'guest_name'],
     'event':   ['event_code', 'event_title', 'event_date', 'event_time', 'group_id'],
     'request': ['request_name', 'request_date', 'full_name', 'gender', 'date_of_birth',
                 'known_traveller_number', 'redress_number', 'age_category',
@@ -717,6 +721,9 @@ def parse_email(html_email_body, email_subject=''):
             output['last_name'] = _fn_parts[-1]
             if len(_fn_parts) >= 3:
                 output['middle_name'] = ' '.join(_fn_parts[1:-1])
+            # Surface the guest explicitly too (Vera's Guest Name column).
+            if not output.get('guest_name'):
+                output['guest_name'] = _fn
 
     # ── Group ID sanitization ───────────────────────────────────────────────────
     # Group IDs are compact alphanumeric codes (e.g. "1OEGLOASEP26"). If the
