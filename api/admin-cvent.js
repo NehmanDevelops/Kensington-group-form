@@ -49,6 +49,19 @@ const MASTER_MAP = {
 
 const norm = (s) => String(s == null ? '' : s).trim();
 
+// Master DATE-type columns (strict): values must be yyyy-mm-dd or the row is rejected.
+const DATE_COLS = new Set([659963696680836, 8541263044579204]);
+const toISO = (v) => {
+  const s = norm(v);
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) { const y = m[3].length === 2 ? '19' + m[3] : m[3]; return `${y}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`; }
+  const d = Date.parse(s);
+  if (!isNaN(d)) { const dt = new Date(d); return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`; }
+  return ''; // unparseable → drop the cell, keep the row
+};
+
 export default async function handler(req, res) {
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   const action = (req.query && req.query.action) || 'diag';
@@ -126,7 +139,8 @@ export default async function handler(req, res) {
           if (!masterColIds.has(mCol)) continue;             // skip dead columns
           const cCol = CVENT_MAP[field];
           if (!cCol) continue;
-          const v = norm(cell(m.row, cCol));
+          let v = norm(cell(m.row, cCol));
+          if (v !== '' && DATE_COLS.has(mCol)) v = toISO(v);
           if (v !== '') cells.push({ columnId: mCol, value: v });
         }
         if (m.groupId && masterColIds.has(MASTER_MAP.group_id)) cells.push({ columnId: MASTER_MAP.group_id, value: m.groupId });
