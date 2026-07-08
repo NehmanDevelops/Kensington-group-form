@@ -117,8 +117,13 @@ export default async function handler(req, res) {
         branchBody[0][f] = pccVal;
       }
     }
-    const sabreIn = norm(body.sabreProfileId);
-    if (sabreIn) branchBody[0].gdsProfileIDNumber = sabreIn;
+    // Two account-level Sabre profiles (Vera 2026-07-08): the COMPANY profile ID and
+    // the GROUP profile ID. body.sabreProfileId kept as a back-compat alias for the
+    // group one. The branch-level gdsProfileIDNumber gets the company profile
+    // (falls back to group). Individual traveller profiles are pulled by email.
+    const companyIn = norm(body.companyProfileId);
+    const groupProfIn = norm(body.groupProfileId) || norm(body.sabreProfileId);
+    if (companyIn || groupProfIn) branchBody[0].gdsProfileIDNumber = companyIn || groupProfIn;
     const ZERO_GUID = '00000000-0000-0000-0000-000000000000';
     // Try the clean name first. Amgine returns a zero-GUID when it rejects the
     // branch — most often a bad Province/State or Country code, OR a duplicate
@@ -186,6 +191,7 @@ export default async function handler(req, res) {
 
     // 4) Write GUIDs onto the group row (if a groupId was supplied)
     let wroteToGroup = false;
+    const missingColumns = [];
     const groupId = norm(body.groupId);
     if (groupId) {
       const TOKEN = process.env.SMARTSHEET_API_TOKEN;
@@ -212,18 +218,23 @@ export default async function handler(req, res) {
         if (colId('amgine branch guid')) cells.push({ columnId: colId('amgine branch guid'), value: branchGuid });
         if (colId('amgine policy guid')) cells.push({ columnId: colId('amgine policy guid'), value: policyGroupGuid });
         if (colId('amgine onboarded')) cells.push({ columnId: colId('amgine onboarded'), value: true });
-        // Sabre linkage (Vera 2026-07-08): also write the PCC + company (corporate)
-        // Sabre profile ID onto the group row — these drive the per-booking Corporate
-        // BookingProfile in amgine.js. Providing both on the form = opting the group
-        // into profiled travellers, so tick that flag too.
-        if (pccIn && colId('pcc')) cells.push({ columnId: colId('pcc'), value: pccIn });
-        if (sabreIn && colId('sabre profile id')) cells.push({ columnId: colId('sabre profile id'), value: sabreIn });
-        if (pccIn && sabreIn && colId('profiled travellers')) cells.push({ columnId: colId('profiled travellers'), value: true });
+        // Sabre linkage (Vera 2026-07-08): write the PCC + COMPANY profile ID + GROUP
+        // profile ID onto the group row — these drive the per-booking Corporate
+        // BookingProfiles in amgine.js. Providing PCC + a profile on the form = opting
+        // the group into profiled travellers, so tick that flag too. Columns that
+        // don't exist yet are reported back instead of silently skipped.
+        if (pccIn) { if (colId('pcc')) cells.push({ columnId: colId('pcc'), value: pccIn }); else missingColumns.push('PCC'); }
+        if (companyIn) { if (colId('company profile id')) cells.push({ columnId: colId('company profile id'), value: companyIn }); else missingColumns.push('Company Profile ID'); }
+        if (groupProfIn) {
+          const gpCol = colId('group profile id') || colId('sabre profile id');
+          if (gpCol) cells.push({ columnId: gpCol, value: groupProfIn }); else missingColumns.push('Group Profile ID');
+        }
+        if (pccIn && (companyIn || groupProfIn) && colId('profiled travellers')) cells.push({ columnId: colId('profiled travellers'), value: true });
         if (cells.length) { await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: gRow.id, cells }]) }); wroteToGroup = true; }
       }
     }
 
-    return res.status(200).json({ ok: true, branchName: finalName, branchGuid, policyGuid, policyGroupGuid, wroteToGroup });
+    return res.status(200).json({ ok: true, branchName: finalName, branchGuid, policyGuid, policyGroupGuid, wroteToGroup, ...(missingColumns.length ? { missingColumns } : {}) });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

@@ -199,14 +199,22 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const directToTraveller = truthy(G.val(grow, 'Direct to traveller'));
   const flow = { DirectToAgent: true, BypassAgent: directToTraveller };
 
-  // GDS booking profile (manager's Sabre columns). When a group is flagged "Profiled
-  // Travellers" AND has a Sabre Profile ID + PCC, pass a BookingProfile so Amgine
-  // pulls that GDS profile into the PNR. Sabre wants the profile ID (not the name).
-  // Group profiles are shared / account-level, so GdsProfileType is "Corporate"
-  // (manager's call, 2026-07-07). Profile is optional — no checkbox/ID/PCC = book as guest.
-  const bookingProfile = (truthy(G.val(grow, 'Profiled Travellers')) && norm(G.val(grow, 'Sabre Profile ID')) && norm(G.val(grow, 'PCC')))
-    ? [{ Pcc: norm(G.val(grow, 'PCC')), GdsProfileId: norm(G.val(grow, 'Sabre Profile ID')), GdsProfileType: 'Corporate' }]
-    : null;
+  // GDS booking profiles (Vera 2026-07-08): a booking pulls TWO account-level Sabre
+  // profiles — the COMPANY profile ID and the GROUP profile ID — plus the PCC.
+  // (Individual traveller profiles are pulled by the traveller's email, which we
+  // already send in GuestSettings.) Both are shared/account-level, so
+  // GdsProfileType is "Corporate" (manager's call, 2026-07-07). Profiles are
+  // optional — no checkbox/IDs/PCC = book as guest.
+  const groupPcc = norm(G.val(grow, 'PCC'));
+  const companyProfileId = norm(G.val(grow, 'Company Profile ID'));
+  const groupProfileId = norm(G.val(grow, 'Group Profile ID')) || norm(G.val(grow, 'Sabre Profile ID'));
+  let bookingProfile = null;
+  if (truthy(G.val(grow, 'Profiled Travellers')) && groupPcc) {
+    const profs = [];
+    if (companyProfileId) profs.push({ Pcc: groupPcc, GdsProfileId: companyProfileId, GdsProfileType: 'Corporate' });
+    if (groupProfileId) profs.push({ Pcc: groupPcc, GdsProfileId: groupProfileId, GdsProfileType: 'Corporate' });
+    if (profs.length) bookingProfile = profs;
+  }
 
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
   const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);

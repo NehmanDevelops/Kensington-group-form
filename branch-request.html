@@ -123,9 +123,14 @@
             <input type="text" id="pcc" name="pcc" class="field-input" placeholder="e.g. AB1C" />
           </div>
           <div class="field">
-            <label class="field-label" for="sabreProfileId">Company Profile ID (Sabre)</label>
-            <div class="field-sub">The group/corporate Sabre profile — pulled on every booking. Individual traveller profiles are pulled by their email.</div>
-            <input type="text" id="sabreProfileId" name="sabreProfileId" class="field-input" placeholder="e.g. 930396495" />
+            <label class="field-label" for="companyProfileId">Company Profile ID</label>
+            <div class="field-sub">The company-level Sabre profile — pulled on every booking.</div>
+            <input type="text" id="companyProfileId" name="companyProfileId" class="field-input" placeholder="e.g. 930396495" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="groupProfileId">Group Profile ID</label>
+            <div class="field-sub">The group-level Sabre profile — also pulled on every booking. Individual traveller profiles are pulled by their email.</div>
+            <input type="text" id="groupProfileId" name="groupProfileId" class="field-input" />
           </div>
         </div>
       </section>
@@ -243,7 +248,7 @@
         preferredAirlines: g('prefAirlines'), excludeAirlines: g('exclAirlines'),
         preferredAirports: g('prefAirports'), hotelKeywords: g('hotelKeywords'),
         carVendors: g('carVendors'),
-        pcc: g('pcc'), sabreProfileId: g('sabreProfileId'),
+        pcc: g('pcc'), companyProfileId: g('companyProfileId'), groupProfileId: g('groupProfileId'),
         cabinClasses: cabins, policyNotes: g('policyNotes'), offerings: g('offerings'),
         requestedBy: g('requestedBy'), fareBasis: g('fareBasis'),
       };
@@ -262,7 +267,10 @@
           'Branch <strong>'+ (res.j.branchName||g('clientName')) +'</strong> was created in Amgine.'
           + (res.j.wroteToGroup
               ? ' The Branch &amp; Policy GUIDs were written to group <strong>'+g('groupIds')+'</strong> automatically — bookings can start now.'
-              : '<br><br>No matching group row was found to auto-fill, so paste these into the group manually:<br>Branch GUID: <strong>'+res.j.branchGuid+'</strong><br>Policy GUID: <strong>'+res.j.policyGroupGuid+'</strong>');
+              : '<br><br>No matching group row was found to auto-fill, so paste these into the group manually:<br>Branch GUID: <strong>'+res.j.branchGuid+'</strong><br>Policy GUID: <strong>'+res.j.policyGroupGuid+'</strong>')
+          + (res.j.missingColumns && res.j.missingColumns.length
+              ? '<br><br>⚠ These columns are missing on LIVE GROUP MASTERSHEET, so their values were NOT saved: <strong>'+res.j.missingColumns.join(', ')+'</strong>. Add the column(s), then re-enter the values on the group row.'
+              : '');
         form.style.display='none'; s.style.display='block';
         window.scrollTo({top:0,behavior:'smooth'});
       }).catch(function(err){
