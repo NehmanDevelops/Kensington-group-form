@@ -212,6 +212,13 @@ export default async function handler(req, res) {
         if (colId('amgine branch guid')) cells.push({ columnId: colId('amgine branch guid'), value: branchGuid });
         if (colId('amgine policy guid')) cells.push({ columnId: colId('amgine policy guid'), value: policyGroupGuid });
         if (colId('amgine onboarded')) cells.push({ columnId: colId('amgine onboarded'), value: true });
+        // Sabre linkage (Vera 2026-07-08): also write the PCC + company (corporate)
+        // Sabre profile ID onto the group row — these drive the per-booking Corporate
+        // BookingProfile in amgine.js. Providing both on the form = opting the group
+        // into profiled travellers, so tick that flag too.
+        if (pccIn && colId('pcc')) cells.push({ columnId: colId('pcc'), value: pccIn });
+        if (sabreIn && colId('sabre profile id')) cells.push({ columnId: colId('sabre profile id'), value: sabreIn });
+        if (pccIn && sabreIn && colId('profiled travellers')) cells.push({ columnId: colId('profiled travellers'), value: true });
         if (cells.length) { await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: gRow.id, cells }]) }); wroteToGroup = true; }
       }
     }
