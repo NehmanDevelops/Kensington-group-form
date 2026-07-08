@@ -79,6 +79,20 @@ export default async function handler(req, res) {
       return res.status(200).json(out);
     }
 
+    if (action === 'peek') {
+      const [cvent, master] = await Promise.all([ss(`/sheets/${CVENT}`), ss(`/sheets/${MASTER}`)]);
+      const gcol = (cvent.columns || []).find(c => c.title.trim().toLowerCase() === 'group id');
+      const cventPeek = (cvent.rows || []).slice(-8).map(r => ({
+        gid: norm(cell(r, gcol.id)), ec: norm(cell(r, CVENT_MAP.event_code)),
+        name: norm(cell(r, CVENT_MAP.first_name)) + ' ' + norm(cell(r, CVENT_MAP.last_name)),
+      }));
+      const masterPeek = (master.rows || []).filter(r => norm(cell(r, SOURCE_COL)) === 'CVENT').slice(-8).map(r => ({
+        gid: norm(cell(r, MASTER_MAP.group_id)), ec: norm(cell(r, MASTER_MAP.event_code)),
+        name: norm(cell(r, MASTER_MAP.first_name)) + ' ' + norm(cell(r, MASTER_MAP.last_name)),
+      }));
+      return res.status(200).json({ cventGroupColId: gcol && gcol.id, cventPeek, masterPeek });
+    }
+
     if (action === 'groupfill') {
       const out = {};
       // Master: blank Group ID + known event code -> fill
