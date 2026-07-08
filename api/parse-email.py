@@ -830,6 +830,7 @@ CVENT_COLUMN_MAP = {
     # The parser reads it from the email's "Event ID:" / "Group ID:" /
     # "Kensington Group ID:" line.
     'group_id':                 6407673733222276,
+    'guest_name':               4101406047113092,   # "Guest Name" (added 2026-07-08, after Last Name)
     'prefix':                   991891301896068,
     'first_name':               5495490929266564,
     'middle_name':              3243691115581316,
