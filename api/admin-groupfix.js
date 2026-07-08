@@ -83,10 +83,13 @@ export default async function handler(req, res) {
       const out = {};
       // Master: blank Group ID + known event code -> fill
       const master = await ss(`/sheets/${MASTER}`);
+      // Fillable = blank OR still echoing the event code (artifact of the old
+      // =[Event Code]@row column formula on the CVENT sheet).
+      const fillable = (gid, ec) => !gid || gid.toUpperCase() === ec;
       const mFixes = (master.rows || []).filter(r => {
         const gid = norm(cell(r, MASTER_MAP.group_id));
         const ec = norm(cell(r, MASTER_MAP.event_code)).toUpperCase();
-        return !gid && EVENT_TO_GROUP[ec];
+        return EVENT_TO_GROUP[ec] && fillable(gid, ec);
       }).map(r => ({ id: r.id, cells: [{ columnId: MASTER_MAP.group_id, value: EVENT_TO_GROUP[norm(cell(r, MASTER_MAP.event_code)).toUpperCase()] }] }));
       if (mFixes.length) await ss(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify(mFixes) });
       out.masterFilled = mFixes.length;
@@ -97,7 +100,7 @@ export default async function handler(req, res) {
         const cFixes = (cvent.rows || []).filter(r => {
           const gid = norm(cell(r, gcol.id));
           const ec = norm(cell(r, CVENT_MAP.event_code)).toUpperCase();
-          return !gid && EVENT_TO_GROUP[ec];
+          return EVENT_TO_GROUP[ec] && fillable(gid, ec);
         }).map(r => ({ id: r.id, cells: [{ columnId: gcol.id, value: EVENT_TO_GROUP[norm(cell(r, CVENT_MAP.event_code)).toUpperCase()] }] }));
         if (cFixes.length) await ss(`/sheets/${CVENT}/rows`, { method: 'PUT', body: JSON.stringify(cFixes) });
         out.cventFilled = cFixes.length;
