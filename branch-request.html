@@ -112,6 +112,24 @@
         </div>
       </section>
 
+      <!-- 2b. SABRE / GDS -->
+      <section class="section">
+        <div class="section-header"><span class="section-num">II&frac12;.</span><h2 class="section-title">Sabre / GDS</h2><span class="section-tag">Booking &amp; profiles</span></div>
+        <div class="section-desc">The PCC and Sabre profile this client's bookings and profiles run under. Set at branch creation.</div>
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="pcc">PCC</label>
+            <div class="field-sub">The Sabre PCC for this client's bookings, searches &amp; ticketing.</div>
+            <input type="text" id="pcc" name="pcc" class="field-input" placeholder="e.g. AB1C" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="sabreProfileId">Sabre Profile ID</label>
+            <div class="field-sub">The GDS profile ID number for traveller profiles.</div>
+            <input type="text" id="sabreProfileId" name="sabreProfileId" class="field-input" />
+          </div>
+        </div>
+      </section>
+
       <!-- 3. POLICY -->
       <section class="section">
         <div class="section-header"><span class="section-num">III.</span><h2 class="section-title">Travel Policy</h2><span class="section-tag">Rules</span></div>
@@ -225,6 +243,7 @@
         preferredAirlines: g('prefAirlines'), excludeAirlines: g('exclAirlines'),
         preferredAirports: g('prefAirports'), hotelKeywords: g('hotelKeywords'),
         carVendors: g('carVendors'),
+        pcc: g('pcc'), sabreProfileId: g('sabreProfileId'),
         cabinClasses: cabins, policyNotes: g('policyNotes'), offerings: g('offerings'),
         requestedBy: g('requestedBy'), fareBasis: g('fareBasis'),
       };
