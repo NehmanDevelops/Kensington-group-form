@@ -912,12 +912,12 @@ MASTER_COLUMN_MAP = {
     'redress_number':           3756188440498052,    # "Redress Number" column (separate from KTN)
     'departure_time':           6797642721169284,   # "Departure Date" column (holds the date)
     'departure_time_pref':      2117685625524100,   # "Departure Time" column (time-of-day window)
-    'departure_trip':           1168143186956164,
+    'departure_trip':           4882088347340676,   # "Departure City" (old "Departure Trip" col 1168143186956164 was deleted)
     'return_time':              5671742814326660,    # "Return Date" column (holds the date)
     'return_time_pref':         5554005685342084,    # "Return Time" column (time-of-day window)
     'return_trip':              3419943000641412,
     'ticket_type':              7923542628011908,
-    'seating':                  605193233534852,
+    'seating':                  2630288533655428,   # "Seat Preference" (old "Seating" col 605193233534852 was deleted)
     'food_preferences':         2856993047220100,
     'special_requests':         7360592674590596,
     'reservation_status':       1731093140377476,
