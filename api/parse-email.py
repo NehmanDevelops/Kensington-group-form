@@ -25,6 +25,8 @@ FIELD_ALIASES = {
     # registration. 'Guest Name' used to be a full_name alias — moved here.
     'guest_name':          ['Guest Name', 'Guest Full Name', 'Companion Name',
                             'Travel Partner Name', 'Plus One Name'],
+    'guest_dob':           ['Guest DOB', 'Guest Date of Birth', 'Companion DOB',
+                            'Companion Date of Birth', 'Plus One DOB'],
     'email_address':       ['Email Address', 'E-mail Address', 'E-mail', 'E mail', 'Email ID',
                             'Contact Email', 'Primary Email', 'Attendee Email', 'Registrant Email',
                             'Traveler Email', 'Email'],
@@ -139,7 +141,8 @@ SECTION_FIELDS = {
     'contact': ['prefix', 'first_name', 'middle_name', 'last_name', 'email_address',
                 'cc_email_address', 'company', 'title', 'work_phone', 'home_phone',
                 'mobile_phone', 'passport_number', 'passport_nationality',
-                'passport_expiration_date', 'guest_email', 'guest_mobile_phone', 'guest_name'],
+                'passport_expiration_date', 'guest_email', 'guest_mobile_phone',
+                'guest_name', 'guest_dob'],
     'event':   ['event_code', 'event_title', 'event_date', 'event_time', 'group_id'],
     'request': ['request_name', 'request_date', 'full_name', 'gender', 'date_of_birth',
                 'known_traveller_number', 'redress_number', 'age_category',
@@ -831,6 +834,7 @@ CVENT_COLUMN_MAP = {
     # "Kensington Group ID:" line.
     'group_id':                 6407673733222276,
     'guest_name':               4101406047113092,   # "Guest Name" (added 2026-07-08, after Last Name)
+    'guest_dob':                4622526106079108,   # "Guest DOB" (added 2026-07-08, after Guest Name)
     'prefix':                   991891301896068,
     'first_name':               5495490929266564,
     'middle_name':              3243691115581316,
@@ -905,6 +909,8 @@ MASTER_COLUMN_MAP = {
     'passport_nationality':     6129139651481476,
     'guest_email':              5566189698060164,
     'guest_mobile_phone':       3314389884374916,
+    'guest_name':               800007628558212,    # "Guest Name" (Vera, 2026-07-08)
+    'guest_dob':                5303607255928708,   # "Guest DOB" (Vera, 2026-07-08)
     'event_code':               7817989511745412,
     'event_title':              2188489977532292,
     'event_date':               6692089604902788,
