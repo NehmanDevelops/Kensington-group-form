@@ -12,21 +12,29 @@ export default async function handler(req, res) {
 
   try {
     const out = {};
+    // Ensure Guest Name + Guest DOB columns on the CVENT parser sheet.
     const cvent = await ss(`/sheets/${CVENT}?pageSize=1`);
-    const existing = (cvent.columns || []).find(c => c.title.trim().toLowerCase() === 'guest name');
-    if (existing) {
-      out.cventGuestCol = existing.id;
-      out.note = 'already existed';
-    } else {
-      const lastName = (cvent.columns || []).find(c => c.title.trim().toLowerCase() === 'last name');
-      const idx = lastName ? lastName.index + 1 : (cvent.columns || []).length;
-      const r = await ss(`/sheets/${CVENT}/columns`, { method: 'POST', body: JSON.stringify([{ title: 'Guest Name', type: 'TEXT_NUMBER', index: idx }]) });
-      out.cventGuestCol = r.result && r.result[0] && r.result[0].id;
-      if (!out.cventGuestCol) out.error = r;
+    const find = (cols, t) => (cols || []).find(c => c.title.trim().toLowerCase() === t);
+    let cols = cvent.columns || [];
+    for (const title of ['Guest Name', 'Guest DOB']) {
+      const key = title.toLowerCase();
+      let col = find(cols, key);
+      if (!col) {
+        const anchor = find(cols, key === 'guest dob' ? 'guest name' : 'last name');
+        const idx = anchor ? anchor.index + 1 : cols.length;
+        const r = await ss(`/sheets/${CVENT}/columns`, { method: 'POST', body: JSON.stringify([{ title, type: 'TEXT_NUMBER', index: idx }]) });
+        col = r.result && r.result[0];
+        const refreshed = await ss(`/sheets/${CVENT}?pageSize=1`);
+        cols = refreshed.columns || cols;
+      }
+      out['cvent_' + title.replace(' ', '_')] = col ? col.id : 'FAILED';
     }
+    // Report Vera's master column ids + types (type matters for date handling).
     const master = await ss(`/sheets/${MASTER}?pageSize=1`);
-    const mCol = (master.columns || []).find(c => c.title.trim().toLowerCase() === 'guest name');
-    out.masterGuestCol = mCol ? mCol.id : 'not added yet (Vera to add)';
+    for (const title of ['Guest Name', 'Guest DOB']) {
+      const c = find(master.columns, title.toLowerCase());
+      out['master_' + title.replace(' ', '_')] = c ? { id: c.id, type: c.type } : 'not found';
+    }
     return res.status(200).json(out);
   } catch (err) {
     return res.status(500).json({ error: err.message });
