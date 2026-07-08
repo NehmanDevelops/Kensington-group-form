@@ -818,6 +818,11 @@ def parse_email(html_email_body, email_subject=''):
 
 CVENT_SHEET_ID = '1658234917048196'
 CVENT_COLUMN_MAP = {
+    # Group ID is the FIRST column on the CVENT sheet (2026-07-08: its old
+    # =[Event Code]@row column formula was cleared, so it's writable now).
+    # The parser reads it from the email's "Event ID:" / "Group ID:" /
+    # "Kensington Group ID:" line.
+    'group_id':                 6407673733222276,
     'prefix':                   991891301896068,
     'first_name':               5495490929266564,
     'middle_name':              3243691115581316,

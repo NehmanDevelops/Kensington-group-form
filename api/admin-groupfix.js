@@ -125,17 +125,44 @@ export default async function handler(req, res) {
       return res.status(200).json(out);
     }
 
+    if (action === 'cventfill') {
+      // Fill blank CVENT Group IDs from the master's (hand-filled) values,
+      // matched by email — skip travellers with multiple master rows (ambiguous).
+      const [cvent, master] = await Promise.all([ss(`/sheets/${CVENT}`), ss(`/sheets/${MASTER}`)]);
+      const gcol = (cvent.columns || []).find(c => c.title.trim().toLowerCase() === 'group id');
+      const byEmail = {};
+      for (const r of master.rows || []) {
+        const e = norm(cell(r, MASTER_MAP.email_address)).toLowerCase();
+        const gid = norm(cell(r, MASTER_MAP.group_id));
+        if (!e || !gid) continue;
+        if (!byEmail[e]) byEmail[e] = new Set();
+        byEmail[e].add(gid);
+      }
+      const fixes = [];
+      for (const r of cvent.rows || []) {
+        if (norm(cell(r, gcol.id))) continue;
+        const e = norm(cell(r, CVENT_MAP.email_address)).toLowerCase();
+        const gids = e && byEmail[e];
+        if (gids && gids.size === 1) fixes.push({ id: r.id, cells: [{ columnId: gcol.id, value: [...gids][0] }] });
+      }
+      if (fixes.length) await ss(`/sheets/${CVENT}/rows`, { method: 'PUT', body: JSON.stringify(fixes) });
+      return res.status(200).json({ action, cventFilled: fixes.length });
+    }
+
     if (action === 'rescue') {
       const [cvent, master] = await Promise.all([ss(`/sheets/${CVENT}`), ss(`/sheets/${MASTER}`)]);
       const masterColIds = new Set(master.columns.map(c => c.id));
-      const key = (email, ec) => (norm(email).toLowerCase() + '|' + norm(ec).toUpperCase());
-      const masterKeys = new Set((master.rows || []).map(r => key(cell(r, MASTER_MAP.email_address), cell(r, MASTER_MAP.event_code))));
+      // Event codes turned out to be empty on both sheets, so distinguish a
+      // traveller's multiple registrations by email + departure DATE instead
+      // (e.g. Angela Diaz: Napa 09/21 vs Boston 08/17 — two separate trips).
+      const depDate = (v) => { const m = norm(v).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})|(\d{4})-(\d{2})-(\d{2})/); return m ? m[0] : ''; };
+      const key = (email, dep) => (norm(email).toLowerCase() + '|' + depDate(dep));
+      const masterKeys = new Set((master.rows || []).map(r => key(cell(r, MASTER_MAP.email_address), cell(r, MASTER_MAP.departure_time))));
       const seen = new Set();
       const missing = (cvent.rows || []).filter(r => {
         const email = norm(cell(r, CVENT_MAP.email_address));
-        const ec = norm(cell(r, CVENT_MAP.event_code));
         if (!email) return false;
-        const k = key(email, ec);
+        const k = key(email, cell(r, CVENT_MAP.departure_time));
         if (masterKeys.has(k) || seen.has(k)) return false;
         seen.add(k);
         return true;
