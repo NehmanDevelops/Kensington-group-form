@@ -105,6 +105,20 @@ export default async function handler(req, res) {
       preferredFlightFareBasisCode: [''],
       preferredAirports: splitList(body.preferredAirports),
     }];
+    // Sabre/GDS linkage (per Amgine: provided at branch creation).
+    // pcc -> the branch's PCC applied to the booking/search/ticketing slots;
+    // sabreProfileId -> gdsProfileIDNumber. Numeric strings are sent as numbers
+    // (the *PccId fields look like internal ids); anything else is passed as-is
+    // so the API's echo/errorList can tell us what it wants.
+    const pccIn = norm(body.pcc);
+    if (pccIn) {
+      const pccVal = /^\d+$/.test(pccIn) ? Number(pccIn) : pccIn;
+      for (const f of ['flightBookingPccId','hotelBookingPccId','carBookingPccId','ticketingPccId','profilePccId','flightSearchPccId','hotelSearchPccId','carSearchPccId','travelerProfilePccId','travelerProfileReadPccId']) {
+        branchBody[0][f] = pccVal;
+      }
+    }
+    const sabreIn = norm(body.sabreProfileId);
+    if (sabreIn) branchBody[0].gdsProfileIDNumber = sabreIn;
     const ZERO_GUID = '00000000-0000-0000-0000-000000000000';
     // Try the clean name first. Amgine returns a zero-GUID when it rejects the
     // branch — most often a bad Province/State or Country code, OR a duplicate
