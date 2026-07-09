@@ -91,6 +91,42 @@ export default async function handler(req, res) {
     return { statusBackfilled: fixes.length };
   }
 
+  // ── Duplicate self-heal (2026-07-09) ──────────────────────────────────────
+  // A Smartsheet "Copy row" workflow (invisible to the automationrules API)
+  // copies rows back onto the master: manager types a group on the master →
+  // sync-groups mirrors it to the Agent sheet → the workflow copies it back →
+  // the master shows the group twice (seen with SY90CANOCT26YYC, created by
+  // automation@smartsheet.com 61s after the manual row). Until that workflow
+  // is deleted in the UI, this removes any master row whose GROUP ID
+  // duplicates an OLDER row, but only if the newer row was created by
+  // automation@smartsheet.com — manual rows are never touched.
+  async function dedupeMaster() {
+    const master = await api(`/sheets/${MASTER_SHEET}?include=writerInfo`);
+    if (master.error || !master.columns) return { dedupeError: 'could not read master' };
+    const M = resolve(master, MASTER_TITLES);
+    if (!M.groupId) return { dedupeError: 'missing GROUP ID column' };
+    const byGid = new Map();
+    for (const row of master.rows || []) {
+      const gid = norm(cellVal(row, M.groupId)).toLowerCase();
+      if (!gid) continue;
+      if (!byGid.has(gid)) byGid.set(gid, []);
+      byGid.get(gid).push(row);
+    }
+    const toDelete = [];
+    for (const [gid, rows] of byGid) {
+      if (rows.length < 2) continue;
+      rows.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      for (const row of rows.slice(1)) {
+        if (row.createdBy?.email !== 'automation@smartsheet.com') continue;
+        toDelete.push({ id: row.id, gid });
+      }
+    }
+    if (toDelete.length) {
+      await api(`/sheets/${MASTER_SHEET}/rows?ids=${toDelete.map(d => d.id).join(',')}`, { method: 'DELETE' });
+    }
+    return { duplicatesDeleted: toDelete.length, duplicateGids: toDelete.map(d => d.gid) };
+  }
+
   // Smartsheet webhook verification challenge — echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
   if (hookChallenge) {
@@ -104,7 +140,8 @@ export default async function handler(req, res) {
   const pbody = typeof req.body === 'string' ? (() => { try { return JSON.parse(req.body); } catch { return {}; } })() : (req.body || {});
   if (req.method === 'POST' && Array.isArray(pbody.events)) {
     const out = await backfillStatus();
-    return res.status(200).json({ ok: true, ...out });
+    const dd = await dedupeMaster();
+    return res.status(200).json({ ok: true, ...out, ...dd });
   }
 
   // One-time self-registration of that webhook: GET ?registerHook=1
@@ -123,6 +160,8 @@ export default async function handler(req, res) {
 
   try {
     const heal = await backfillStatus();
+    const dd = await dedupeMaster();
+    Object.assign(heal, dd);
     const [intake, master] = await Promise.all([api(`/sheets/${INTAKE_SHEET}`), api(`/sheets/${MASTER_SHEET}`)]);
     if (intake.error || !intake.columns) return res.status(502).json({ error: 'Could not read intake sheet', detail: intake });
     if (master.error || !master.columns) return res.status(502).json({ error: 'Could not read master sheet', detail: master });
