@@ -1,10 +1,11 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-07-07 — reliability hardening, instant Smartsheet webhook, per-group flags + Sabre profiles, branch=GroupID, dupe fix. See `CHANGELOG-2026-07-07.md` for the full write-up._
+_Last updated: 2026-07-09 — Policy Tool link solved (Raymond's groupGuid answer), master-dupe root fix, minimal branch form. See `CHANGELOG-2026-07-09.md` (and 07-07/07-08 work in `CHANGELOG-2026-07-07.md`)._
 
-**To read this on your work laptop:** `git pull` in the repo, open this file (and `CHANGELOG-2026-07-07.md` for the latest changes).
+**To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
-> **Open items (2026-07-07), both need Amgine:** (1) correct `policygroupguid` for the Policy Tool link; (2) how to control **Show Price**. Everything else this session is live.
+> **Current pipeline:** group row → branch form (once per group; success screen + group row get the **Policy Tool link**) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking → statuses flow back.
+> **Only item still parked with Amgine:** how to control **Show Price** (their side). Existing branches loanDepot/TESTING lack a working policy link (old wrong GUID) — re-onboard if needed.
 
 ---
 
