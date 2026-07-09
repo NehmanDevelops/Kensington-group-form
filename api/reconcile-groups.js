@@ -140,14 +140,32 @@ export default async function handler(req, res) {
       if (gid) { masterIds.add(gid.toLowerCase()); lastMasterRowId = row.id; }
     }
 
+    // Master rows mirrored by the form BEFORE the intake formula generated their
+    // Group ID: company filled, GROUP ID blank. Creating a fresh row for the
+    // "missing" Group ID would put the group on the master twice (mirror row +
+    // ours) — that was the doubling. Instead we ADOPT the blank mirror row:
+    // write the Group ID onto it rather than inserting a new row.
+    const blankRows = [];
+    for (const row of master.rows) {
+      if (norm(cellVal(row, M.groupId))) continue;
+      const co = norm(cellVal(row, M.company));
+      if (co) blankRows.push({ rowId: row.id, company: co.toLowerCase(), used: false });
+    }
+
     // Intake rows missing from the master
     const missing = [];
+    const adopt = [];
     const noGroupId = [];
+    const batchSeen = new Set();   // within-batch guard: same gid twice in intake
     for (const row of intake.rows) {
       const gid = norm(cellVal(row, I.groupId));
       const company = norm(cellVal(row, I.company));
       if (!gid) { if (company) noGroupId.push({ company, contact: norm(cellVal(row, I.contactName)) }); continue; }
       if (masterIds.has(gid.toLowerCase())) continue;
+      if (batchSeen.has(gid.toLowerCase())) continue;
+      batchSeen.add(gid.toLowerCase());
+      const blank = blankRows.find(b => !b.used && b.company === company.toLowerCase());
+      if (blank) { blank.used = true; adopt.push({ rowId: blank.rowId, groupId: gid, company }); continue; }
       missing.push({
         groupId: gid,
         company,
@@ -167,13 +185,27 @@ export default async function handler(req, res) {
         masterGroups: masterIds.size,
         missingFromMaster: missing.length,
         missing,
+        blankRowsToAdopt: adopt.length,
+        adopt,
         intakeRowsWithNoGroupId: noGroupId.length,
         noGroupId,
         note: 'Nothing was written. Re-run with ?commit=1 to create the missing master rows.',
       });
     }
 
-    if (missing.length === 0) return res.status(200).json({ committed: true, created: 0, ...heal, message: 'Master already has every intake group.' });
+    // Adopt blank mirror rows first: fill their Group ID in place (no new row).
+    if (adopt.length) {
+      const fixRows = adopt.map(a => ({
+        id: a.rowId,
+        cells: [
+          { columnId: M.groupId, value: a.groupId },
+          ...(M.autoSynced ? [{ columnId: M.autoSynced, value: true }] : []),
+        ],
+      }));
+      await api(`/sheets/${MASTER_SHEET}/rows`, { method: 'PUT', body: JSON.stringify(fixRows) });
+    }
+
+    if (missing.length === 0) return res.status(200).json({ committed: true, created: 0, adopted: adopt.length, ...heal, message: adopt.length ? `Adopted ${adopt.length} blank mirror row(s); nothing else missing.` : 'Master already has every intake group.' });
 
     const newRows = missing.map(g => {
       const cells = [
@@ -200,8 +232,9 @@ export default async function handler(req, res) {
     return res.status(200).json({
       committed: true,
       created: missing.length,
+      adopted: adopt.length,
       groups: missing.map(m => m.groupId),
-      message: `Created ${missing.length} missing master row(s).`,
+      message: `Created ${missing.length} missing master row(s)${adopt.length ? `, adopted ${adopt.length} blank mirror row(s)` : ''}.`,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

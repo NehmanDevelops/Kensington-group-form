@@ -85,11 +85,6 @@
             <input type="text" id="groupIds" name="groupIds" class="field-input" data-req="1" />
           </div>
           <div class="field">
-            <label class="field-label" for="emailDomains">Company email domain(s)</label>
-            <div class="field-sub">e.g. acme.com, acme.ca</div>
-            <input type="text" id="emailDomains" name="emailDomains" class="field-input" />
-          </div>
-          <div class="field">
             <label class="field-label" for="requestedBy">Requested by (your email)<span class="required-mark">*</span></label>
             <input type="email" id="requestedBy" name="requestedBy" class="field-input" data-req="1" />
           </div>
@@ -132,57 +127,6 @@
             <div class="field-sub">The group-level Sabre profile — also pulled on every booking. Individual traveller profiles are pulled by their email.</div>
             <input type="text" id="groupProfileId" name="groupProfileId" class="field-input" />
           </div>
-        </div>
-      </section>
-
-      <!-- 3. POLICY -->
-      <section class="section">
-        <div class="section-header"><span class="section-num">III.</span><h2 class="section-title">Travel Policy</h2><span class="section-tag">Rules</span></div>
-        <div class="section-desc">What's in-policy for this client's travelers.</div>
-        <div class="field">
-          <label class="field-label">Allowed cabin class(es)<span class="required-mark">*</span></label>
-          <div class="field-sub">Check all that are in-policy.</div>
-          <div class="checkrow">
-            <label><input type="checkbox" name="cabin" value="Economy" /> Economy</label>
-            <label><input type="checkbox" name="cabin" value="Premium Economy" /> Premium Economy</label>
-            <label><input type="checkbox" name="cabin" value="Business" /> Business</label>
-            <label><input type="checkbox" name="cabin" value="First" /> First</label>
-          </div>
-        </div>
-        <div class="field">
-          <label class="field-label" for="policyNotes">Other policy rules</label>
-          <div class="field-sub">e.g. advance-purchase requirements, fare caps, approval thresholds.</div>
-          <textarea id="policyNotes" name="policyNotes" class="field-textarea"></textarea>
-        </div>
-      </section>
-
-      <!-- 4. AIR -->
-      <section class="section">
-        <div class="section-header"><span class="section-num">IV.</span><h2 class="section-title">Air Preferences</h2><span class="section-tag">Content</span></div>
-        <div class="grid2">
-          <div class="field"><label class="field-label" for="prefAirlines">Preferred airlines</label><div class="field-sub">Comma-separated (e.g. AC, UA)</div><input type="text" id="prefAirlines" name="prefAirlines" class="field-input" /></div>
-          <div class="field"><label class="field-label" for="exclAirlines">Excluded airlines</label><div class="field-sub">Comma-separated</div><input type="text" id="exclAirlines" name="exclAirlines" class="field-input" value="NK, F9, SY" /></div>
-          <div class="field"><label class="field-label" for="prefAirports">Preferred airports</label><div class="field-sub">Comma-separated IATA (e.g. YYZ, ORD)</div><input type="text" id="prefAirports" name="prefAirports" class="field-input" /></div>
-          <div class="field"><label class="field-label" for="fareBasis">Preferred fare basis codes</label><input type="text" id="fareBasis" name="fareBasis" class="field-input" /></div>
-        </div>
-      </section>
-
-      <!-- 5. HOTEL / CAR -->
-      <section class="section">
-        <div class="section-header"><span class="section-num">V.</span><h2 class="section-title">Hotel &amp; Car</h2><span class="section-tag">Content</span></div>
-        <div class="grid2">
-          <div class="field"><label class="field-label" for="hotelKeywords">Preferred hotels / keywords</label><div class="field-sub">Comma-separated</div><input type="text" id="hotelKeywords" name="hotelKeywords" class="field-input" /></div>
-          <div class="field"><label class="field-label" for="carVendors">Preferred car vendors</label><div class="field-sub">Comma-separated</div><input type="text" id="carVendors" name="carVendors" class="field-input" /></div>
-        </div>
-      </section>
-
-      <!-- 6. JENI / OFFERINGS -->
-      <section class="section">
-        <div class="section-header"><span class="section-num">VI.</span><h2 class="section-title">Offerings &amp; Notes</h2><span class="section-tag">JENi</span></div>
-        <div class="field">
-          <label class="field-label" for="offerings">What should be offered to this client's travelers?</label>
-          <div class="field-sub">Anything Amgine / JENi should know about what to present to this client (services, upgrades, restrictions, special handling).</div>
-          <textarea id="offerings" name="offerings" class="field-textarea"></textarea>
         </div>
       </section>
 
@@ -232,25 +176,18 @@
         if(!String(f.value).trim()){ f.classList.add('field-error'); if(!firstInvalid) firstInvalid=f; }
         else f.classList.remove('field-error');
       });
-      var cabins = Array.prototype.slice.call(form.querySelectorAll('input[name="cabin"]:checked')).map(function(c){return c.value;});
-      if(!cabins.length){ alert('Please select at least one allowed cabin class.'); document.querySelector('.checkrow').scrollIntoView({behavior:'smooth',block:'center'}); return; }
       if(firstInvalid){ firstInvalid.scrollIntoView({behavior:'smooth',block:'center'}); try{firstInvalid.focus({preventScroll:true});}catch(_){}; alert('Please complete all required fields (marked with *).'); return; }
 
       var btn = form.querySelector('.submit-btn'); btn.textContent='Creating branch…'; btn.disabled=true;
-      var d={}; new FormData(form).forEach(function(v,k){ if(k==='cabin') return; d[k]=v; }); var g=function(k){return d[k]||'';};
+      var d={}; new FormData(form).forEach(function(v,k){ d[k]=v; }); var g=function(k){return d[k]||'';};
 
       var payload = {
         name: g('clientName'),
         groupId: (g('groupIds').split(',')[0]||'').trim(),
-        emailDomains: g('emailDomains'),
         addressLine1: g('addr1'), city: g('city'), provinceState: g('province'),
         postalCode: g('postal'), country: g('country'),
-        preferredAirlines: g('prefAirlines'), excludeAirlines: g('exclAirlines'),
-        preferredAirports: g('prefAirports'), hotelKeywords: g('hotelKeywords'),
-        carVendors: g('carVendors'),
         pcc: g('pcc'), companyProfileId: g('companyProfileId'), groupProfileId: g('groupProfileId'),
-        cabinClasses: cabins, policyNotes: g('policyNotes'), offerings: g('offerings'),
-        requestedBy: g('requestedBy'), fareBasis: g('fareBasis'),
+        requestedBy: g('requestedBy'),
       };
 
       fetch('/api/create-branch', {
@@ -268,6 +205,9 @@
           + (res.j.wroteToGroup
               ? ' The Branch &amp; Policy GUIDs were written to group <strong>'+g('groupIds')+'</strong> automatically — bookings can start now.'
               : '<br><br>No matching group row was found to auto-fill, so paste these into the group manually:<br>Branch GUID: <strong>'+res.j.branchGuid+'</strong><br>Policy GUID: <strong>'+res.j.policyGroupGuid+'</strong>')
+          + (res.j.policyLink
+              ? '<br><br>Set this client\'s travel policy here:<br><a href="'+res.j.policyLink+'" target="_blank" rel="noopener">Open the Policy Tool ↗</a><br>(also saved on the group row as "Amgine Policy Link")'
+              : '')
           + (res.j.missingColumns && res.j.missingColumns.length
               ? '<br><br>⚠ These columns are missing on LIVE GROUP MASTERSHEET, so their values were NOT saved: <strong>'+res.j.missingColumns.join(', ')+'</strong>. Add the column(s), then re-enter the values on the group row.'
               : '');

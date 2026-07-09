@@ -185,13 +185,20 @@ export default async function handler(req, res) {
       const pgRes = await amg(policyGroupUrl(branchGuid), groupBody);
       pgStatus = pgRes.status; pgOk = pgRes.ok;
       pgJson = await pgRes.json().catch(() => ({}));
-      policyGroupGuid = deepFind(pgJson, 'guid') || policyGuid;
+      // The response's `groupGuid` is THE policy-group guid — it's what both the
+      // booking payload's AmginePolicyGuid and the Policy Tool URL expect
+      // (Raymond, 2026-07-09). The old deepFind('guid') never matched `groupGuid`
+      // and silently fell back to the policy-RULE guid, which the Policy Tool rejects.
+      policyGroupGuid = deepFind(pgJson, 'groupGuid') || deepFind(pgJson, 'guid') || policyGuid;
       if (pgRes.ok) break;
       await sleep(2500);
     }
     if (!pgOk) {
       return res.status(502).json({ step: 'CreatePolicyGroup', status: pgStatus, error: 'failed', branchGuid, policyGuid, raw: pgJson });
     }
+    // Deep link to Amgine's Policy Tool for this client — where the real travel
+    // policy rules get configured after onboarding.
+    const policyLink = `https://app.amgine.ai/tmc-management/policy?policygroupguid=${policyGroupGuid}`;
 
     // 4) Write GUIDs onto the group row (if a groupId was supplied)
     let wroteToGroup = false;
@@ -221,6 +228,7 @@ export default async function handler(req, res) {
         const cells = [];
         if (colId('amgine branch guid')) cells.push({ columnId: colId('amgine branch guid'), value: branchGuid });
         if (colId('amgine policy guid')) cells.push({ columnId: colId('amgine policy guid'), value: policyGroupGuid });
+        if (colId('amgine policy link')) cells.push({ columnId: colId('amgine policy link'), value: policyLink });
         if (colId('amgine onboarded')) cells.push({ columnId: colId('amgine onboarded'), value: true });
         // Sabre linkage (Vera 2026-07-08): write the PCC + COMPANY profile ID + GROUP
         // profile ID onto the group row — these drive the per-booking Corporate
@@ -238,7 +246,7 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ ok: true, branchName: finalName, branchGuid, policyGuid, policyGroupGuid, wroteToGroup, ...(missingColumns.length ? { missingColumns } : {}) });
+    return res.status(200).json({ ok: true, branchName: finalName, branchGuid, policyGuid, policyGroupGuid, policyLink, wroteToGroup, ...(missingColumns.length ? { missingColumns } : {}) });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
