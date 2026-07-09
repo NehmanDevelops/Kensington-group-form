@@ -161,6 +161,9 @@ export default async function handler(req, res) {
       const gid = norm(cellVal(row, I.groupId));
       const company = norm(cellVal(row, I.company));
       if (!gid) { if (company) noGroupId.push({ company, contact: norm(cellVal(row, I.contactName)) }); continue; }
+      // Placeholder "IDs" (e.g. "Quote Only" on quote requests) are not real
+      // groups — never sync them, or deleted rows keep resurrecting daily.
+      if (/^(quote only|quote|n\/?a|tbd|none|pending|test)$/i.test(gid)) continue;
       if (masterIds.has(gid.toLowerCase())) continue;
       if (batchSeen.has(gid.toLowerCase())) continue;
       batchSeen.add(gid.toLowerCase());
