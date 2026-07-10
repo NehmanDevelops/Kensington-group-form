@@ -187,14 +187,15 @@ export default async function handler(req, res) {
       pgJson = await pgRes.json().catch(() => ({}));
       // The response's `groupGuid` is THE policy-group guid — it's what both the
       // booking payload's AmginePolicyGuid and the Policy Tool URL expect
-      // (Raymond, 2026-07-09). The old deepFind('guid') never matched `groupGuid`
-      // and silently fell back to the policy-RULE guid, which the Policy Tool rejects.
-      policyGroupGuid = deepFind(pgJson, 'groupGuid') || deepFind(pgJson, 'guid') || policyGuid;
-      if (pgRes.ok) break;
+      // (Raymond, 2026-07-09). NO FALLBACK on purpose: silently substituting the
+      // policy-RULE guid is exactly the bug that broke Vera's test bookings —
+      // if `groupGuid` is missing we fail loudly instead of storing a wrong value.
+      policyGroupGuid = deepFind(pgJson, 'groupGuid');
+      if (pgRes.ok && policyGroupGuid) break;
       await sleep(2500);
     }
-    if (!pgOk) {
-      return res.status(502).json({ step: 'CreatePolicyGroup', status: pgStatus, error: 'failed', branchGuid, policyGuid, raw: pgJson });
+    if (!pgOk || !policyGroupGuid) {
+      return res.status(502).json({ step: 'CreatePolicyGroup', status: pgStatus, error: pgOk ? 'response had no groupGuid — refusing to store a wrong value (contact Amgine)' : 'failed', branchGuid, policyGuid, raw: pgJson });
     }
     // Deep link to Amgine's Policy Tool for this client — where the real travel
     // policy rules get configured after onboarding.
