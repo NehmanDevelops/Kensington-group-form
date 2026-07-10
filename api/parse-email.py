@@ -396,6 +396,12 @@ def is_junk(value):
     cleaned = value.strip().lower()
     if cleaned in JUNK_VALUES:
         return True
+    # CVENT footer sentence ("View more information about this invitee's
+    # itinerary.") sits right after the last field label — when that field is
+    # empty (usually Loyalty Program Number 3) the footer got captured as its
+    # value and landed in the rewards-number column.
+    if 'view more information' in cleaned or "invitee's itinerary" in cleaned:
+        return True
     stripped = re.sub(r'[\s ​  ]+', '', value.strip())
     if stripped and re.match(r'^[★☆✦✯✧⭐•·●○◯◌◦‣⁃☐☑☒✓✔✗✘✕❌×÷\-_\.\*=~`#·•⋅…]+$', stripped):
         return True
@@ -509,6 +515,7 @@ def extract_field(section_text, field_key, exclude_prefixes=None):
             continue
         rest = section_text[match.end():]
         value = _capture_value_from(rest)
+        value = re.split(r'view more information', value, flags=re.IGNORECASE)[0].strip()
         value = _strip_trailing_empty_labels(value)
         if value and not is_junk(value) and not has_signature_text(value):
             return value
