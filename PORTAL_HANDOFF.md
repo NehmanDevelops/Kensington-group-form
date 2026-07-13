@@ -44,6 +44,12 @@ Status: **done & tested end-to-end on the live files** (see `CHANGELOG-2026-07-0
 - **Notification inbox** — currently nehman.rahimi@; suggested **onlinesupport@kensingtoncorporate.com**, awaiting confirmation. Change = edit "Send an email (V2)" To field in the PA flow, Save.
 - Also pending her review: the ~300 backfilled rows (blank CityCode/ChainCode/AccountNumber) + whether "Chainwide" rows belong.
 
+### 📋 OFFICE TODO (2026-07-10, Kathy's follow-ups — build in the Office Script)
+1. **Auto-removals (Kathy chose automatic):** when a hotel disappears from Contracted Suppliers, the daily run removes it from the Preferred file and lists removals in the notification email alongside additions. **Only ever remove automation-added rows** — pre-existing entries untouched. Implementation: the script needs a way to know which Preferred rows the automation added (add a marker/source column it stamps on append, or treat the backfilled range rows 240+ as automation's for the initial tag), then diff tagged rows against current Contracted (Propertyid ↔ LT_HOD) → delete missing → return `{count, added[], removed[]}` and include removals in the email body. Kathy was told "I'll set it up and let you know when it's live."
+2. **Notification inbox switched?** Kathy confirmed onlinesupport@kensingtoncorporate.com — verify the PA flow's "Send an email (V2)" To field was actually changed and saved.
+3. **Account code:** Kathy says CSMs don't store account codes anywhere. Proposed: add an Account Number column to Contracted Suppliers for CSMs to fill; the script already copies mapped columns — wire it once the column exists. If codes live in another system, she'll point to it.
+4. Resolved 2026-07-10: "send everything over" = contracted data (already in via the ~300 backfill — told her); notification question answered (initial backfill notified only Nehman by design).
+
 ## 6. State of everything else (quick map)
 - **Amgine** — 95%; blocked on Raymond→Vera Policy Tool access. Master ref: `AMGINE_HANDOFF.md`, latest: `CHANGELOG-2026-07-09.md` §B. Top priority for anything Vera needs.
 - **UDID / finance / reporting forms** — complete, awaiting Jos feedback.
