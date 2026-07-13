@@ -36,8 +36,14 @@ export default async function handler(req, res) {
     if (dry) return res.status(200).json({ dry: true, groupId: GROUP_ID, current });
 
     if (!groupProfCol) return res.status(500).json({ error: 'no Group Profile ID / Sabre Profile ID column' });
-    await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells: [{ columnId: groupProfCol, value: CORRECT_PROFILE }] }]) });
-    return res.status(200).json({ ok: true, groupId: GROUP_ID, was: current.groupProfileId, now: CORRECT_PROFILE, alsoOnRow: current });
+    // Restore a correct profiled-traveller setup: right profile id, uppercase
+    // PCC (Sabre convention), and re-tick the flag so the rebook actually
+    // exercises the profile pull.
+    const cells = [{ columnId: groupProfCol, value: CORRECT_PROFILE }];
+    if (col('pcc') && current.pcc && current.pcc !== current.pcc.toUpperCase()) cells.push({ columnId: col('pcc'), value: current.pcc.toUpperCase() });
+    if (col('profiled travellers')) cells.push({ columnId: col('profiled travellers'), value: true });
+    await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells }]) });
+    return res.status(200).json({ ok: true, groupId: GROUP_ID, was: current, now: { groupProfileId: CORRECT_PROFILE, pcc: current.pcc.toUpperCase(), profiledTravellers: true } });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
