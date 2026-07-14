@@ -140,6 +140,7 @@
             <option value="Payment Change">Payment Change</option>
             <option value="Payout Request">Payout Request</option>
             <option value="Refund Request">Refund Request</option>
+            <option value="Concierge">Concierge</option>
           </select>
         </div>
 
@@ -168,6 +169,14 @@
               <option value="" disabled selected>Select…</option>
               <option value="BSP">BSP</option>
               <option value="ARC">ARC</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="adm_chargedTo">Charged to<span class="required-mark">*</span></label>
+            <select id="adm_chargedTo" name="adm_chargedTo" class="field-input" data-req="1">
+              <option value="" disabled selected>Select…</option>
+              <option value="Agent">Agent</option>
+              <option value="Client">Client</option>
             </select>
           </div>
           <div class="field">
@@ -201,7 +210,7 @@
             </div>
             <div class="field">
               <label class="field-label" for="pay_origMethod">Original Payment Method<span class="required-mark">*</span></label>
-              <div class="field-sub">e.g. cc xx54321 — do NOT include the full card number</div>
+              <div class="field-sub">e.g. VI 5432 — do NOT include the full card number</div>
               <input type="text" id="pay_origMethod" name="pay_origMethod" class="field-input" data-req="1" />
             </div>
             <div class="field">
@@ -215,6 +224,24 @@
             <div class="field">
               <label class="field-label" for="pay_newAmount">New Payment Amount<span class="required-mark">*</span></label>
               <input type="text" id="pay_newAmount" name="pay_newAmount" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="pay_refundMethod">Method of refund</label>
+              <div class="field-sub">If this change is a refund — how it's being handled</div>
+              <select id="pay_refundMethod" name="pay_refundMethod" class="field-input">
+                <option value="" disabled selected>Select…</option>
+                <option value="Agent error">Via agent error</option>
+                <option value="Refund to client">Refund to client</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="pay_refundType">Type of refund</label>
+              <select id="pay_refundType" name="pay_refundType" class="field-input">
+                <option value="" disabled selected>Select…</option>
+                <option value="Cheque">Cheque</option>
+                <option value="ACH">ACH</option>
+                <option value="CC via Bill Pay">Back to CC via Bill Pay</option>
+              </select>
             </div>
           </div>
         </div>
@@ -245,6 +272,24 @@
               <label class="field-label" for="po_owing">$ Owing to Client<span class="required-mark">*</span></label>
               <input type="text" id="po_owing" name="po_owing" class="field-input" data-req="1" />
             </div>
+            <div class="field">
+              <label class="field-label" for="po_refundMethod">Method of refund</label>
+              <div class="field-sub">If this payout is a refund — how it's being handled</div>
+              <select id="po_refundMethod" name="po_refundMethod" class="field-input">
+                <option value="" disabled selected>Select…</option>
+                <option value="Agent error">Via agent error</option>
+                <option value="Refund to client">Refund to client</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="po_refundType">Type of refund</label>
+              <select id="po_refundType" name="po_refundType" class="field-input">
+                <option value="" disabled selected>Select…</option>
+                <option value="Cheque">Cheque</option>
+                <option value="ACH">ACH</option>
+                <option value="CC via Bill Pay">Back to CC via Bill Pay</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -263,7 +308,7 @@
               <div class="field-sub">Do NOT include the full credit card number</div>
               <select id="ref_method" name="ref_method" class="field-input" data-req="1">
                 <option value="" disabled selected>Select…</option>
-                <option value="Credit Card">Credit Card</option>
+                <option value="Credit Card">Credit Card (Canada only)</option>
                 <option value="Wire">Wire</option>
                 <option value="Cheque">Cheque</option>
               </select>
@@ -282,7 +327,7 @@
             </div>
             <div class="field">
               <label class="field-label" for="ref_cardLast4">Card reference (last 4 only, if CC)</label>
-              <div class="field-sub">e.g. cc x5432</div>
+              <div class="field-sub">e.g. VI 5432</div>
               <input type="text" id="ref_cardLast4" name="ref_cardLast4" class="field-input" />
             </div>
           </div>
@@ -351,6 +396,37 @@
             <label class="field-label" for="ref_comments">Additional information / comments</label>
             <div class="field-sub">If the refund includes a vendor penalty, please provide the amounts here.</div>
             <textarea id="ref_comments" name="ref_comments" class="field-textarea"></textarea>
+          </div>
+        </div>
+
+        <!-- CONCIERGE -->
+        <div class="type-block" data-type="Concierge" style="margin-top:22px;">
+          <div class="notice">Concierge finance request. <strong>Fields to be confirmed</strong> — placeholder set below; let Finance know what this flow needs to capture.</div>
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="con_service">Service / Description<span class="required-mark">*</span></label>
+              <input type="text" id="con_service" name="con_service" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="con_amount">Amount<span class="required-mark">*</span></label>
+              <input type="text" id="con_amount" name="con_amount" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="con_vendor">Vendor Name</label>
+              <input type="text" id="con_vendor" name="con_vendor" class="field-input" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="con_currency">Currency</label>
+              <select id="con_currency" name="con_currency" class="field-input">
+                <option value="" disabled selected>Select…</option>
+                <option value="USD">USD</option>
+                <option value="CAD">CAD</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="con_action">Action to be taken<span class="required-mark">*</span></label>
+            <textarea id="con_action" name="con_action" class="field-textarea" data-req="1"></textarea>
           </div>
         </div>
 
@@ -453,11 +529,11 @@
       if (typeSel.value === 'General') {
         lines.push('Invoice Total: ' + g('gen_invoiceTotal'), 'Vendor Name: ' + g('gen_vendor'), 'Action to be taken: ' + g('gen_action'));
       } else if (typeSel.value === 'ADM Request') {
-        lines.push('ADM Location: ' + g('adm_location'), 'Invoice Total: ' + g('adm_invoiceTotal'), 'Vendor Name: ' + g('adm_vendor'), 'Action to be taken: ' + g('adm_action'));
+        lines.push('ADM Location: ' + g('adm_location'), 'Charged to: ' + g('adm_chargedTo'), 'Invoice Total: ' + g('adm_invoiceTotal'), 'Vendor Name: ' + g('adm_vendor'), 'Action to be taken: ' + g('adm_action'));
       } else if (typeSel.value === 'Payment Change') {
-        lines.push('Currency: ' + g('pay_currency'), 'Vendor Name: ' + g('pay_vendor'), 'Original Payment Method: ' + g('pay_origMethod'), 'Original Payment Amount: ' + g('pay_origAmount'), 'New Payment Method: ' + g('pay_newMethod'), 'New Payment Amount: ' + g('pay_newAmount'));
+        lines.push('Currency: ' + g('pay_currency'), 'Vendor Name: ' + g('pay_vendor'), 'Original Payment Method: ' + g('pay_origMethod'), 'Original Payment Amount: ' + g('pay_origAmount'), 'New Payment Method: ' + g('pay_newMethod'), 'New Payment Amount: ' + g('pay_newAmount'), 'Method of refund: ' + g('pay_refundMethod'), 'Type of refund: ' + g('pay_refundType'));
       } else if (typeSel.value === 'Payout Request') {
-        lines.push('** Leader approval required — ensure leader is CC\'d **', 'Payout Reason: ' + g('po_reason'), 'Payout Method: ' + g('po_method'), 'Vendor: ' + g('po_vendor'), '$ Received from Vendor: ' + g('po_received'), '$ Owing to Client: ' + g('po_owing'));
+        lines.push('** Leader approval required — ensure leader is CC\'d **', 'Payout Reason: ' + g('po_reason'), 'Payout Method: ' + g('po_method'), 'Vendor: ' + g('po_vendor'), '$ Received from Vendor: ' + g('po_received'), '$ Owing to Client: ' + g('po_owing'), 'Method of refund: ' + g('po_refundMethod'), 'Type of refund: ' + g('po_refundType'));
       } else if (typeSel.value === 'Refund Request') {
         lines.push('Reason for refund: ' + g('ref_reason'), 'Refund Payment Method: ' + g('ref_method'), 'Card reference: ' + g('ref_cardLast4'), 'Total to refund to client: ' + g('ref_total'), 'Refund Currency: ' + g('ref_currency'));
         if (g('ref_method') === 'Credit Card') {
@@ -466,6 +542,8 @@
           lines.push('Cheque / client address: ' + g('ref_address'), 'Attention To: ' + g('ref_attention'), 'Banking Information: ' + g('ref_banking'));
         }
         lines.push('', 'Vendor Name: ' + g('ref_vendor'), 'Client originally paid: ' + g('ref_clientPaid'), 'Vendor amount received: ' + g('ref_vendorReceived'), 'Amount owing to Client: ' + g('ref_owing'), '', 'Comments: ' + g('ref_comments'));
+      } else if (typeSel.value === 'Concierge') {
+        lines.push('Service / Description: ' + g('con_service'), 'Amount: ' + g('con_amount'), 'Currency: ' + g('con_currency'), 'Vendor Name: ' + g('con_vendor'), 'Action to be taken: ' + g('con_action'));
       }
 
       var subject = typeSel.value + ' — ' + g('agentName') + ' / ' + g('pnr');
