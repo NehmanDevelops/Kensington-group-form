@@ -40,8 +40,11 @@
   .section-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; color: var(--ink); font-size: 22px; }
   .section-tag { margin-left: auto; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-mute); }
 
-  .field { margin-bottom: 22px; }
+  .field { margin-bottom: 22px; display: flex; flex-direction: column; }
   .field:last-child { margin-bottom: 0; }
+  .grid2 .field { margin-bottom: 0; }
+  .field .field-input, .field .field-textarea { margin-top: auto; }
+  .field-input { min-height: 48px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
   @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .section { padding: 28px 22px; } }
 
