@@ -715,25 +715,24 @@ def parse_email(html_email_body, email_subject=''):
     extract_emails_fallback(text, output)
     extract_name_fallback(text, output)
 
-    # ── Guest bookings: the traveller's name wins ────────────────────────────
-    # The Contact Information block is the BOOKER; Request Details' "Full Name"
-    # is the person actually travelling (e.g. Kristy Ward booking for guest
-    # Mary Stevens). When first+last clearly differ, use the Full Name as the
-    # traveller's first/middle/last so the master row names the right person.
-    _fn = (output.get('full_name') or '').strip()
-    _fn_parts = _fn.split()
-    if len(_fn_parts) >= 2:
-        _c_first = (output.get('first_name') or '').strip().lower()
-        _c_last = (output.get('last_name') or '').strip().lower()
-        _g_first, _g_last = _fn_parts[0].lower(), _fn_parts[-1].lower()
-        if (_c_first or _c_last) and _g_first != _c_first and _g_last != _c_last:
+    # ── CVENT: the traveller's name comes from Full Name ─────────────────────
+    # CVENT registrations put the actual traveller in the "Full Name" field
+    # (Request Details), while Contact Information holds the BOOKER/host. When a
+    # host books for a guest, the separately-parsed First/Last are the booker's,
+    # not the traveller's, so the row came out "funky" (Vera, 2026-07-16). For
+    # CVENT, always drive First/Middle/Last straight from the Full Name field so
+    # the traveller's name wins — don't rely on the split First/Last labels.
+    # (Request Name still carries the host/booker into the Host/Request Name col.)
+    if source_form == 'CVENT':
+        _fn = (output.get('full_name') or '').strip()
+        _fn_parts = _fn.split()
+        if len(_fn_parts) >= 2:
             output['first_name'] = _fn_parts[0]
             output['last_name'] = _fn_parts[-1]
-            if len(_fn_parts) >= 3:
-                output['middle_name'] = ' '.join(_fn_parts[1:-1])
-            # Surface the guest explicitly too (Vera's Guest Name column).
-            if not output.get('guest_name'):
-                output['guest_name'] = _fn
+            output['middle_name'] = ' '.join(_fn_parts[1:-1]) if len(_fn_parts) >= 3 else ''
+        elif len(_fn_parts) == 1:
+            output['first_name'] = _fn_parts[0]
+            output['last_name'] = ''
 
     # ── Group ID sanitization ───────────────────────────────────────────────────
     # Group IDs are compact alphanumeric codes (e.g. "1OEGLOASEP26"). If the
