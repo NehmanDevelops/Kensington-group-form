@@ -328,26 +328,6 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP col admin (remove after use).
-  if (norm(body.__admin) === 'kcg-cols-2026') {
-    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
-    const sheetId = norm(body.sheet) || '8780932377956228';
-    const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
-      ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
-    });
-    const sheet = await (await ss(`/sheets/${sheetId}?pageSize=1`)).json();
-    if (body.action === 'listcols') {
-      return res.status(200).json({ ok: true, columns: (sheet.columns || []).map(c => ({ index: c.index, title: c.title })) });
-    }
-    if (body.action === 'movecol') {
-      const col = (sheet.columns || []).find(c => c.title.trim().toLowerCase() === norm(body.title).toLowerCase());
-      if (!col) return res.status(200).json({ ok: false, error: 'column not found: ' + body.title });
-      const r = await ss(`/sheets/${sheetId}/columns/${col.id}`, { method: 'PUT', body: JSON.stringify({ index: Number(body.index) }) });
-      return res.status(200).json({ ok: r.ok, status: r.status, moved: col.title, toIndex: Number(body.index), raw: await r.json().catch(() => ({})) });
-    }
-    return res.status(200).json({ ok: false, error: 'unknown action' });
-  }
-
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.
