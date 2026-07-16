@@ -111,12 +111,16 @@
             <input type="text" id="pcc" name="pcc" class="field-input" data-req="1" />
           </div>
           <div class="field">
-            <label class="field-label" for="pnr">PNR<span class="required-mark">*</span></label>
+            <label class="field-label" for="pnr">PNR (HK)<span class="required-mark">*</span></label>
             <input type="text" id="pnr" name="pnr" class="field-input" data-req="1" />
           </div>
           <div class="field">
-            <label class="field-label" for="invoice">Invoice #</label>
+            <label class="field-label" for="invoice">Invoice # (HK)</label>
             <input type="text" id="invoice" name="invoice" class="field-input" />
+          </div>
+          <div class="field concierge-only" style="display:none;">
+            <label class="field-label" for="branch">Branch</label>
+            <input type="text" id="branch" name="branch" class="field-input" />
           </div>
           <div class="field">
             <label class="field-label" for="ccEmails">CC (optional)</label>
@@ -143,7 +147,7 @@
             <option value="Payment Change">Payment Change</option>
             <option value="Payout Request">Payout Request</option>
             <option value="Refund Request">Refund Request</option>
-            <option value="Concierge">Concierge</option>
+            <option value="Concierge Bundled">Concierge Bundled</option>
           </select>
         </div>
 
@@ -400,9 +404,22 @@
           </div>
         </div>
 
-        <!-- CONCIERGE -->
-        <div class="type-block" data-type="Concierge" style="margin-top:22px;">
+        <!-- CONCIERGE BUNDLED -->
+        <div class="type-block" data-type="Concierge Bundled" style="margin-top:22px;">
+          <div class="notice">This request is sent with <strong>“Please reconcile”</strong> in the subject line, and the email opens with: <em>“Please reconcile the below Concierge booking as client payment has been processed.”</em></div>
           <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="con_passenger">Passenger Name<span class="required-mark">*</span></label>
+              <input type="text" id="con_passenger" name="con_passenger" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="con_departureDate">Departure Date<span class="required-mark">*</span></label>
+              <input type="text" id="con_departureDate" name="con_departureDate" class="field-input" data-req="1" placeholder="e.g. 24 Nov 2026" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="con_vendor">Vendor (Airline)</label>
+              <input type="text" id="con_vendor" name="con_vendor" class="field-input" />
+            </div>
             <div class="field">
               <label class="field-label" for="con_service">Service / Description<span class="required-mark">*</span></label>
               <input type="text" id="con_service" name="con_service" class="field-input" data-req="1" />
@@ -410,10 +427,6 @@
             <div class="field">
               <label class="field-label" for="con_amount">Amount<span class="required-mark">*</span></label>
               <input type="text" id="con_amount" name="con_amount" class="field-input" data-req="1" />
-            </div>
-            <div class="field">
-              <label class="field-label" for="con_vendor">Vendor Name</label>
-              <input type="text" id="con_vendor" name="con_vendor" class="field-input" />
             </div>
             <div class="field">
               <label class="field-label" for="con_currency">Currency</label>
@@ -425,8 +438,8 @@
             </div>
           </div>
           <div class="field">
-            <label class="field-label" for="con_action">Action to be taken<span class="required-mark">*</span></label>
-            <textarea id="con_action" name="con_action" class="field-textarea" data-req="1"></textarea>
+            <label class="field-label" for="con_action">Notes</label>
+            <textarea id="con_action" name="con_action" class="field-textarea"></textarea>
           </div>
         </div>
 
@@ -467,6 +480,8 @@
 
     typeSel.addEventListener('change', function () {
       blocks.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === typeSel.value); });
+      var isConcierge = typeSel.value === 'Concierge Bundled';
+      document.querySelectorAll('.concierge-only').forEach(function (el) { el.style.display = isConcierge ? '' : 'none'; });
     });
 
     // Refund method sub-conditionals.
@@ -520,11 +535,14 @@
         (typeSel.value || '').toUpperCase() + ' — FINANCE REQUEST', '',
         'Agent Name: ' + g('agentName'),
         'Client / Company: ' + g('companyName'),
-        'PCC: ' + g('pcc'),
-        'PNR: ' + g('pnr'),
-        'Invoice #: ' + g('invoice'),
-        '', '--- ' + typeSel.value + ' ---',
       ];
+      if (typeSel.value === 'Concierge Bundled') lines.push('Branch: ' + g('branch'));
+      lines.push(
+        'PCC: ' + g('pcc'),
+        'PNR (HK): ' + g('pnr'),
+        'Invoice # (HK): ' + g('invoice'),
+        '', '--- ' + typeSel.value + ' ---'
+      );
 
       if (typeSel.value === 'General') {
         lines.push('Invoice Total: ' + g('gen_invoiceTotal'), 'Vendor Name: ' + g('gen_vendor'), 'Action to be taken: ' + g('gen_action'));
@@ -542,11 +560,23 @@
           lines.push('Cheque / client address: ' + g('ref_address'), 'Attention To: ' + g('ref_attention'), 'Banking Information: ' + g('ref_banking'));
         }
         lines.push('', 'Vendor Name: ' + g('ref_vendor'), 'Client originally paid: ' + g('ref_clientPaid'), 'Vendor amount received: ' + g('ref_vendorReceived'), 'Amount owing to Client: ' + g('ref_owing'), '', 'Comments: ' + g('ref_comments'));
-      } else if (typeSel.value === 'Concierge') {
-        lines.push('Service / Description: ' + g('con_service'), 'Amount: ' + g('con_amount'), 'Currency: ' + g('con_currency'), 'Vendor Name: ' + g('con_vendor'), 'Action to be taken: ' + g('con_action'));
+      } else if (typeSel.value === 'Concierge Bundled') {
+        lines.push(
+          'Please reconcile the below Concierge booking as client payment has been processed.', '',
+          'Passenger name: ' + g('con_passenger'),
+          'Departure Date: ' + g('con_departureDate'),
+          'Vendor (Airline): ' + g('con_vendor'),
+          'PNR and invoice number from mark up invoice (YK/GK): ' + g('pnr') + (g('invoice') ? ' / ' + g('invoice') : ''),
+          '',
+          'Service / Description: ' + g('con_service'),
+          'Amount: ' + g('con_amount'),
+          'Currency: ' + g('con_currency'),
+          'Notes: ' + g('con_action')
+        );
       }
 
       var subject = typeSel.value + ' — ' + g('agentName') + ' / ' + g('pnr');
+      if (typeSel.value === 'Concierge Bundled') subject = 'Please reconcile — ' + subject;
       var mailto = 'mailto:' + recipient
         + '?cc=' + encodeURIComponent(g('ccEmails'))
         + '&subject=' + encodeURIComponent(subject)
