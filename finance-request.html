@@ -111,11 +111,11 @@
             <input type="text" id="pcc" name="pcc" class="field-input" data-req="1" />
           </div>
           <div class="field">
-            <label class="field-label" for="pnr">PNR (HK)<span class="required-mark">*</span></label>
+            <label class="field-label" for="pnr">PNR<span class="hk-suffix" style="display:none;"> (HK)</span><span class="required-mark">*</span></label>
             <input type="text" id="pnr" name="pnr" class="field-input" data-req="1" />
           </div>
           <div class="field">
-            <label class="field-label" for="invoice">Invoice # (HK)</label>
+            <label class="field-label" for="invoice">Invoice #<span class="hk-suffix" style="display:none;"> (HK)</span></label>
             <input type="text" id="invoice" name="invoice" class="field-input" />
           </div>
           <div class="field concierge-only" style="display:none;">
@@ -406,7 +406,6 @@
 
         <!-- CONCIERGE BUNDLED -->
         <div class="type-block" data-type="Concierge Bundled" style="margin-top:22px;">
-          <div class="notice">This request is sent with <strong>“Please reconcile”</strong> in the subject line, and the email opens with: <em>“Please reconcile the below Concierge booking as client payment has been processed.”</em></div>
           <div class="grid2">
             <div class="field">
               <label class="field-label" for="con_passenger">Passenger Name<span class="required-mark">*</span></label>
@@ -482,6 +481,7 @@
       blocks.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === typeSel.value); });
       var isConcierge = typeSel.value === 'Concierge Bundled';
       document.querySelectorAll('.concierge-only').forEach(function (el) { el.style.display = isConcierge ? '' : 'none'; });
+      document.querySelectorAll('.hk-suffix').forEach(function (el) { el.style.display = isConcierge ? '' : 'none'; });
     });
 
     // Refund method sub-conditionals.
@@ -531,16 +531,18 @@
       new FormData(form).forEach(function (value, key) { d[key] = value; });
       var g = function (k) { return d[k] || ''; };
 
+      var hk = (typeSel.value === 'Concierge Bundled') ? ' (HK)' : '';
       var lines = [
         (typeSel.value || '').toUpperCase() + ' — FINANCE REQUEST', '',
+        '** Please ATTACH any supporting documents (invoice, markup invoice, void cheque, etc.) to this email before sending. **', '',
         'Agent Name: ' + g('agentName'),
         'Client / Company: ' + g('companyName'),
       ];
       if (typeSel.value === 'Concierge Bundled') lines.push('Branch: ' + g('branch'));
       lines.push(
         'PCC: ' + g('pcc'),
-        'PNR (HK): ' + g('pnr'),
-        'Invoice # (HK): ' + g('invoice'),
+        'PNR' + hk + ': ' + g('pnr'),
+        'Invoice #' + hk + ': ' + g('invoice'),
         '', '--- ' + typeSel.value + ' ---'
       );
 
@@ -583,7 +585,7 @@
         + '&body=' + encodeURIComponent(lines.join('\n'));
 
       document.getElementById('success').querySelector('.success-text').innerHTML =
-        'We\'ve opened a pre-filled email to <strong>' + recipient + '</strong>. Review and hit Send.';
+        'We\'ve opened a pre-filled email to <strong>' + recipient + '</strong>. <strong>Attach any supporting documents</strong>, then review and hit Send.';
       form.style.display = 'none';
       document.getElementById('success').style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
