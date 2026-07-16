@@ -71,6 +71,9 @@
   .submit-btn:active { transform: translateY(1px); }
   .submit-btn:disabled { opacity: 0.6; cursor: default; }
   .footer-note { font-size: 12px; color: var(--ink-mute); margin-top: 16px; line-height: 1.6; }
+  .attach-alert { background: #fbe9e9; border: 2px solid var(--error); border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; font-size: 16px; line-height: 1.5; color: #7a2626; text-align: center; box-shadow: 0 2px 10px rgba(176,58,58,0.12); }
+  .attach-alert .big { display: block; font-size: 18px; font-weight: 700; letter-spacing: 0.02em; color: var(--error); margin-bottom: 4px; text-transform: uppercase; }
+  .attach-alert strong { color: var(--error); }
 
   .success { display: none; padding: 72px 44px; text-align: center; }
   .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
@@ -445,8 +448,12 @@
       </section>
 
       <div class="form-footer">
+        <div class="attach-alert">
+          <span class="big">📎 Don't forget to attach!</span>
+          Once your email opens in Outlook, <strong>attach all supporting documents</strong> (invoice, markup invoice, void cheque, etc.) <strong>before hitting Send.</strong>
+        </div>
         <button type="submit" class="submit-btn">Submit Request</button>
-        <p class="footer-note" id="footerNote">Submitting opens a pre-filled email from your own Outlook to the correct finance inbox — review and send.<br><strong>📎 Once the email opens in Outlook, please attach any supporting documents (invoice, markup invoice, void cheque, etc.) before sending.</strong></p>
+        <p class="footer-note" id="footerNote">Submitting opens a pre-filled email from your own Outlook to the correct finance inbox — review and send.</p>
       </div>
     </form>
 
