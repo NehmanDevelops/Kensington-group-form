@@ -310,63 +310,6 @@ async function handleGroupWebhook(events, res) {
   return res.status(200).json({ ok: true, processed: results.length, results });
 }
 
-// ── TEMP ADMIN (remove after running once) ──────────────────────────────────
-// One-shot setup: adds the group-sheet columns the webhook flow needs, then
-// registers + enables the Smartsheet webhook against LIVE GROUP MASTERSHEET.
-// Guarded by a one-time key; strip this block + its guard after use.
-async function adminSetup(res) {
-  const TOKEN = process.env.SMARTSHEET_API_TOKEN;
-  if (!TOKEN) return res.status(200).json({ ok: false, error: 'no smartsheet token' });
-  const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
-    ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
-  });
-
-  const sheet = await (await ss(`/sheets/${GROUPS}`)).json();
-  const existing = new Set((sheet.columns || []).map(c => c.title.trim().toLowerCase()));
-  const want = [
-    ['Create Amgine Branch', 'CHECKBOX'],
-    ['Amgine Onboard Status', 'TEXT_NUMBER'],
-    ['PCC', 'TEXT_NUMBER'],
-    ['Company Profile ID', 'TEXT_NUMBER'],
-    ['Group Profile ID', 'TEXT_NUMBER'],
-    ['Amgine Branch GUID', 'TEXT_NUMBER'],
-    ['Amgine Policy GUID', 'TEXT_NUMBER'],
-    ['Amgine Policy Link', 'TEXT_NUMBER'],
-    ['Amgine Onboarded', 'CHECKBOX'],
-    ['Profiled Travellers', 'CHECKBOX'],
-  ];
-  let index = (sheet.columns || []).length;
-  const added = [], skipped = [];
-  for (const [title, type] of want) {
-    if (existing.has(title.toLowerCase())) { skipped.push(title); continue; }
-    const r = await ss(`/sheets/${GROUPS}/columns`, { method: 'POST', body: JSON.stringify([{ title, type, index }]) });
-    const j = await r.json().catch(() => ({}));
-    if (r.ok) { added.push(title); index++; } else { added.push(`FAILED:${title}:${JSON.stringify(j).slice(0, 200)}`); }
-  }
-
-  const callbackUrl = 'https://kensington-group-form.vercel.app/api/create-branch';
-  const hooks = await (await ss(`/webhooks?includeAll=true`)).json();
-  let hook = (hooks.data || []).find(h => String(h.scopeObjectId) === GROUPS && h.callbackUrl === callbackUrl);
-  let hookAction;
-  if (!hook) {
-    const cr = await ss(`/webhooks`, { method: 'POST', body: JSON.stringify({
-      name: 'Amgine branch onboarding', callbackUrl, scope: 'sheet',
-      scopeObjectId: Number(GROUPS), version: 1, events: ['*.*'],
-    }) });
-    const cj = await cr.json().catch(() => ({}));
-    hook = cj.result || cj;
-    hookAction = cr.ok ? 'created' : `create-failed: ${JSON.stringify(cj).slice(0, 300)}`;
-  } else { hookAction = 'exists'; }
-
-  let enableResult = 'n/a';
-  if (hook && hook.id) {
-    const er = await ss(`/webhooks/${hook.id}`, { method: 'PUT', body: JSON.stringify({ enabled: true }) });
-    const ej = await er.json().catch(() => ({}));
-    enableResult = er.ok ? `enabled (status=${(ej.result || {}).status || '?'})` : `enable-failed: ${JSON.stringify(ej).slice(0, 300)}`;
-  }
-  return res.status(200).json({ ok: true, columnsAdded: added, columnsSkipped: skipped, hookId: hook && hook.id, hookAction, enableResult });
-}
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -384,12 +327,6 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-
-  // TEMP ADMIN one-shot (remove after running).
-  if (norm(body.__setupKey) === 'kcg-branch-hook-2026-setup') {
-    try { return await adminSetup(res); }
-    catch (err) { return res.status(200).json({ ok: false, error: err.message }); }
-  }
 
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
