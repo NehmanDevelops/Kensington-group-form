@@ -328,15 +328,6 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP audit (remove after use).
-  if (norm(body.__audit) === 'kcg-audit-2026') {
-    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
-    const sheetId = norm(body.sheet) || '8780932377956228';
-    const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${sheetId}?pageSize=1`, { headers: { Authorization: `Bearer ${TOKEN}` } });
-    const sheet = await r.json().catch(() => ({}));
-    return res.status(200).json({ ok: true, columns: (sheet.columns || []).map(c => ({ index: c.index, id: c.id, title: c.title, type: c.type, formula: c.formula || null })) });
-  }
-
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.

@@ -904,10 +904,10 @@ MASTER_COLUMN_MAP = {
     'gender':                   5163563324051332,
     'nationality':              2911763510366084,
     'email_address':            7415363137736580,
-    'cc_email_address':         8662414441877380,
+    'cc_email_address':         7407871674584964,   # "Alternate Email" (old "CC Email Address" col 8662414441877380 was deleted/recreated — 2026-07-16 audit)
     'mobile_phone':             1785863603523460,   # Phone Number (Mobile Phone column retired/merged)
-    'work_phone':               2751439930953604,
-    'home_phone':               7255039558324100,
+    'work_phone':               1778372140371844,   # "Phone Work" (old col 2751439930953604 was deleted/recreated — 2026-07-16 audit)
+    'home_phone':               6281971767742340,   # "Phone Home" (old col 7255039558324100 was deleted/recreated — 2026-07-16 audit)
     'company':                  6289463230893956,
     'title':                    5003239744638852,
     'passport_number':          4037663417208708,
