@@ -332,9 +332,14 @@ export default async function handler(req, res) {
   if (norm(body.__inspect) === 'kcg-hook-2026') {
     const TOKEN = process.env.SMARTSHEET_API_TOKEN;
     const r = await fetch('https://api.smartsheet.com/2.0/webhooks?includeAll=true', { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const status = r.status;
     const j = await r.json().catch(() => ({}));
-    const hooks = (j.data || []).map(h => ({ id: h.id, name: h.name, enabled: h.enabled, status: h.status, scopeObjectId: h.scopeObjectId, callbackUrl: h.callbackUrl, stats: h.stats, disabledDetails: h.disabledDetails }));
-    return res.status(200).json({ ok: true, hooks });
+    return res.status(200).json({ ok: true, listStatus: status, totalCount: j.totalCount, raw: j });
+  }
+  if (norm(body.__gethook)) {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const r = await fetch(`https://api.smartsheet.com/2.0/webhooks/${norm(body.__gethook)}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    return res.status(200).json({ ok: true, getStatus: r.status, raw: await r.json().catch(() => ({})) });
   }
 
   // ── Smartsheet webhook change event ─────────────────────────────────────
