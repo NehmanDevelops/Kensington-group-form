@@ -1,11 +1,11 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-07-09 — Policy Tool link solved (Raymond's groupGuid answer), master-dupe root fix, minimal branch form. See `CHANGELOG-2026-07-09.md` (and 07-07/07-08 work in `CHANGELOG-2026-07-07.md`)._
+_Last updated: 2026-07-20 — BookingProfile/PCC wiring + traveller email column bug fixed, CreatePNR failure isolated to specific branches, "guest vs external" traveller-type question raised with Raymond. See §10 below for full session log._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
-> **Current pipeline:** group row → branch form (once per group; success screen + group row get the **Policy Tool link**) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking → statuses flow back.
-> **Only item still parked with Amgine:** how to control **Show Price** (their side). Existing branches loanDepot/TESTING lack a working policy link (old wrong GUID) — re-onboard if needed.
+> **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup automatically) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (now also auto-attaches GDS BookingProfile, no extra checkbox) → statuses flow back.
+> **Open with Amgine:** why booking (`CreatePNR`) fails on some branches but not others (see §10.3); whether traveller type should be "external" instead of "guest" (§10.4); how to control **Show Price** (their side). Existing branches loanDepot/TESTING lack a working policy link (old wrong GUID) — re-onboard if needed.
 
 ---
 
@@ -121,3 +121,52 @@ Automated **Smartsheet → Amgine** travel-booking pipeline. Onboard a client fr
 - *Policy per client?* Default now; real rules plug in (waiting on Vera).
 - *Secure?* Keys only in the server env.
 - *Staging / white-label / GDS availability?* Punt to Amgine.
+
+---
+
+## 10. SESSION LOG — 2026-07-20 (Amgine call w/ Anna + Raymond)
+
+### 10.1 PCC / GDS BookingProfile — implemented Raymond's spec
+Raymond confirmed a GDS profile can live in a **different PCC** than the one you book/ticket in, and gave the exact payload shape:
+```json
+"BookingProfile": [
+  { "Pcc": "3H4J", "GdsProfileId": "302503490", "GdsProfileType": "Traveler" },
+  { "Pcc": "J7RJ", "GdsProfileId": "302503490", "GdsProfileType": "Corporate" }
+]
+```
+- Added a **`Profile PCC`** column to the LIVE GROUP MASTERSHEET (positioned right next to `PCC` for visibility). Falls back to the booking `PCC` when left blank, so existing groups are unaffected.
+- `api/amgine.js` (`sendOne`, search **"PCC"** — there's a banner comment) now builds `BookingProfile` from: `Profile PCC` (or `PCC`) + `Company Profile ID` + `Group Profile ID`.
+- **⚠️ Open question for Raymond:** we currently send `GdsProfileType: "Corporate"` for BOTH ids. His example shows `"Traveler"` for one of them — confirm which type Kensington's profiles actually are and flip if needed (1-line change).
+- **⚠️ Profile IDs must be the numeric Sabre GDS profile ID** (like `302503490`), not a profile name — verify what's loaded in `Company Profile ID` / `Group Profile ID` on each group row is numeric.
+
+### 10.2 Removed the "Profiled Travellers" checkbox gate (deliberate, no safety switch)
+- **Old behavior:** BookingProfile only sent `if (Profiled Travellers checkbox checked) && PCC`. This silently blocked profile data even when PCC + both profile IDs were fully populated (found on `VQ9GPANOCT26DFW` — Anna/Vera saw `BookingProfile`/PCC/profile id all null on Amgine's side despite the sheet being filled in correctly).
+- **New behavior (as of commit `7fea2a6`):** BookingProfile sends automatically **whenever a PCC is present** — no checkbox required. Ready to Book is the only trigger needed now; nothing else to remember.
+- **Decision:** deliberately no safety switch was re-added. Any group with a PCC filled in will always attempt to send a BookingProfile. If this ever causes an unwanted profile attach on a group that shouldn't have one, flag it — a gate can be re-added, but this time paired with a visible status note (not silent) so it's never a repeat surprise.
+
+### 10.3 CreatePNR failure — isolated to specific branches (not our code)
+Confirmed side-by-side in the Amgine queue: identical automation, same client (Kensington), same booking flow —
+| Branch | Result |
+|---|---|
+| `VQ9GTESTDEC26` | **Books fine** — real PNRs (KNGMWP, KTJXYL, KAZMAX, ICHJHR, DZZQGE, GTQTBG, OQESIZ, …) |
+| `VQ9GTEST2DEC26` | **Booking Failed** every time |
+| `AMGINETEST` | GDS **search succeeds** (40 results returned) but **`CreatePNR` fails** — log shows `CreatePNRResponse: Failed to Create PNR` with an empty PNR, `Messages: None`, workflow ends in Suspense |
+- **Conclusion:** the failure is at the GDS/PNR-commit layer — search/availability works, write (CreatePNR) doesn't. Same automation on a properly-provisioned branch (`VQ9GTESTDEC26`) succeeds every time. **This points to the booking PCC/ticketing config on the failing branches not being fully provisioned on Amgine's side**, not a payload/code issue.
+- **Ask Amgine:** confirm the booking PCC on `AMGINETEST` / `VQ9GTEST2DEC26` (and whatever branch the real launch group uses) is provisioned for booking/ticketing, not just GDS shopping.
+- **Go/no-go test before any real launch:** a test booking on the launch branch must return a **populated PNR** — not just reach "Ready" in the queue.
+
+### 10.4 Traveller shows as "Guest user" — asked Raymond about "External"
+- Every traveller currently shows as **"(guest user)"** in the Amgine Agent App, because our payload sends `AmgineTravelerId: -1` plus a `GuestSettings` block (`api/amgine.js`, `sendOne`, ~line 237–244) — that combination is literally what tells Amgine "this is a guest, not a registered traveller record."
+- Raised with Raymond: is there a different field/traveller type that would show as **"external"** instead of "guest"? Waiting on his answer — once we know the field, it's a small payload change to wire in.
+
+### 10.5 Fixed: traveller email was never sent (silent column-name bug)
+- Root cause: `api/amgine.js` was reading a column literally named **`Email Address`** — but the Traveller MasterSheet's actual column is named **`Email`**. `Email Address` doesn't exist on the sheet, so every booking sent a blank email regardless of what agents typed in.
+- **Fixed** (commit `b6df37f`): now reads `Email` first, falls back to `Email Address` if that column is ever added.
+- **Note found while auditing other fields:** the sheet also has no column matching `Known Traveller Number` (KTN) — that field has never been populated in any booking payload. Low priority (optional loyalty/TSA field), but flagging in case KTN data needs to be collected somewhere and mapped later.
+
+### 10.6 NEXT SESSION (upcoming, not yet scheduled) — "customizing emails"
+Anna/Raymond mentioned the next walkthrough will cover **customizing emails**. No details given yet, but based on what's already in the payload, this is most likely one or both of:
+1. **The Subject/Body we already send** in the New Request (`api/amgine.js` `sendOne`, ~line 235): `Subject: (KCG) ${who} — ${t.groupId}`, `Body: Kensington group booking for ${who} (group ${t.groupId})`. This text is what shows in the Agent App's "Original Email" panel — Raymond may want to walk through customizing this content/branding (Kensington logo, footer, wording) per client.
+2. **Amgine's own traveller-facing transactional emails** — the approval-request email / booking-confirmation email Amgine sends to travellers (we saw an "Approval Form" link generated in a booking log earlier). These are likely templated at the branch/serviced-entity level on Amgine's side (similar to how Policy Tool config works) — from-address, logo, footer copy, wording — probably configured through the same TMC/branch admin area, not something we send in our payload.
+- **Before that session:** have `api/amgine.js` open to the `Subject`/`Body` lines so you can show what we currently send if he asks, and ask directly: *"Is this about the Subject/Body we send in the request, or Amgine's own templated traveller emails? Where do we configure that — is it per-branch or per-entity?"*
+- Once Raymond specifies where the config lives (a new API field we need to send, vs. a setting in their admin UI), that becomes the next implementation task here.
