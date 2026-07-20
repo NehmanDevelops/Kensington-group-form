@@ -11,6 +11,15 @@
 // Env vars (Vercel): AMGINE_TOKEN_URL, AMGINE_CLIENT_ID, AMGINE_CLIENT_SECRET,
 // AMGINE_GRANT_TYPE, AMGINE_SCOPE, AMGINE_USERNAME, AMGINE_PASSWORD,
 // AMGINE_API_URL, AMGINE_TMC_GUID, AMGINE_HASH, SMARTSHEET_API_TOKEN.
+//
+// ┌─ FILE MAP (jump-to by function name) ───────────────────────────────────────┐
+// │ getAmgineToken()  — OAuth login to Amgine (secrets from env, never in code)  │
+// │ scanRows()        — find Ready-to-Book, unbooked, named traveller rows       │
+// │ sendOne()         — build ONE traveller's booking payload + fire it.         │
+// │                     ▶ PCC / BookingProfile is built here (search "PCC")      │
+// │ bookRows()        — loop sendOne() over all eligible rows (batched)          │
+// │ handler()         — entry point: routes SEND / Amgine webhook / SS webhook   │
+// └─────────────────────────────────────────────────────────────────────────────┘
 
 const MASTER = '8780932377956228';      // Traveller Profile MasterSheet
 const GROUPS = '4820086761148292';      // LIVE GROUP MASTERSHEET
@@ -199,6 +208,14 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const directToTraveller = truthy(G.val(grow, 'Direct to traveller'));
   const flow = { DirectToAgent: true, BypassAgent: directToTraveller };
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ▶▶ PCC / GDS BOOKING PROFILES  (Ray's "BookingProfile" payload lives here) ◀◀
+  //    Booking PCC  = group 'PCC' column      (where we book/ticket)
+  //    Profile PCC  = group 'Profile PCC' col (where the GDS profile is found)
+  //    Profile IDs  = 'Company Profile ID' / 'Group Profile ID' (numeric Sabre IDs)
+  //    Type is 'Corporate' today — flip to 'Traveler' if Ray confirms.
+  //    Output object `bookingProfile` is injected into the payload below (see ★).
+  // ═══════════════════════════════════════════════════════════════════════════
   // GDS booking profiles (Vera 2026-07-08): a booking pulls TWO account-level Sabre
   // profiles — the COMPANY profile ID and the GROUP profile ID — plus the PCC.
   // (Individual traveller profiles are pulled by the traveller's email, which we
@@ -241,6 +258,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       { FieldName: 'DateOfBirth', Data: t.dob || null }, { FieldName: 'Email', Data: t.email || null },
       { FieldName: 'Phone', Data: t.phone || null }, { FieldName: 'KnownTravelerNumber', Data: t.ktn || null },
       { FieldName: 'RedressNumber', Data: t.redress || null }, { FieldName: 'CountryOfIssue', Data: t.country || null },
+      // ★ BookingProfile (PCC + GDS profile IDs) gets attached here, if set above.
     ] }, ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
     Intent: { Nodes: intentNodes }, IntentOnly: true, ...flow,
   };
