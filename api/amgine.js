@@ -230,7 +230,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const companyProfileId = norm(G.val(grow, 'Company Profile ID'));
   const groupProfileId = norm(G.val(grow, 'Group Profile ID')) || norm(G.val(grow, 'Sabre Profile ID'));
   let bookingProfile = null;
-  if (truthy(G.val(grow, 'Profiled Travellers')) && profilePcc) {
+  if (profilePcc) {
     const profs = [];
     if (companyProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: companyProfileId, GdsProfileType: 'Corporate' });
     if (groupProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: groupProfileId, GdsProfileType: 'Corporate' });
