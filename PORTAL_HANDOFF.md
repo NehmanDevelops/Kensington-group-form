@@ -30,11 +30,33 @@ A **customer-facing portal** for Kensington Corporate's travelers. Each traveler
 - **Build order (proposed):** 1) prototype: login + dashboard shell with the 5 sections (show Sandra fast) → 2) real auth + per-client config → 3) contacts from Smartsheet → 4) invoice link + TripIt page → 5) chat (phase 2, only if wanted).
 
 ## 4. Next actions
-- [ ] Create `kensington-portal` repo + Vercel project; build the login + dashboard prototype.
-- [ ] Ask Sandra/Jos for the **old reporting tool's Invoice Retrieval URL**.
+- [x] Create `kensington-portal` repo + Vercel project; build the login + dashboard prototype.
+- [ ] Ask Sandra/Jos for the **old reporting tool's Invoice Retrieval URL** (v1 uses `corp.traveledge.com/invoices`).
 - [ ] **Meeting with Joselynn** → Trip-ARC contact (app piggyback, later phase).
 - [ ] **Chris Wilson** → SSO options for Concur/Deem (v1 ships with plain links regardless).
 - [ ] Website: ask IT who owns hosting/access before drafting anything real.
+- [ ] **Harden auth for production** — logins are demo-level (password "kensington"); needs real hashed credentials before customer-facing.
+
+## 4½. BUILD STATUS — Portal (as of 2026-07-20)
+**Repo:** `NehmanDevelops/kensington-portal` (private, branch `master`). **Live:** https://kensington-portal-seven.vercel.app  · own Vercel project (separate 12-fn budget from group-form). Deploys from `master`; **commit email must be `nehmanmain@gmail.com`** (GitHub-linked) or Vercel blocks the deploy — this machine's git is set globally to that now.
+
+**Built & live:**
+- **Login → per-client dashboard** (`index.html` → `dashboard.html`): OBT link (Concur/Deem/JENi per client), travel team + hours, online support, TripIt how-to, invoice link. Config in `config.js` (localStorage in the prototype).
+- **Admin** (`admin.html`): Clients & teams editor, Bulk traveller import, guided tour, "Preview traveller view".
+- **🎨 Branding suite (Canva-style, per client)** — the big recent add:
+  - Logo + header-image drag-drop (base64 for now)
+  - Colours (pickers + hex) with a **live WCAG contrast check**
+  - Font dropdown (local + Google) **+ custom font upload** (.ttf/.otf/.woff/.woff2 via FontFace API)
+  - **7 quick-theme palettes**, desktop/mobile **live preview**, and **"Open this client's dashboard"** to see the real logged-in view
+  - **✨ Get suggested branding** — `api/suggest-brand.js` researches a client's domain and auto-fills logo + colours + font. Applied per client via `applyBrand()` (sets CSS vars) in `config.js`.
+
+**`api/suggest-brand.js` behaviour (key-aware):**
+- If `BRANDFETCH_API_KEY` env is set → **exact** brand colours + fonts + official logo via `https://api.brandfetch.io/v2/brands/domain/<domain>`. ✅ **Key is added in Vercel (Production+Preview) as of 2026-07-20** — Brandfetch confirmed live.
+- Keyless fallback → Clearbit logo + the site's `<meta theme-color>`; final fallback = a deterministic palette from the domain (never empty).
+
+**Add / rotate the Brandfetch key** (already done, for reference): Brandfetch → Keys & MCP → create API key → Vercel `kensington-portal` → Settings → Environment Variables → `BRANDFETCH_API_KEY` = key (Sensitive, Production+Preview) → **Redeploy**. Never commit the key; the code reads it from `process.env`.
+
+**Phase-2 upgrades (nice-to-have):** Vercel Blob for real image/font hosting (replace base64); custom-font upload persistence at scale; per-brand favicon + login-page theming; "copy branding from another client".
 
 ---
 
