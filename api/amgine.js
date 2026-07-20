@@ -206,13 +206,17 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   // GdsProfileType is "Corporate" (manager's call, 2026-07-07). Profiles are
   // optional — no checkbox/IDs/PCC = book as guest.
   const groupPcc = norm(G.val(grow, 'PCC'));
+  // "Profile PCC" = the PCC where the GDS profile lives (Ray: "the PCC where the
+  // profile is found"), which can differ from the branch/booking PCC. Falls back
+  // to the booking PCC when the column is blank so existing groups keep working.
+  const profilePcc = norm(G.val(grow, 'Profile PCC')) || groupPcc;
   const companyProfileId = norm(G.val(grow, 'Company Profile ID'));
   const groupProfileId = norm(G.val(grow, 'Group Profile ID')) || norm(G.val(grow, 'Sabre Profile ID'));
   let bookingProfile = null;
-  if (truthy(G.val(grow, 'Profiled Travellers')) && groupPcc) {
+  if (truthy(G.val(grow, 'Profiled Travellers')) && profilePcc) {
     const profs = [];
-    if (companyProfileId) profs.push({ Pcc: groupPcc, GdsProfileId: companyProfileId, GdsProfileType: 'Corporate' });
-    if (groupProfileId) profs.push({ Pcc: groupPcc, GdsProfileId: groupProfileId, GdsProfileType: 'Corporate' });
+    if (companyProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: companyProfileId, GdsProfileType: 'Corporate' });
+    if (groupProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: groupProfileId, GdsProfileType: 'Corporate' });
     if (profs.length) bookingProfile = profs;
   }
 
