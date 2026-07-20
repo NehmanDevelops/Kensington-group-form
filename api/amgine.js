@@ -180,7 +180,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const t = {
     first: norm(M.val(mrow, 'First Name')), middle: norm(M.val(mrow, 'Middle Name')),
     last: norm(M.val(mrow, 'Last Name')), gender: toGender(M.val(mrow, 'Gender')),
-    dob: toDOB(M.val(mrow, 'Date of Birth')), email: norm(M.val(mrow, 'Email Address')),
+    dob: toDOB(M.val(mrow, 'Date of Birth')), email: norm(M.val(mrow, 'Email')) || norm(M.val(mrow, 'Email Address')),
     phone: norm(M.val(mrow, 'Phone Number')), ktn: norm(M.val(mrow, 'Known Traveller Number')),
     redress: norm(M.val(mrow, 'Redress Number')), country: norm(M.val(mrow, 'Pass Country of Issue')),
     groupId: norm(M.val(mrow, 'Group ID')), depDate: M.val(mrow, 'Departure Date'),
