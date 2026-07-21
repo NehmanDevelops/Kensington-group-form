@@ -184,6 +184,12 @@ Anna/Raymond mentioned the next walkthrough will cover **customizing emails**. N
 - **Why it shows as "guest" now:** payload sends `AmgineTravelerId: -1` + a `GuestSettings` block. The traveller's email is already sent inside GuestSettings (`{ FieldName: 'Email', Data: t.email }`).
 - **Where in code:** `api/amgine.js` → function `sendOne` → search **`GuestSettings`** (or `AmgineTravelerId`). It's inside `const payload = { … }`, in `TravelerRequested` and `TravelerInformation`.
 - **What to do on the call:** show Raymond those lines + the Email field, ask EXACTLY what to send so Amgine resolves by email and marks the traveller external (does `AmgineTravelerId` stay `-1` or change? a new flag? a different block instead of `GuestSettings`?). **Write his answer down verbatim.**
+- **Likely change shapes (educated guesses — do NOT pre-apply, wait for Ray's exact word):**
+  1. Change the ID: `AmgineTravelerId: -1` -> `0` / `null` / omit (so it looks up instead of guesting).
+  2. Drop/replace the `GuestSettings` block (it may be what forces guest mode).
+  3. Add a flag: e.g. `TravelerType:"External"` / `ResolveByEmail:true` / `LookupProfile:true`.
+  4. Move the email up to the `TravelerRequested` level so the matcher sees it.
+- **The nuance that may BE the answer:** email resolution only works if a traveller profile with that email ALREADY EXISTS in the GDS. Our group travellers are often one-off with no stored profile, so there may be nothing to resolve — that could be why it was not pulling, and "guest" may be correct for them. ASK: does a profile need to exist first, and how is one created?
 
 ### 11.2 Topic — Email settings (Notify / CC / Reply-To)
 - **What's already built:** optional `EmailSettings` object in the payload, fed by three group-row columns — **Notify Emails / CC Emails / Reply-To Email**. It is omitted entirely unless a column is filled, so it is a no-op for every current booking. The field NAME `EmailSettings` and its shape are a best guess.
