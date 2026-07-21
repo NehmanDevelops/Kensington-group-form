@@ -243,6 +243,21 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   if (origin && dest && toISODate(t.depDate)) intentNodes.push({ Flight: { From: origin, To: dest, DepartureDate: toISODate(t.depDate), stops: ['NonStop'] } });
   if (origin && dest && toISODate(t.retDate)) intentNodes.push({ Flight: { From: dest, To: origin, DepartureDate: toISODate(t.retDate), stops: ['NonStop'] } });
 
+  // ── Email settings (optional, per group row) ────────────────────────────
+  // TODO(Ray / email session): confirm Amgine's exact field name + shape for
+  // routing/CC/reply-to. These columns are BLANK on every group today, so
+  // `emailSettings` stays empty and the payload is byte-for-byte unchanged —
+  // this only activates once a group row has an email column filled in.
+  const splitEmails = (s) => norm(s).split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+  const notifyEmails = splitEmails(G.val(grow, 'Notify Emails'));
+  const ccEmails = splitEmails(G.val(grow, 'CC Emails'));
+  const replyTo = norm(G.val(grow, 'Reply-To Email'));
+  const emailSettings = {};
+  if (notifyEmails.length) emailSettings.To = notifyEmails;
+  if (ccEmails.length) emailSettings.Cc = ccEmails;
+  if (replyTo) emailSettings.ReplyTo = replyTo;
+  const hasEmailSettings = Object.keys(emailSettings).length > 0;
+
   // IntentOnly mode: the traveller fills in their own trip via JENi's "Modify
   // Intent" screen, so flight legs are OPTIONAL. We prepopulate any legs we do
   // have (from airports/dates on the row), but an empty Intent is fine now.
@@ -251,6 +266,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     TmcGuid: process.env.AMGINE_TMC_GUID, From: process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
     Subject: `(KCG) ${who} — ${t.groupId}`, Body: `Kensington group booking for ${who} (group ${t.groupId}).`,
     Hash: process.env.AMGINE_HASH,
+    // ★ EmailSettings — field NAME is a best guess (confirm with Ray). Omitted
+    //   entirely unless a group row has Notify/CC/Reply-To filled, so this is a
+    //   no-op for every current booking. { To:[...], Cc:[...], ReplyTo:'...' }
+    ...(hasEmailSettings ? { EmailSettings: emailSettings } : {}),
     TravelerRequested: [{ AmgineTravelerId: -1, AmgineServicedEntityBranchGuid: branchGuid, TravelerFirstName: t.first, TravelerLastName: t.last, ...(policyGuid ? { AmginePolicyGuid: policyGuid } : {}) }],
     TravelerInformation: [{ GuestSettings: { GuestFieldSnapshots: [
       { FieldName: 'FirstName', Data: t.first || null }, { FieldName: 'MiddleName', Data: t.middle || null },
