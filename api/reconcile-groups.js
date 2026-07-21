@@ -27,6 +27,7 @@ const INTAKE_TITLES = {
   contactPhone: ['Event Manager Contact Number', 'Event Manager Phone', 'Contact Phone', 'Contact Number'],
   startDate:    ['Arrival Date', 'Travel Start Date', 'Start Date'],
   endDate:      ['Departure Date', 'Travel End Date', 'End Date'],
+  doNotSync:    ['Do Not Sync', 'Archived', 'Do Not Re-Sync', 'Skip Sync'],
 };
 const MASTER_TITLES = {
   groupId:      ['GROUP ID', 'Group ID'],
@@ -203,6 +204,11 @@ export default async function handler(req, res) {
       // Placeholder "IDs" (e.g. "Quote Only" on quote requests) are not real
       // groups — never sync them, or deleted rows keep resurrecting daily.
       if (/^(quote only|quote|n\/?a|tbd|none|pending|test)$/i.test(gid)) continue;
+      // Retired/archived groups: a "Do Not Sync" checkbox on the intake row lets
+      // a real group be permanently removed from the master without it getting
+      // re-created on the next run (e.g. VQ9GREDJUL26 / Red8 kept resurrecting
+      // after being archived). Check the box on the intake row to retire a group.
+      if (I.doNotSync) { const v = cellVal(row, I.doNotSync); if (v === true || /^(true|1|yes|y)$/i.test(norm(v))) continue; }
       if (masterIds.has(gid.toLowerCase())) continue;
       if (batchSeen.has(gid.toLowerCase())) continue;
       batchSeen.add(gid.toLowerCase());
