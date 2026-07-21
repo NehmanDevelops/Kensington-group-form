@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-07-20 — BookingProfile/PCC wiring + traveller email column bug fixed, CreatePNR failure isolated to specific branches, "guest vs external" traveller-type question raised with Raymond. See §10 below for full session log._
+_Last updated: 2026-07-21 — email-resolution confirmed for "external" travellers, EmailSettings scaffolded. **§11 has the prep for the 2026-07-22 Amgine call — read it first.** Deadline: 2 groups launch next week, want Amgine live by then._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -170,3 +170,34 @@ Anna/Raymond mentioned the next walkthrough will cover **customizing emails**. N
 2. **Amgine's own traveller-facing transactional emails** — the approval-request email / booking-confirmation email Amgine sends to travellers (we saw an "Approval Form" link generated in a booking log earlier). These are likely templated at the branch/serviced-entity level on Amgine's side (similar to how Policy Tool config works) — from-address, logo, footer copy, wording — probably configured through the same TMC/branch admin area, not something we send in our payload.
 - **Before that session:** have `api/amgine.js` open to the `Subject`/`Body` lines so you can show what we currently send if he asks, and ask directly: *"Is this about the Subject/Body we send in the request, or Amgine's own templated traveller emails? Where do we configure that — is it per-branch or per-entity?"*
 - Once Raymond specifies where the config lives (a new API field we need to send, vs. a setting in their admin UI), that becomes the next implementation task here.
+
+---
+
+## 11. AMGINE CALL PREP — 2026-07-22 (read this before the call)
+
+**Where things stand (from the 07-21 email thread):**
+- Vera confirmed we will use Amgine's **email-address resolution** for traveller profiles (we do NOT store per-traveller GDS profile IDs; we send the traveller's email, which the pipeline already does).
+- Open with Raymond: (a) what, if anything, WE send to tell Amgine to resolve by email so the traveller comes through as **external** instead of **guest**; (b) why the profile was not pulling before.
+- **Deadline:** the client that was mid-implementation launched today (Amgine not used again this round). **2 more groups launch next week — goal is to have Amgine working by then.**
+
+### 11.1 Topic — Guest → External (traveller type)
+- **Why it shows as "guest" now:** payload sends `AmgineTravelerId: -1` + a `GuestSettings` block. The traveller's email is already sent inside GuestSettings (`{ FieldName: 'Email', Data: t.email }`).
+- **Where in code:** `api/amgine.js` → function `sendOne` → search **`GuestSettings`** (or `AmgineTravelerId`). It's inside `const payload = { … }`, in `TravelerRequested` and `TravelerInformation`.
+- **What to do on the call:** show Raymond those lines + the Email field, ask EXACTLY what to send so Amgine resolves by email and marks the traveller external (does `AmgineTravelerId` stay `-1` or change? a new flag? a different block instead of `GuestSettings`?). **Write his answer down verbatim.**
+
+### 11.2 Topic — Email settings (Notify / CC / Reply-To)
+- **What's already built:** optional `EmailSettings` object in the payload, fed by three group-row columns — **Notify Emails / CC Emails / Reply-To Email**. It is omitted entirely unless a column is filled, so it is a no-op for every current booking. The field NAME `EmailSettings` and its shape are a best guess.
+- **Where in code:** `api/amgine.js` → search **`EmailSettings`** (two spots: the block that reads the columns ~line 246, and where it attaches to the payload ~line 269).
+- **What to confirm with Raymond:** the exact field name + shape Amgine expects, and whether this is about the subject/body WE send vs. Amgine's own traveller-facing emails.
+
+### 11.3 THE GOLDEN RULE
+Do NOT hand-edit `api/amgine.js` live during the call — a bad edit to the payload breaks every booking. Show Raymond the spot, capture his exact wording, then wire it afterward + syntax-check (`node --check api/amgine.js`) before pushing. Same pattern used for the PCC and email work.
+
+### 11.4 Questions to make sure we ask
+1. Email → external: what field/value do we send? (does `AmgineTravelerId` stay `-1`?)
+2. Why was the traveller profile not pulling before?
+3. `EmailSettings`: exact field name + shape? Our subject/body or Amgine's emails?
+4. Can we get it fully working before next week (2 groups launching)?
+
+### 11.5 Deploy reminder
+All Amgine code lives in `api/amgine.js` (Vercel). Commit email must be `nehmanmain@gmail.com` or Vercel blocks the deploy. Secrets only in Vercel env vars.
