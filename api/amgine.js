@@ -232,8 +232,8 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   let bookingProfile = null;
   if (profilePcc) {
     const profs = [];
-    if (companyProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: companyProfileId, GdsProfileType: 'Corporate' });
-    if (groupProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: groupProfileId, GdsProfileType: 'Corporate' });
+    if (companyProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: companyProfileId, GdsProfileType: 'Corporate', TravelerType: 'UnProfiled' });
+    if (groupProfileId) profs.push({ Pcc: profilePcc, GdsProfileId: groupProfileId, GdsProfileType: 'Corporate', TravelerType: 'UnProfiled' });
     if (profs.length) bookingProfile = profs;
   }
 
