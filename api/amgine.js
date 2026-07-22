@@ -263,7 +263,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   // have (from airports/dates on the row), but an empty Intent is fine now.
   const payload = {
     ExternalId: { Id: String(rowId), ThreadId: t.groupId || String(rowId) },
-    TmcGuid: process.env.AMGINE_TMC_GUID, From: process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
+    TmcGuid: process.env.AMGINE_TMC_GUID, From: t.email || process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
     Subject: `(KCG) ${who} — ${t.groupId}`, Body: `Kensington group booking for ${who} (group ${t.groupId}).`,
     Hash: process.env.AMGINE_HASH,
     // ★ EmailSettings — field NAME is a best guess (confirm with Ray). Omitted
