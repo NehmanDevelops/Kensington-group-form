@@ -439,13 +439,6 @@ export default async function handler(req, res) {
     const M = indexSheet(master);
     const allRows = master.rows || [];
 
-    // TEMP fix (remove after use): correct one row's Email cell.
-    if (norm(body.__fixEmail) && body.__rowId) {
-      const emailCol = M.id('Email');
-      await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: emailCol, value: norm(body.__fixEmail) }] }]) });
-      return res.status(200).json({ ok: true, updated: body.__rowId, newEmail: norm(body.__fixEmail) });
-    }
-
     let rows = [];
     if (isTrue(body.scan)) {
       rows = scanRows(master, M);
