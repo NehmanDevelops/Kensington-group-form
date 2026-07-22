@@ -448,6 +448,15 @@ export default async function handler(req, res) {
         email: r ? M.val(r, 'Email') : null, groupId: r ? M.val(r, 'Group ID') : null,
         status: r ? M.val(r, 'Amgine Status') : null });
     }
+    // TEMP dump (remove after use): list rows for a group with key fields.
+    if (norm(body.__dumpGroup)) {
+      const wantGroup = norm(body.__dumpGroup).toLowerCase();
+      const list = allRows.filter(x => norm(M.val(x, 'Group ID')).toLowerCase() === wantGroup).map(x => ({
+        rowId: x.id, first: M.val(x, 'First Name'), last: M.val(x, 'Last Name'), email: M.val(x, 'Email'),
+        itinId: M.val(x, 'Amgine Itinerary ID'), status: M.val(x, 'Amgine Status'), ready: M.val(x, 'Ready to Book'),
+      }));
+      return res.status(200).json({ ok: true, count: list.length, rows: list });
+    }
 
     let rows = [];
     if (isTrue(body.scan)) {
