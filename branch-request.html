@@ -82,7 +82,8 @@
           <div class="field">
             <label class="field-label" for="groupIds">Kensington Group ID(s)<span class="required-mark">*</span></label>
             <div class="field-sub">Which group(s) will book under this branch.</div>
-            <input type="text" id="groupIds" name="groupIds" class="field-input" data-req="1" />
+            <input type="text" id="groupIds" name="groupIds" class="field-input" data-req="1" list="groupIdList" autocomplete="off" />
+            <datalist id="groupIdList"></datalist>
           </div>
           <div class="field">
             <label class="field-label" for="requestedBy">Requested by (your email)<span class="required-mark">*</span></label>
@@ -146,6 +147,18 @@
 <script>
   (function(){
     var form = document.getElementById('branchForm');
+
+    fetch('/api/agentform')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        var list = document.getElementById('groupIdList');
+        (data.groupIds || []).forEach(function(id){
+          var opt = document.createElement('option');
+          opt.value = id;
+          list.appendChild(opt);
+        });
+      })
+      .catch(function(){}); // autocomplete is a nice-to-have; form still works without it
 
     // Amgine needs 2-letter Province/State + Country codes. Let users type the full
     // name and auto-convert (on blur + at submit). Unknown values are left as-is.
