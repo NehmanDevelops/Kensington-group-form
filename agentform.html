@@ -59,7 +59,8 @@
         <p class="sub">Add a traveller to the Group Master.</p>
         <form id="agentForm" autocomplete="off">
           <label for="groupId">Group ID <span class="req">*</span></label>
-          <input id="groupId" name="groupId" required placeholder="e.g. 1OEGLOASEP26" />
+          <input id="groupId" name="groupId" required placeholder="e.g. 1OEGLOASEP26" list="groupIdList" autocomplete="off" />
+          <datalist id="groupIdList"></datalist>
 
           <label for="firstName">First Name <span class="req">*</span></label>
           <input id="firstName" name="firstName" required />
@@ -88,6 +89,18 @@
   const form = document.getElementById('agentForm');
   const btn  = document.getElementById('submitBtn');
   const msg  = document.getElementById('msg');
+
+  fetch('/api/agentform')
+    .then(r => r.json())
+    .then(data => {
+      const list = document.getElementById('groupIdList');
+      (data.groupIds || []).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        list.appendChild(opt);
+      });
+    })
+    .catch(() => {}); // autocomplete is a nice-to-have; form still works without it
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

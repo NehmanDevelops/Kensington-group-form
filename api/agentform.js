@@ -1,14 +1,37 @@
 // Agent quick-entry form -> writes a row into the Traveller Profile MasterSheet.
 // Fields: Group ID, First Name, Last Name, Additional Agents.
+// GET -> returns the list of known Group IDs (from LIVE GROUP MASTERSHEET) so the
+// form can offer a <datalist> autocomplete and cut down on Group ID typos.
+const GROUP_SHEET_ID = '4820086761148292'; // LIVE GROUP MASTERSHEET
+const GROUP_ID_COL = 671286488764292; // Group ID column on the group sheet
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   if (!TOKEN) return res.status(503).json({ error: 'SMARTSHEET_API_TOKEN not configured' });
+
+  if (req.method === 'GET') {
+    try {
+      const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUP_SHEET_ID}?columnIds=${GROUP_ID_COL}`, {
+        headers: { Authorization: `Bearer ${TOKEN}` },
+      });
+      const data = await r.json();
+      if (!r.ok) return res.status(502).json({ error: data.message || 'Smartsheet read failed' });
+      const groupIds = (data.rows || [])
+        .map(row => (row.cells || []).find(c => c.columnId === GROUP_ID_COL))
+        .map(c => c && c.value)
+        .filter(Boolean);
+      return res.status(200).json({ groupIds: [...new Set(groupIds)] });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const MASTER_SHEET_ID = '8780932377956228'; // Traveller Profile MasterSheet
   const COL = {
