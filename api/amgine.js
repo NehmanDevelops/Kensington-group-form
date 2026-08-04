@@ -170,7 +170,7 @@ function scanRows(master, M) {
 // Build + fire a New Request for one traveller row, then write the itinerary id
 // back. On any failure, write a visible "Booking failed: <reason>" onto the row
 // so an agent sees it (instead of a silent blank). Never throws.
-async function sendOne({ api, amgToken, mrow, M, groups, G }) {
+async function sendOne({ api, amgToken, mrow, M, groups, G, dryRun }) {
   const rowId = mrow.id;
   const setStatus = async (s) => {
     if (!M.id('Amgine Status')) return;
@@ -307,6 +307,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     Intent: { Nodes: intentNodes }, IntentOnly: true, ...flow,
   };
 
+  // TEMP: dry-run short-circuit — return the built payload without sending to
+  // Amgine or writing to the sheet (remove after snap-code verification).
+  if (dryRun) return { rowId, traveller: who, ok: true, dryRun: true, payload };
+
   let amgRes, amgJson;
   try {
     amgRes = await fetch(process.env.AMGINE_API_URL, {
@@ -335,11 +339,12 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
 
 // Claim the rows (dup guard) → get token + groups once → fire in small parallel
 // batches so a big group doesn't run 40 calls back-to-back and time out.
-async function bookRows({ api, rows, M }) {
+async function bookRows({ api, rows, M, dryRun }) {
   if (!rows.length) return { ok: true, processed: 0, results: [], note: 'no matching travellers to book' };
 
   // (#2) Stamp every selected row SENDING up front so an overlapping scan skips them.
-  if (M.id('Amgine Status')) {
+  // (Skipped entirely in dryRun — a dry run must never touch the row's visible status.)
+  if (!dryRun && M.id('Amgine Status')) {
     await api(`/sheets/${MASTER}/rows`, {
       method: 'PUT',
       body: JSON.stringify(rows.map(r => ({ id: r.id, cells: [{ columnId: M.id('Amgine Status'), value: SENDING }] }))),
@@ -366,7 +371,7 @@ async function bookRows({ api, rows, M }) {
   const results = [];
   for (let i = 0; i < rows.length; i += CONCURRENCY) {
     const chunk = rows.slice(i, i + CONCURRENCY);
-    const settled = await Promise.all(chunk.map(mrow => sendOne({ api, amgToken: auth.token, mrow, M, groups, G })));
+    const settled = await Promise.all(chunk.map(mrow => sendOne({ api, amgToken: auth.token, mrow, M, groups, G, dryRun })));
     results.push(...settled);
   }
   return { ok: true, processed: results.length, results };
@@ -485,7 +490,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Provide scan:true, rowId, email, or firstName+lastName' });
     }
 
-    const result = await bookRows({ api, rows, M });
+    const result = await bookRows({ api, rows, M, dryRun: isTrue(body.dryRun) });
     return res.status(result.ok === false ? 502 : 200).json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
