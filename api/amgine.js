@@ -395,6 +395,18 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, groupId: body.__groupId, field: body.__setGroupField, value: norm(body.__value) });
   }
 
+  // TEMP: list traveller rows for a group (remove after use).
+  if (norm(body.__listGroupTravellers)) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const wantGroup = norm(body.__listGroupTravellers).toLowerCase();
+    const list = (master.rows || []).filter(r => norm(M.val(r, 'Group ID')).toLowerCase() === wantGroup).map(r => ({
+      rowId: r.id, first: M.val(r, 'First Name'), last: M.val(r, 'Last Name'), email: M.val(r, 'Email'),
+      itinId: M.val(r, 'Amgine Itinerary ID'), status: M.val(r, 'Amgine Status'),
+    }));
+    return res.status(200).json({ ok: true, count: list.length, rows: list });
+  }
+
   // TEMP: read-only check whether a specific master-sheet rowId exists (remove after use).
   if (norm(body.__checkRowId)) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
