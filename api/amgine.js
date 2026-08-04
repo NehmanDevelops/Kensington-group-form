@@ -398,6 +398,22 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
   }
 
+  // TEMP: add a group row (test group only, remove after use).
+  if (norm(body.__addTestGroup) && body.__groupId) {
+    const groups = await (await api(`/sheets/${GROUPS}`)).json();
+    const G = indexSheet(groups);
+    const cells = [];
+    const put = (title, value) => { if (G.id(title) && value !== undefined) cells.push({ columnId: G.id(title), value }); };
+    put('GROUP ID', norm(body.__groupId));
+    put('Amgine Branch GUID', body.__branchGuid);
+    put('Amgine Policy GUID', body.__policyGuid);
+    put('Amgine Policy Link', body.__policyLink);
+    put('Amgine Onboarded', true);
+    const r = await api(`/sheets/${GROUPS}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ ok: r.ok, raw: j });
+  }
+
   // TEMP: search group IDs (remove after use).
   if (norm(body.__searchGroups)) {
     const groups = await (await api(`/sheets/${GROUPS}`)).json();
