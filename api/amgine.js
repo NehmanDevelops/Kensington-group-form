@@ -383,68 +383,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: add a dummy test traveller row to a test group (remove after use).
-  if (norm(body.__addTestTraveller) && body.__groupId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const cells = [];
-    if (M.id('Group ID')) cells.push({ columnId: M.id('Group ID'), value: norm(body.__groupId) });
-    if (M.id('First Name')) cells.push({ columnId: M.id('First Name'), value: norm(body.__first) || 'SnapCode' });
-    if (M.id('Last Name')) cells.push({ columnId: M.id('Last Name'), value: norm(body.__last) || 'Test' });
-    if (M.id('Email')) cells.push({ columnId: M.id('Email'), value: norm(body.__email) || 'snapcodetest@example.com' });
-    const r = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
-    const j = await r.json().catch(() => ({}));
-    const newRowId = j.result && j.result[0] && j.result[0].id;
-    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
-  }
-
-  // TEMP: set a field on a master (traveller) row by rowId (remove after use).
-  if (norm(body.__setMasterField) && body.__rowId && body.__value !== undefined) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const colId = M.id(norm(body.__setMasterField));
-    if (!colId) return res.status(200).json({ ok: false, error: 'column not found: ' + body.__setMasterField });
-    await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: colId, value: norm(body.__value) }] }]) });
-    return res.status(200).json({ ok: true, rowId: body.__rowId, field: body.__setMasterField, value: norm(body.__value) });
-  }
-
-  // TEMP: add a group row (test group only, remove after use).
-  if (norm(body.__addTestGroup) && body.__groupId) {
-    const groups = await (await api(`/sheets/${GROUPS}`)).json();
-    const G = indexSheet(groups);
-    const cells = [];
-    const put = (title, value) => { if (G.id(title) && value !== undefined) cells.push({ columnId: G.id(title), value }); };
-    put('GROUP ID', norm(body.__groupId));
-    put('Amgine Branch GUID', body.__branchGuid);
-    put('Amgine Policy GUID', body.__policyGuid);
-    put('Amgine Policy Link', body.__policyLink);
-    put('Amgine Onboarded', true);
-    const r = await api(`/sheets/${GROUPS}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ ok: r.ok, raw: j });
-  }
-
-  // TEMP: search group IDs (remove after use).
-  if (norm(body.__searchGroups)) {
-    const groups = await (await api(`/sheets/${GROUPS}`)).json();
-    const G = indexSheet(groups);
-    const want = norm(body.__searchGroups).toLowerCase();
-    const matches = (groups.rows || []).map(r => norm(G.val(r, 'GROUP ID'))).filter(g => g.toLowerCase().includes(want));
-    return res.status(200).json({ ok: true, matches });
-  }
-
-  // TEMP: set a group row's Snap Code/Tour Code cells (group-only, remove after use).
-  if (norm(body.__setGroupField) && body.__groupId && body.__value !== undefined) {
-    const groups = await (await api(`/sheets/${GROUPS}`)).json();
-    const G = indexSheet(groups);
-    const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === norm(body.__groupId).toLowerCase());
-    if (!grow) return res.status(200).json({ ok: false, error: 'group not found' });
-    const colId = G.id(norm(body.__setGroupField));
-    if (!colId) return res.status(200).json({ ok: false, error: 'column not found: ' + body.__setGroupField });
-    await api(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: grow.id, cells: [{ columnId: colId, value: norm(body.__value) }] }]) });
-    return res.status(200).json({ ok: true, groupId: body.__groupId, field: body.__setGroupField, value: norm(body.__value) });
-  }
-
   // ── SMARTSHEET webhook: verification challenge ──────────────────────────
   // When the webhook is enabled, Smartsheet POSTs a challenge header; echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
