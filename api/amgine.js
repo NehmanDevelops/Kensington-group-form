@@ -383,6 +383,9 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP version marker (remove after deploy verification).
+  if (body.__ping) return res.status(200).json({ ok: true, ping: 'v-snapcode-clean-5ccf626' });
+
   // ── SMARTSHEET webhook: verification challenge ──────────────────────────
   // When the webhook is enabled, Smartsheet POSTs a challenge header; echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
