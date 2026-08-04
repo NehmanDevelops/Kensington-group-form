@@ -398,6 +398,15 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
   }
 
+  // TEMP: search group IDs (remove after use).
+  if (norm(body.__searchGroups)) {
+    const groups = await (await api(`/sheets/${GROUPS}`)).json();
+    const G = indexSheet(groups);
+    const want = norm(body.__searchGroups).toLowerCase();
+    const matches = (groups.rows || []).map(r => norm(G.val(r, 'GROUP ID'))).filter(g => g.toLowerCase().includes(want));
+    return res.status(200).json({ ok: true, matches });
+  }
+
   // TEMP: set a group row's Snap Code/Tour Code cells (group-only, remove after use).
   if (norm(body.__setGroupField) && body.__groupId && body.__value !== undefined) {
     const groups = await (await api(`/sheets/${GROUPS}`)).json();
