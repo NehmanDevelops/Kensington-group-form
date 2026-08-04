@@ -383,8 +383,44 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP version marker (remove after deploy verification).
-  if (body.__ping) return res.status(200).json({ ok: true, ping: 'v-snapcode-clean-5ccf626' });
+  // TEMP: set a group row's Snap Code/Tour Code cells for testing (remove after use).
+  if (norm(body.__setGroupField) && body.__groupId && body.__value !== undefined) {
+    const groups = await (await api(`/sheets/${GROUPS}`)).json();
+    const G = indexSheet(groups);
+    const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === norm(body.__groupId).toLowerCase());
+    if (!grow) return res.status(200).json({ ok: false, error: 'group not found' });
+    const colId = G.id(norm(body.__setGroupField));
+    if (!colId) return res.status(200).json({ ok: false, error: 'column not found: ' + body.__setGroupField });
+    await api(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: grow.id, cells: [{ columnId: colId, value: norm(body.__value) }] }]) });
+    return res.status(200).json({ ok: true, groupId: body.__groupId, field: body.__setGroupField, value: norm(body.__value) });
+  }
+
+  // TEMP: read-only check of a group's Snap Code/Tour Code columns, showing
+  // exactly what NegotiatedRateCodes array would be built (no writes, no
+  // traveller row touched, no Amgine call). Remove after use.
+  if (norm(body.__checkGroupCodes)) {
+    const groups = await (await api(`/sheets/${GROUPS}`)).json();
+    const G = indexSheet(groups);
+    const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === norm(body.__checkGroupCodes).toLowerCase());
+    if (!grow) return res.status(200).json({ ok: false, error: 'group not found' });
+    const rawSnap = G.val(grow, 'Snap Code/Contract Code');
+    const rawTour = G.val(grow, 'Tour Code');
+    const parse = (s) => norm(s).split(/[;,]/).map((x) => x.trim()).filter(Boolean).map((pair) => {
+      const m = pair.split(':').map((p) => p.trim());
+      return m.length === 2 && m[0] && m[1] ? { airline: m[0].toUpperCase(), code: m[1] } : null;
+    }).filter(Boolean);
+    const snapPairs = parse(rawSnap);
+    const tourPairs = parse(rawTour);
+    const negotiatedRateCodes = [
+      ...snapPairs.map((p) => ({ Airline: p.airline, CorporateId: p.code })),
+      ...tourPairs.map((p) => ({ Airline: p.airline, TourCode: p.code })),
+    ];
+    return res.status(200).json({
+      ok: true, groupId: body.__checkGroupCodes,
+      rawSnapCodeColumn: rawSnap, rawTourCodeColumn: rawTour,
+      builtPayload: negotiatedRateCodes.length ? { BranchInfo: { AirConfig: { NegotiatedRateCodes: negotiatedRateCodes } } } : null,
+    });
+  }
 
   // ── SMARTSHEET webhook: verification challenge ──────────────────────────
   // When the webhook is enabled, Smartsheet POSTs a challenge header; echo it.
