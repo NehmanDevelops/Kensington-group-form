@@ -398,6 +398,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
   }
 
+  // TEMP: set a field on a master (traveller) row by rowId (remove after use).
+  if (norm(body.__setMasterField) && body.__rowId && body.__value !== undefined) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const colId = M.id(norm(body.__setMasterField));
+    if (!colId) return res.status(200).json({ ok: false, error: 'column not found: ' + body.__setMasterField });
+    await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: colId, value: norm(body.__value) }] }]) });
+    return res.status(200).json({ ok: true, rowId: body.__rowId, field: body.__setMasterField, value: norm(body.__value) });
+  }
+
   // TEMP: add a group row (test group only, remove after use).
   if (norm(body.__addTestGroup) && body.__groupId) {
     const groups = await (await api(`/sheets/${GROUPS}`)).json();
