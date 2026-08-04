@@ -328,6 +328,26 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP one-shot: add the Snap Code/Tour Code columns Vera approved (remove after use).
+  if (norm(body.__setupKey) === 'kcg-snapcode-cols-2026') {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
+      ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
+    });
+    const sheet = await (await ss(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const existing = new Set((sheet.columns || []).map(c => c.title.trim().toLowerCase()));
+    const want = ['Snap Code/Contract Code', 'Tour Code'];
+    let index = (sheet.columns || []).length;
+    const added = [], skipped = [];
+    for (const title of want) {
+      if (existing.has(title.toLowerCase())) { skipped.push(title); continue; }
+      const r = await ss(`/sheets/${GROUPS}/columns`, { method: 'POST', body: JSON.stringify([{ title, type: 'TEXT_NUMBER', index }]) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { added.push(title); index++; } else { added.push(`FAILED:${title}:${JSON.stringify(j).slice(0, 200)}`); }
+    }
+    return res.status(200).json({ ok: true, columnsAdded: added, columnsSkipped: skipped });
+  }
+
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.
