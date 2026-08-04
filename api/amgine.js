@@ -243,15 +243,15 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   //   { Airline, TourCode }     = a tour code (same array, different key per entry)
   // Source columns on the group row (LIVE GROUP MASTERSHEET), format "AA:DIS01, DL:DIS02"
   // (airline code : corporate/contract id, comma or semicolon separated):
-  //   'Negotiated Rate Codes' -> CorporateId entries
-  //   'Tour Codes'            -> TourCode entries
+  //   'Snap Code/Contract Code' -> CorporateId entries
+  //   'Tour Code'               -> TourCode entries
   const parseAirlineCodePairs = (s) => norm(s).split(/[;,]/).map((x) => x.trim()).filter(Boolean)
     .map((pair) => {
       const m = pair.split(':').map((p) => p.trim());
       return m.length === 2 && m[0] && m[1] ? { airline: m[0].toUpperCase(), code: m[1] } : null;
     }).filter(Boolean);
-  const negotiatedRatePairs = parseAirlineCodePairs(G.val(grow, 'Negotiated Rate Codes'));
-  const tourCodePairs = parseAirlineCodePairs(G.val(grow, 'Tour Codes'));
+  const negotiatedRatePairs = parseAirlineCodePairs(G.val(grow, 'Snap Code/Contract Code'));
+  const tourCodePairs = parseAirlineCodePairs(G.val(grow, 'Tour Code'));
   const negotiatedRateCodes = [
     ...negotiatedRatePairs.map((p) => ({ Airline: p.airline, CorporateId: p.code })),
     ...tourCodePairs.map((p) => ({ Airline: p.airline, TourCode: p.code })),
