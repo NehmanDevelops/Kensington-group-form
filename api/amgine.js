@@ -388,6 +388,18 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: set a group row's Snap Code/Tour Code cells for testing (remove after use).
+  if (norm(body.__setGroupField) && body.__groupId && body.__value !== undefined) {
+    const groups = await (await api(`/sheets/${GROUPS}`)).json();
+    const G = indexSheet(groups);
+    const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === norm(body.__groupId).toLowerCase());
+    if (!grow) return res.status(200).json({ ok: false, error: 'group not found' });
+    const colId = G.id(norm(body.__setGroupField));
+    if (!colId) return res.status(200).json({ ok: false, error: 'column not found: ' + body.__setGroupField });
+    await api(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: grow.id, cells: [{ columnId: colId, value: norm(body.__value) }] }]) });
+    return res.status(200).json({ ok: true, groupId: body.__groupId, field: body.__setGroupField, value: norm(body.__value) });
+  }
+
   // ── SMARTSHEET webhook: verification challenge ──────────────────────────
   // When the webhook is enabled, Smartsheet POSTs a challenge header; echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
