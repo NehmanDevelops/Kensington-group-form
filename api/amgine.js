@@ -237,6 +237,27 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     if (profs.length) bookingProfile = profs;
   }
 
+  // ── Negotiated rate codes / tour codes (Raymond, 2026-07-31) ────────────
+  // Sent at the ROOT of the booking payload as BranchInfo.AirConfig.NegotiatedRateCodes:
+  //   { Airline, CorporateId }  = an airline snap code / contracted rate
+  //   { Airline, TourCode }     = a tour code (same array, different key per entry)
+  // Source columns on the group row (LIVE GROUP MASTERSHEET), format "AA:DIS01, DL:DIS02"
+  // (airline code : corporate/contract id, comma or semicolon separated):
+  //   'Negotiated Rate Codes' -> CorporateId entries
+  //   'Tour Codes'            -> TourCode entries
+  const parseAirlineCodePairs = (s) => norm(s).split(/[;,]/).map((x) => x.trim()).filter(Boolean)
+    .map((pair) => {
+      const m = pair.split(':').map((p) => p.trim());
+      return m.length === 2 && m[0] && m[1] ? { airline: m[0].toUpperCase(), code: m[1] } : null;
+    }).filter(Boolean);
+  const negotiatedRatePairs = parseAirlineCodePairs(G.val(grow, 'Negotiated Rate Codes'));
+  const tourCodePairs = parseAirlineCodePairs(G.val(grow, 'Tour Codes'));
+  const negotiatedRateCodes = [
+    ...negotiatedRatePairs.map((p) => ({ Airline: p.airline, CorporateId: p.code })),
+    ...tourCodePairs.map((p) => ({ Airline: p.airline, TourCode: p.code })),
+  ];
+  const hasNegotiatedRateCodes = negotiatedRateCodes.length > 0;
+
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
   const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
   const intentNodes = [];
@@ -266,6 +287,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     TmcGuid: process.env.AMGINE_TMC_GUID, From: t.email || process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
     Subject: `(KCG) ${who} — ${t.groupId}`, Body: `Kensington group booking for ${who} (group ${t.groupId}).`,
     Hash: process.env.AMGINE_HASH,
+    // ★ NegotiatedRateCodes (Raymond, 2026-07-31) — airline snap codes / contracted
+    //   rates / tour codes, built from the group row. Omitted entirely unless at
+    //   least one code is set, so this is a no-op for every group without them.
+    ...(hasNegotiatedRateCodes ? { BranchInfo: { AirConfig: { NegotiatedRateCodes: negotiatedRateCodes } } } : {}),
     // ★ EmailSettings — field NAME is a best guess (confirm with Ray). Omitted
     //   entirely unless a group row has Notify/CC/Reply-To filled, so this is a
     //   no-op for every current booking. { To:[...], Cc:[...], ReplyTo:'...' }
