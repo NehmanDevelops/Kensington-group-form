@@ -395,6 +395,19 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, groupId: body.__groupId, field: body.__setGroupField, value: norm(body.__value) });
   }
 
+  // TEMP: read-only check whether a specific master-sheet rowId exists (remove after use).
+  if (norm(body.__checkRowId)) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const allRows = master.rows || [];
+    const found = allRows.find(x => String(x.id) === norm(body.__checkRowId));
+    return res.status(200).json({
+      ok: true, totalRows: allRows.length, found: !!found,
+      idsSample: allRows.slice(0, 3).map(r => r.id),
+      row: found ? { first: M.val(found, 'First Name'), last: M.val(found, 'Last Name'), groupId: M.val(found, 'Group ID'), itinId: M.val(found, 'Amgine Itinerary ID') } : null,
+    });
+  }
+
   // TEMP: read-only check of a group's Snap Code/Tour Code columns, showing
   // exactly what NegotiatedRateCodes array would be built (no writes, no
   // traveller row touched, no Amgine call). Remove after use.
