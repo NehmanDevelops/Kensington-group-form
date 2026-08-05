@@ -383,21 +383,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: add a dummy test traveller row to a test group (remove after use).
-  if (body.__addTestTraveller && body.__groupId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const cells = [];
-    if (M.id('Group ID')) cells.push({ columnId: M.id('Group ID'), value: String(body.__groupId) });
-    if (M.id('First Name')) cells.push({ columnId: M.id('First Name'), value: String(body.__first || 'External') });
-    if (M.id('Last Name')) cells.push({ columnId: M.id('Last Name'), value: String(body.__last || 'Test') });
-    if (M.id('Email')) cells.push({ columnId: M.id('Email'), value: String(body.__email || 'externaltest@example.com') });
-    const r = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
-    const j = await r.json().catch(() => ({}));
-    const newRowId = j.result && j.result[0] && j.result[0].id;
-    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
-  }
-
   // ── SMARTSHEET webhook: verification challenge ──────────────────────────
   // When the webhook is enabled, Smartsheet POSTs a challenge header; echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
