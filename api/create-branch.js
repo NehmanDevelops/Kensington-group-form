@@ -108,11 +108,18 @@ async function onboard(amg, inp) {
   // still written to the group row below, where it drives the per-booking
   // BookingProfile (which is what actually pulls the Sabre profiles).
   const pccIn = norm(inp.pcc);
-  const fallbackId = /^\d+$/.test(pccIn) ? pccIn : '';
+  // Raymond's PCC-code -> internal numeric id table (2026-08-05), for
+  // Kensington's 8 onboarded PCCs. Lets every branch resolve its numeric ids
+  // straight from the PCC code already on the group row — no manual numeric
+  // entry needed for the common case.
+  const KNOWN_PCC_IDS = { VQ9G: 492, SY90: 501, B3SG: 502, '1OEG': 503, W1AL: 504, VB6L: 505, I5BA: 506, B14G: 507 };
+  const fallbackId = KNOWN_PCC_IDS[pccIn.toUpperCase()] != null ? String(KNOWN_PCC_IDS[pccIn.toUpperCase()])
+    : (/^\d+$/.test(pccIn) ? pccIn : '');
   // Per-function numeric PCC ids (Raymond, 2026-08-05): each Amgine function
   // (search/booking/ticketing/profile) can point at a DIFFERENT numeric PCC id.
   // A per-field value on the group row wins; otherwise every field falls back
-  // to the single `pcc` value (old behavior — one id for everything).
+  // to the KNOWN_PCC_IDS lookup for the group's PCC code (old behavior — one
+  // id for everything — only kicks in if the PCC code isn't in that table).
   for (const f of ['flightBookingPccId','hotelBookingPccId','carBookingPccId','ticketingPccId','profilePccId','flightSearchPccId','hotelSearchPccId','carSearchPccId','travelerProfilePccId','travelerProfileReadPccId']) {
     const v = norm(inp[f]) || fallbackId;
     if (v && /^\d+$/.test(v)) branchBody[0][f.charAt(0).toUpperCase() + f.slice(1)] = Number(v);
