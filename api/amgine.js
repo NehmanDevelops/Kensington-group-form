@@ -237,24 +237,22 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     if (profs.length) bookingProfile = profs;
   }
 
-  // ── Negotiated rate codes / tour codes (Raymond, 2026-07-31) ────────────
+  // ── Negotiated rate codes / tour codes (Raymond, 2026-08-05) ────────────
   // Sent at the ROOT of the booking payload as BranchInfo.AirConfig.NegotiatedRateCodes:
   //   { Airline, CorporateId }  = an airline snap code / contracted rate
   //   { Airline, TourCode }     = a tour code (same array, different key per entry)
-  // Source columns on the group row (LIVE GROUP MASTERSHEET), format "AA:DIS01, DL:DIS02"
-  // (airline code : corporate/contract id, comma or semicolon separated):
-  //   'Snap Code/Contract Code' -> CorporateId entries
-  //   'Tour Code'               -> TourCode entries
-  const parseAirlineCodePairs = (s) => norm(s).split(/[;,]/).map((x) => x.trim()).filter(Boolean)
-    .map((pair) => {
-      const m = pair.split(':').map((p) => p.trim());
-      return m.length === 2 && m[0] && m[1] ? { airline: m[0].toUpperCase(), code: m[1] } : null;
-    }).filter(Boolean);
-  const negotiatedRatePairs = parseAirlineCodePairs(G.val(grow, 'Snap Code/Contract Code'));
-  const tourCodePairs = parseAirlineCodePairs(G.val(grow, 'Tour Code'));
+  // Source: dedicated Airline column paired with its code column on the group row
+  // (LIVE GROUP MASTERSHEET) — two slots per group:
+  //   Airline1 + 'Snap Code/Contract Code' -> CorporateId, Airline1 + 'Tour Code' -> TourCode
+  //   Airline2 + 'Snap/Contract Code 2'     -> CorporateId, Airline2 + 'Tour Code2' -> TourCode
+  // A slot is a no-op unless BOTH its airline and code are filled in.
+  const airline1 = norm(G.val(grow, 'Airline1')).toUpperCase();
+  const airline2 = norm(G.val(grow, 'Airline2')).toUpperCase();
   const negotiatedRateCodes = [
-    ...negotiatedRatePairs.map((p) => ({ Airline: p.airline, CorporateId: p.code })),
-    ...tourCodePairs.map((p) => ({ Airline: p.airline, TourCode: p.code })),
+    ...(airline1 && norm(G.val(grow, 'Snap Code/Contract Code')) ? [{ Airline: airline1, CorporateId: norm(G.val(grow, 'Snap Code/Contract Code')) }] : []),
+    ...(airline1 && norm(G.val(grow, 'Tour Code')) ? [{ Airline: airline1, TourCode: norm(G.val(grow, 'Tour Code')) }] : []),
+    ...(airline2 && norm(G.val(grow, 'Snap/Contract Code 2')) ? [{ Airline: airline2, CorporateId: norm(G.val(grow, 'Snap/Contract Code 2')) }] : []),
+    ...(airline2 && norm(G.val(grow, 'Tour Code2')) ? [{ Airline: airline2, TourCode: norm(G.val(grow, 'Tour Code2')) }] : []),
   ];
   const hasNegotiatedRateCodes = negotiatedRateCodes.length > 0;
 
