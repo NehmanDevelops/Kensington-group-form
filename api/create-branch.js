@@ -108,10 +108,14 @@ async function onboard(amg, inp) {
   // still written to the group row below, where it drives the per-booking
   // BookingProfile (which is what actually pulls the Sabre profiles).
   const pccIn = norm(inp.pcc);
-  if (pccIn && /^\d+$/.test(pccIn)) {
-    for (const f of ['flightBookingPccId','hotelBookingPccId','carBookingPccId','ticketingPccId','profilePccId','flightSearchPccId','hotelSearchPccId','carSearchPccId','travelerProfilePccId','travelerProfileReadPccId']) {
-      branchBody[0][f] = Number(pccIn);
-    }
+  const fallbackId = /^\d+$/.test(pccIn) ? pccIn : '';
+  // Per-function numeric PCC ids (Raymond, 2026-08-05): each Amgine function
+  // (search/booking/ticketing/profile) can point at a DIFFERENT numeric PCC id.
+  // A per-field value on the group row wins; otherwise every field falls back
+  // to the single `pcc` value (old behavior — one id for everything).
+  for (const f of ['flightBookingPccId','hotelBookingPccId','carBookingPccId','ticketingPccId','profilePccId','flightSearchPccId','hotelSearchPccId','carSearchPccId','travelerProfilePccId','travelerProfileReadPccId']) {
+    const v = norm(inp[f]) || fallbackId;
+    if (v && /^\d+$/.test(v)) branchBody[0][f.charAt(0).toUpperCase() + f.slice(1)] = Number(v);
   }
   // Two account-level Sabre profiles (Vera 2026-07-08): the COMPANY profile ID and
   // the GROUP profile ID. sabreProfileId kept as a back-compat alias for the group
@@ -289,6 +293,16 @@ async function handleGroupWebhook(events, res) {
       provinceState: norm(val(row, 'province/state')) || norm(val(row, 'province')) || norm(val(row, 'state')),
       postalCode: norm(val(row, 'postal code')) || norm(val(row, 'zip')),
       country: norm(val(row, 'country')),
+      flightBookingPccId: norm(val(row, 'flightbookingpccid')),
+      hotelBookingPccId: norm(val(row, 'hotelbookingpccid')),
+      carBookingPccId: norm(val(row, 'carbookingpccid')),
+      ticketingPccId: norm(val(row, 'ticketingpccid')),
+      profilePccId: norm(val(row, 'profilepccid')),
+      flightSearchPccId: norm(val(row, 'flightsearchpccid')),
+      hotelSearchPccId: norm(val(row, 'hotelsearchpccid')),
+      carSearchPccId: norm(val(row, 'carsearchpccid')),
+      travelerProfilePccId: norm(val(row, 'travelerprofilepccid')),
+      travelerProfileReadPccId: norm(val(row, 'travelerprofilereadpccid')),
     };
 
     let r;
@@ -360,6 +374,11 @@ export default async function handler(req, res) {
       preferredAirports: body.preferredAirports, hotelKeywords: body.hotelKeywords, carVendors: body.carVendors,
       pcc: body.pcc, companyProfileId: body.companyProfileId, groupProfileId: body.groupProfileId,
       sabreProfileId: body.sabreProfileId,
+      flightBookingPccId: body.flightBookingPccId, hotelBookingPccId: body.hotelBookingPccId,
+      carBookingPccId: body.carBookingPccId, ticketingPccId: body.ticketingPccId,
+      profilePccId: body.profilePccId, flightSearchPccId: body.flightSearchPccId,
+      hotelSearchPccId: body.hotelSearchPccId, carSearchPccId: body.carSearchPccId,
+      travelerProfilePccId: body.travelerProfilePccId, travelerProfileReadPccId: body.travelerProfileReadPccId,
     };
     const r = await onboard(amg, inp);
     if (!r.ok) return res.status(502).json(r);
