@@ -120,9 +120,13 @@ async function onboard(amg, inp) {
   // A per-field value on the group row wins; otherwise every field falls back
   // to the KNOWN_PCC_IDS lookup for the group's PCC code (old behavior — one
   // id for everything — only kicks in if the PCC code isn't in that table).
+  // resolvedPccIds gets written back onto the group row below (buildWriteCells)
+  // so the *PccId columns show the actual number sent, not just a blank slot —
+  // no more guessing whether the lookup resolved without asking Amgine.
+  const resolvedPccIds = {};
   for (const f of ['flightBookingPccId','hotelBookingPccId','carBookingPccId','ticketingPccId','profilePccId','flightSearchPccId','hotelSearchPccId','carSearchPccId','travelerProfilePccId','travelerProfileReadPccId']) {
     const v = norm(inp[f]) || fallbackId;
-    if (v && /^\d+$/.test(v)) branchBody[0][f.charAt(0).toUpperCase() + f.slice(1)] = Number(v);
+    if (v && /^\d+$/.test(v)) { branchBody[0][f.charAt(0).toUpperCase() + f.slice(1)] = Number(v); resolvedPccIds[f] = Number(v); }
   }
   // Two account-level Sabre profiles (Vera 2026-07-08): the COMPANY profile ID and
   // the GROUP profile ID. sabreProfileId kept as a back-compat alias for the group
@@ -201,7 +205,7 @@ async function onboard(amg, inp) {
   }
 
   const policyLink = `https://app.amgine.ai/tmc-management/policy?policygroupguid=${policyGroupGuid}`;
-  return { ok: true, finalName, branchGuid, policyGuid, policyGroupGuid, policyLink };
+  return { ok: true, finalName, branchGuid, policyGuid, policyGroupGuid, policyLink, resolvedPccIds };
 }
 
 // Build the group-row cells to write after onboarding. `colId(title)` returns a
@@ -227,6 +231,12 @@ function buildWriteCells(colId, inp, r) {
       if (gp) cells.push({ columnId: gp, value: groupProfIn }); else missing.push('Group Profile ID');
     }
     if (pccIn && (companyIn || groupProfIn) && colId('profiled travellers')) cells.push({ columnId: colId('profiled travellers'), value: true });
+    // Write back the resolved numeric ids so the *PccId columns show proof of
+    // what was actually sent (not just a blank override slot) — no more
+    // guessing whether the PCC-code lookup resolved without asking Amgine.
+    for (const [f, v] of Object.entries(r.resolvedPccIds || {})) {
+      if (colId(f)) cells.push({ columnId: colId(f), value: v });
+    }
   }
   // A human-readable outcome, if the sheet has a status column.
   const statusCol = colId('amgine onboard status');
