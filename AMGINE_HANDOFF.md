@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-07-21 — email-resolution confirmed for "external" travellers, EmailSettings scaffolded. **§11 has the prep for the 2026-07-22 Amgine call — read it first.** Deadline: 2 groups launch next week, want Amgine live by then._
+_Last updated: 2026-08-05 — Air Snap Codes / negotiated rate codes / tour codes implemented and pushed live (§12). Guest→external and EmailSettings still open with Raymond (§11)._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -207,3 +207,49 @@ Do NOT hand-edit `api/amgine.js` live during the call — a bad edit to the payl
 
 ### 11.5 Deploy reminder
 All Amgine code lives in `api/amgine.js` (Vercel). Commit email must be `nehmanmain@gmail.com` or Vercel blocks the deploy. Secrets only in Vercel env vars.
+
+---
+
+## 12. AIR SNAP CODES / NEGOTIATED RATE CODES / TOUR CODES (live — 2026-07-31 to 2026-08-05)
+
+### 12.1 What Raymond gave us
+Sent at the **ROOT** of the booking payload (sibling of `ExternalId`, `TravelerRequested`, etc.), NOT nested under traveller info:
+```json
+{
+  "BranchInfo": {
+    "AirConfig": {
+      "NegotiatedRateCodes": [
+        { "Airline": "AA", "CorporateId": "DIS01" },
+        { "Airline": "DL", "CorporateId": "DIS02" },
+        { "Airline": "DL", "TourCode": "YYZNYC" }
+      ]
+    }
+  }
+}
+```
+- `CorporateId` = a contracted/negotiated rate (airline snap code).
+- `TourCode` = a tour code — same array, just swap `CorporateId` for `TourCode` on that entry.
+- Confirmed by Raymond these can mix in the same `NegotiatedRateCodes` array.
+
+### 12.2 What we built (LIVE in `api/amgine.js`)
+- **Where in code:** `api/amgine.js` → function `sendOne` → search **`NegotiatedRateCodes`** (or `Snap Code`). Comment header: `// ── Negotiated rate codes / tour codes (Raymond, 2026-07-31) ──`.
+- **Source: two columns on the LIVE GROUP MASTERSHEET (group row)** —
+  - **`Snap Code/Contract Code`** → becomes `CorporateId` entries.
+  - **`Tour Code`** → becomes `TourCode` entries.
+- **Format (per column):** `"AA:DIS01, DL:DIS02"` — `AIRLINE:CODE` pairs, comma **or** semicolon separated. Parsed by `parseAirlineCodePairs()`.
+- **No-op by default:** if both columns are blank on a group row, `BranchInfo` is omitted entirely from the payload — zero effect on any group that doesn't use this. Same safe pattern as `EmailSettings` / `BookingProfile`.
+- **Attached at:** `const payload = { ... ...(hasNegotiatedRateCodes ? { BranchInfo: { AirConfig: { NegotiatedRateCodes: negotiatedRateCodes } } } : {}), ... }` — confirmed at the payload ROOT, matching Raymond's spec exactly.
+
+### 12.3 Test result (2026-08-05)
+- Test itinerary **276617** on branch **SNAPCODETEST01** sent AA/DIS01, DL/DIS02, DL tour code YYZNYC per Raymond's payload shape.
+- JFK→LAX search showed **Corp Rate = N/A across the board.**
+- **Raymond confirmed this is EXPECTED**, not a bug: placeholder/fake codes never price out — a real code has to be programmed against a real client on Amgine's side to actually show a rate or book. As long as the codes are visibly **coming through** on his end, that's sufficient for now.
+- **Vera confirmed:** "As long as Ray sees them coming through then that should be good! For now." She'll program a real code with a real client later to verify actual pricing/booking behavior.
+- **⚠️ Open note:** the SNAPCODETEST01 / itinerary 276617 test does not correspond to any group row in the LIVE GROUP MASTERSHEET (checked 2026-08-05 — `Snap Code/Contract Code` and `Tour Code` are blank on every row, no group ID contains "SNAP"). That test was likely fired directly against Amgine (Postman or similar), not through our Smartsheet pipeline. **Our code path itself has not yet been proven end-to-end with real data in a group row** — worth a real test (enter codes on an actual group row, fire a booking, confirm Raymond sees `NegotiatedRateCodes` on that itinerary) next time it's convenient.
+
+### 12.4 How to use it going forward
+On any group's row in the LIVE GROUP MASTERSHEET, fill in:
+- **`Snap Code/Contract Code`**: e.g. `AA:DIS01, DL:DIS02`
+- **`Tour Code`**: e.g. `DL:YYZNYC`
+
+Next booking sent for that group will automatically include `BranchInfo.AirConfig.NegotiatedRateCodes` built from those columns. No code change needed per client — just fill the columns.
