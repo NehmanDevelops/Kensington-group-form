@@ -256,6 +256,15 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   ];
   const hasNegotiatedRateCodes = negotiatedRateCodes.length > 0;
 
+  // ── Email Country (Raymond, 2026-08-15) — controls which localized content
+  // Amgine renders in the traveler-facing email. "cad" or "us", column can be
+  // left blank; anything other than "cad" (including blank) defaults to "us".
+  // Sent on every booking (unlike the no-op-by-default fields above).
+  const emailCountry = norm(G.val(grow, 'Email Country')).toLowerCase() === 'cad' ? 'cad' : 'us';
+  const branchInfo = {};
+  if (hasNegotiatedRateCodes) branchInfo.AirConfig = { NegotiatedRateCodes: negotiatedRateCodes };
+  branchInfo.Notifications = { CustomTripData: { Country: emailCountry } };
+
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
   const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
   const intentNodes = [];
@@ -285,10 +294,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     TmcGuid: process.env.AMGINE_TMC_GUID, From: t.email || process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
     Subject: `(KCG) ${who} — ${t.groupId}`, Body: `Kensington group booking for ${who} (group ${t.groupId}).`,
     Hash: process.env.AMGINE_HASH,
-    // ★ NegotiatedRateCodes (Raymond, 2026-07-31) — airline snap codes / contracted
-    //   rates / tour codes, built from the group row. Omitted entirely unless at
-    //   least one code is set, so this is a no-op for every group without them.
-    ...(hasNegotiatedRateCodes ? { BranchInfo: { AirConfig: { NegotiatedRateCodes: negotiatedRateCodes } } } : {}),
+    // ★ BranchInfo — merges NegotiatedRateCodes (Raymond, 2026-07-31, no-op unless
+    //   a snap/tour code is set) with Notifications.CustomTripData.Country
+    //   (Raymond, 2026-08-15, always sent — defaults to "us").
+    BranchInfo: branchInfo,
     // ★ EmailSettings — field NAME is a best guess (confirm with Ray). Omitted
     //   entirely unless a group row has Notify/CC/Reply-To filled, so this is a
     //   no-op for every current booking. { To:[...], Cc:[...], ReplyTo:'...' }
