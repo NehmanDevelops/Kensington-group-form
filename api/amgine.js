@@ -310,7 +310,11 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       { FieldName: 'Phone', Data: t.phone || null }, { FieldName: 'KnownTravelerNumber', Data: t.ktn || null },
       { FieldName: 'RedressNumber', Data: t.redress || null }, { FieldName: 'CountryOfIssue', Data: t.country || null },
       // ★ BookingProfile (PCC + GDS profile IDs) gets attached here, if set above.
-    ] }, ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
+      // Blank fields are OMITTED (not sent as null) — Raymond/Vera 2026-08-06:
+      // an explicit null for DateOfBirth/Phone was blanking out those fields on
+      // a traveler who resolves as an EXTERNAL match, instead of letting Amgine
+      // fall back to the matched Sabre profile's own DOB/phone.
+    ].filter((f) => f.Data != null) }, ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
     Intent: { Nodes: intentNodes }, IntentOnly: true, ...flow,
   };
 
