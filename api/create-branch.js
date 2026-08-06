@@ -108,24 +108,37 @@ async function onboard(amg, inp) {
   // still written to the group row below, where it drives the per-booking
   // BookingProfile (which is what actually pulls the Sabre profiles).
   const pccIn = norm(inp.pcc);
+  const profilePccIn = norm(inp.profilePcc) || pccIn; // falls back to booking PCC when Profile PCC is blank
   // Raymond's PCC-code -> internal numeric id table (2026-08-05), for
   // Kensington's 8 onboarded PCCs. Lets every branch resolve its numeric ids
   // straight from the PCC code already on the group row — no manual numeric
   // entry needed for the common case.
   const KNOWN_PCC_IDS = { VQ9G: 492, SY90: 501, B3SG: 502, '1OEG': 503, W1AL: 504, VB6L: 505, I5BA: 506, B14G: 507 };
-  const fallbackId = KNOWN_PCC_IDS[pccIn.toUpperCase()] != null ? String(KNOWN_PCC_IDS[pccIn.toUpperCase()])
-    : (/^\d+$/.test(pccIn) ? pccIn : '');
+  const resolveId = (code) => KNOWN_PCC_IDS[code.toUpperCase()] != null ? String(KNOWN_PCC_IDS[code.toUpperCase()])
+    : (/^\d+$/.test(code) ? code : '');
+  const bookingFallback = resolveId(pccIn);
+  const profileFallback = resolveId(profilePccIn);
   // Per-function numeric PCC ids (Raymond, 2026-08-05): each Amgine function
-  // (search/booking/ticketing/profile) can point at a DIFFERENT numeric PCC id.
-  // A per-field value on the group row wins; otherwise every field falls back
-  // to the KNOWN_PCC_IDS lookup for the group's PCC code (old behavior — one
-  // id for everything — only kicks in if the PCC code isn't in that table).
+  // can point at a DIFFERENT numeric PCC id. A per-field value on the group
+  // row wins; otherwise PROFILE fields (where the traveler's GDS profile
+  // actually lives) fall back to Profile PCC, and everything else (search/
+  // booking/ticketing — where the trip is actually shopped/booked) falls
+  // back to the booking PCC. Confirmed against Raymond's own example: he used
+  // 506 (I5BA) for the profile fields and 501 (SY90) for the rest — mixing
+  // them up is exactly what was pointing traveler-profile lookups at the
+  // wrong PCC (2026-08-15 bug: all 10 fields wrongly fell back to booking PCC).
   // resolvedPccIds gets written back onto the group row below (buildWriteCells)
   // so the *PccId columns show the actual number sent, not just a blank slot —
   // no more guessing whether the lookup resolved without asking Amgine.
   const resolvedPccIds = {};
-  for (const f of ['flightBookingPccId','hotelBookingPccId','carBookingPccId','ticketingPccId','profilePccId','flightSearchPccId','hotelSearchPccId','carSearchPccId','travelerProfilePccId','travelerProfileReadPccId']) {
-    const v = norm(inp[f]) || fallbackId;
+  const PROFILE_FIELDS = ['profilePccId', 'travelerProfilePccId', 'travelerProfileReadPccId'];
+  const BOOKING_FIELDS = ['flightBookingPccId', 'hotelBookingPccId', 'carBookingPccId', 'ticketingPccId', 'flightSearchPccId', 'hotelSearchPccId', 'carSearchPccId'];
+  for (const f of PROFILE_FIELDS) {
+    const v = norm(inp[f]) || profileFallback;
+    if (v && /^\d+$/.test(v)) { branchBody[0][f.charAt(0).toUpperCase() + f.slice(1)] = Number(v); resolvedPccIds[f] = Number(v); }
+  }
+  for (const f of BOOKING_FIELDS) {
+    const v = norm(inp[f]) || bookingFallback;
     if (v && /^\d+$/.test(v)) { branchBody[0][f.charAt(0).toUpperCase() + f.slice(1)] = Number(v); resolvedPccIds[f] = Number(v); }
   }
   // Two account-level Sabre profiles (Vera 2026-07-08): the COMPANY profile ID and
@@ -300,6 +313,7 @@ async function handleGroupWebhook(events, res) {
       name: norm(val(row, 'client name')) || norm(val(row, 'client')) || norm(val(row, 'group name'))
         || norm(val(row, 'account name')) || norm(val(row, 'group id')),
       pcc: norm(val(row, 'pcc')),
+      profilePcc: norm(val(row, 'profile pcc')),
       companyProfileId: norm(val(row, 'company profile id')),
       groupProfileId: norm(val(row, 'group profile id')) || norm(val(row, 'sabre profile id')),
       preferredAirlines: norm(val(row, 'preferred airlines')),
@@ -389,7 +403,7 @@ export default async function handler(req, res) {
       postalCode: body.postalCode, country: body.country, emailDomains: body.emailDomains,
       preferredAirlines: body.preferredAirlines, excludeAirlines: body.excludeAirlines,
       preferredAirports: body.preferredAirports, hotelKeywords: body.hotelKeywords, carVendors: body.carVendors,
-      pcc: body.pcc, companyProfileId: body.companyProfileId, groupProfileId: body.groupProfileId,
+      pcc: body.pcc, profilePcc: body.profilePcc, companyProfileId: body.companyProfileId, groupProfileId: body.groupProfileId,
       sabreProfileId: body.sabreProfileId,
       flightBookingPccId: body.flightBookingPccId, hotelBookingPccId: body.hotelBookingPccId,
       carBookingPccId: body.carBookingPccId, ticketingPccId: body.ticketingPccId,
