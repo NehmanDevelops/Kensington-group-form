@@ -1068,6 +1068,20 @@
       </div>
 
       <div class="field">
+        <label class="field-label">Will the travellers be reaching out to us, or will our team be reaching out to your travellers to initiate the booking process?<span class="required-mark">*</span></label>
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="bookingInitOurTeam" name="bookingInitOurTeam" />
+            <span>Please reach out to our travellers</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="bookingInitTheirTeam" name="bookingInitTheirTeam" />
+            <span>Our travellers will reach out to your team</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
         <label class="field-label" for="registrationLink">Will you need a registration link for passengers?<span class="required-mark">*</span></label>
         <div class="field-subtitle">If no, please provide a spreadsheet with passenger information</div>
         <select id="registrationLink" name="registrationLink" class="field-select" required>
@@ -1650,6 +1664,16 @@
       e.target.checked ? show('confirmOtherWrap') : hide('confirmOtherWrap');
     });
 
+    // ---- Booking initiation: either/or — checking one unchecks the other ----
+    const bookingInitOurTeam = document.getElementById('bookingInitOurTeam');
+    const bookingInitTheirTeam = document.getElementById('bookingInitTheirTeam');
+    bookingInitOurTeam.addEventListener('change', (e) => {
+      if (e.target.checked) bookingInitTheirTeam.checked = false;
+    });
+    bookingInitTheirTeam.addEventListener('change', (e) => {
+      if (e.target.checked) bookingInitOurTeam.checked = false;
+    });
+
     // ---- Reporting dropdown -> reveal schedule + recipient email + "Other" specify ----
     document.getElementById('reporting').addEventListener('change', (e) => {
       const on = !!e.target.value;
@@ -1759,6 +1783,15 @@
         return;
       }
 
+      // ── Booking initiation: exactly one must be selected ──
+      const bookingInitOurTeamChecked = document.getElementById('bookingInitOurTeam').checked;
+      const bookingInitTheirTeamChecked = document.getElementById('bookingInitTheirTeam').checked;
+      if (!bookingInitOurTeamChecked && !bookingInitTheirTeamChecked) {
+        alert('Please select whether your travellers or our team will initiate the booking process.');
+        document.getElementById('bookingInitOurTeam').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
       // ── Confirmation email checkboxes: at least one must be selected ──
       const confirmEM = document.getElementById('confirmEventManager').checked;
       const confirmAC = document.getElementById('confirmAltContact').checked;
@@ -1800,6 +1833,13 @@
       if (document.getElementById('confirmAltContact').checked) confirmParts.push(v('altContactEmail'));
       if (document.getElementById('confirmOther').checked && v('confirmOtherEmails')) confirmParts.push(v('confirmOtherEmails'));
       const confirmationCCValue = confirmParts.filter(Boolean).join(', ');
+
+      // Booking initiation — single value from the either/or checkboxes
+      const bookingInitiationValue = document.getElementById('bookingInitOurTeam').checked
+        ? 'Please reach out to our travellers'
+        : document.getElementById('bookingInitTheirTeam').checked
+          ? 'Our travellers will reach out to your team'
+          : '';
       // Helper to join array values (multi-select checkboxes). The target columns
       // (e.g. Cabin Class) are TEXT_NUMBER, which accept any string with no strict
       // validation — so a joined "Economy, Premium Economy" is safe.
@@ -1833,6 +1873,7 @@
         { columnId: 5670167819620228, value: v('reportingScheduleOtherText') },
         { columnId: 3418368005934980, value: String(v('numAttendees') || '') },
         { columnId: 7921967633305476, value: v('approvedList') },
+        { columnId: 2366216473972612, value: bookingInitiationValue },
         { columnId: 603618238828420,  value: v('registrationLink') },
         { columnId: 5107217866198916, value: v('expenses') },
         { columnId: 7359017679884164, value: v('needAir') },
