@@ -1396,6 +1396,23 @@
             <input type="text" id="upgradedSeatsOther" name="upgradedSeatsOther" class="field-input" />
           </div>
         </div>
+        <div class="conditional-field hidden" id="upgradedSeatsChargeWrap">
+          <div class="field">
+            <label class="field-label" for="upgradedSeatsChargeResponsible">Who will be responsible for these charges?<span class="required-mark">*</span></label>
+            <select id="upgradedSeatsChargeResponsible" name="upgradedSeatsChargeResponsible" class="field-select">
+              <option value="">Select an option</option>
+              <option value="Employer">Employer</option>
+              <option value="Passenger">Passenger</option>
+            </select>
+            <div class="conditional-field hidden" id="upgradedSeatsEmployerParamsWrap">
+              <div class="field">
+                <label class="field-label" for="upgradedSeatsEmployerParams">Please indicate any parameters</label>
+                <div class="field-subtitle">E.g. Maximum allowances, standard seats, upgraded seats</div>
+                <textarea id="upgradedSeatsEmployerParams" name="upgradedSeatsEmployerParams" class="field-textarea" rows="3"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="field">
@@ -1747,6 +1764,21 @@
     // ---- Upgraded seats "Other" ----
     document.getElementById('upgradedSeats').addEventListener('change', (e) => {
       e.target.value === 'Other' ? show('upgradedSeatsOtherWrap') : hide('upgradedSeatsOtherWrap');
+      const chargeSelect = document.getElementById('upgradedSeatsChargeResponsible');
+      if (e.target.value === 'Yes') {
+        show('upgradedSeatsChargeWrap');
+        chargeSelect.required = true;
+      } else {
+        hide('upgradedSeatsChargeWrap');
+        hide('upgradedSeatsEmployerParamsWrap');
+        chargeSelect.required = false;
+        chargeSelect.value = '';
+      }
+    });
+
+    // ---- Upgraded seats charge "Employer" -> reveal parameters freeform ----
+    document.getElementById('upgradedSeatsChargeResponsible').addEventListener('change', (e) => {
+      e.target.value === 'Employer' ? show('upgradedSeatsEmployerParamsWrap') : hide('upgradedSeatsEmployerParamsWrap');
     });
 
     // ---- Group block "Other" ----
@@ -1933,6 +1965,8 @@
         { columnId: 4967116967284612, value: v('prepaidEmployerParams') },
         { columnId: 4262792936066948, value: v('upgradedSeats') },
         { columnId: 8766392563437444, value: v('upgradedSeatsOther') },
+        { columnId: 3041216755437444, value: v('upgradedSeatsChargeResponsible') },
+        { columnId: 101518873497476,  value: v('upgradedSeatsEmployerParams') },
         { columnId: 181405773762436,  value: v('airfareParams') },
 
         // ── HOTEL ──
