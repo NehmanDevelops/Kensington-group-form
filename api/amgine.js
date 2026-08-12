@@ -32,7 +32,7 @@ const CONCURRENCY = 5;
 // Kensington's Amgine workspace GUID — constant for the tenant. Used to build the
 // agent-app link immediately at send time, since Amgine's webhook doesn't always
 // include a WorkspaceGuid. Override via env if the workspace ever changes.
-const AMGINE_WORKSPACE_GUID = process.env.AMGINE_WORKSPACE_GUID || '8f4a9dd8-d0c9-49cd-aded-000485f5deae';
+const AMGINE_WORKSPACE_GUID = process.env.AMGINE_WORKSPACE_GUID || '963f7455-194e-4ecb-b92e-a5122730f18f';
 const agentLink = (itinId) => `https://app.amgine.ai/agentapp/transaction/${AMGINE_WORKSPACE_GUID}/${itinId}`;
 
 // ── helpers ────────────────────────────────────────────────────────────────
