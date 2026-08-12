@@ -415,6 +415,10 @@
               <input type="text" id="con_passenger" name="con_passenger" class="field-input" data-req="1" />
             </div>
             <div class="field">
+              <label class="field-label" for="con_ykInvoice">YK Invoice #</label>
+              <input type="text" id="con_ykInvoice" name="con_ykInvoice" class="field-input" />
+            </div>
+            <div class="field">
               <label class="field-label" for="con_departureDate">Departure Date<span class="required-mark">*</span></label>
               <input type="text" id="con_departureDate" name="con_departureDate" class="field-input" data-req="1" placeholder="e.g. 24 Nov 2026" />
             </div>
@@ -573,6 +577,7 @@
         lines.push(
           'Please reconcile the below Concierge booking as client payment has been processed.', '',
           'Passenger name: ' + g('con_passenger'),
+          'YK Invoice #: ' + g('con_ykInvoice'),
           'Departure Date: ' + g('con_departureDate'),
           'Vendor (Airline): ' + g('con_vendor'),
           'PNR and invoice number from mark up invoice (YK/GK): ' + g('pnr') + (g('invoice') ? ' / ' + g('invoice') : ''),
