@@ -1002,10 +1002,6 @@
           <label class="field-label" for="companyName">Company Name<span class="required-mark">*</span></label>
           <input type="text" id="companyName" name="companyName" class="field-input" required />
         </div>
-        <div class="field">
-          <label class="field-label" for="groupName">Group Name</label>
-          <input type="text" id="groupName" name="groupName" class="field-input" placeholder="If applicable — specific group or program name" />
-        </div>
       </div>
 
       <div class="field-row">
@@ -1026,20 +1022,14 @@
         </div>
       </div>
 
-      <div class="field">
-        <label class="field-label" for="groupType">Is this group for employees, guests, or both?<span class="required-mark">*</span></label>
-        <select id="groupType" name="groupType" class="field-select" required>
-          <option value="">Select an option</option>
-          <option value="Employees">Employees</option>
-          <option value="Guests only">Guests only</option>
-          <option value="Both">Both</option>
-          <option value="Other">Other</option>
-        </select>
-        <div class="conditional-field hidden" id="groupTypeOtherWrap">
-          <div class="field">
-            <label class="field-label" for="groupTypeOther">Please specify — group type</label>
-            <input type="text" id="groupTypeOther" name="groupTypeOther" class="field-input" />
-          </div>
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="altContactName">Alternate Contact Name<span class="required-mark">*</span></label>
+          <input type="text" id="altContactName" name="altContactName" class="field-input" required />
+        </div>
+        <div class="field">
+          <label class="field-label" for="altContactEmail">Alternate Contact Email<span class="required-mark">*</span></label>
+          <input type="email" id="altContactEmail" name="altContactEmail" class="field-input" required />
         </div>
       </div>
 
@@ -1061,55 +1051,8 @@
       </div>
 
       <div class="field">
-        <label class="field-label" for="eventCode">If applicable, please provide Event Code(s)</label>
-        <div class="field-subtitle">If required for billing and/or reporting purposes</div>
-        <input type="text" id="eventCode" name="eventCode" class="field-input" />
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="confirmationCC">Confirmation email(s)<span class="required-mark">*</span></label>
-        <div class="field-subtitle">Please specify email(s) that need to be CC'ed on final confirmations. Separate multiple with commas.</div>
-        <input type="text" id="confirmationCC" name="confirmationCC" class="field-input" required placeholder="e.g. name@company.com, name2@company.com" />
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="reporting">If applicable, please indicate preferred reporting</label>
-        <div class="field-subtitle">Charges could apply depending on requirement</div>
-        <select id="reporting" name="reporting" class="field-select">
-          <option value="">Select an option</option>
-          <option value="Arrival/departure manifests">Arrival/departure manifests</option>
-          <option value="Credit card reconciliation">Credit card reconciliation</option>
-          <option value="Other">Other</option>
-        </select>
-        <div class="conditional-field hidden" id="reportingOtherWrap">
-          <div class="field">
-            <label class="field-label" for="reportingOtherText">Please specify report type</label>
-            <input type="text" id="reportingOtherText" name="reportingOtherText" class="field-input" />
-          </div>
-        </div>
-      </div>
-
-      <div class="field hidden" id="reportingRecipientWrap">
-        <label class="field-label" for="reportingRecipient">Reporting confirmation email(s)<span class="required-mark">*</span></label>
-        <div class="field-subtitle">Please specify email(s) you would like reports sent to. Separate multiple with commas.</div>
-        <input type="text" id="reportingRecipient" name="reportingRecipient" class="field-input" placeholder="e.g. name@company.com, name2@company.com" />
-      </div>
-
-      <div class="field hidden" id="reportingScheduleWrap">
-        <label class="field-label" for="reportingSchedule">If applicable, please indicate your preferred reporting schedule</label>
-        <div class="field-subtitle">If you are requesting weekly reporting, please state which day of the week you prefer to receive it on.</div>
-        <select id="reportingSchedule" name="reportingSchedule" class="field-select">
-          <option value="">Select an option</option>
-          <option value="Weekly">Weekly</option>
-          <option value="Monthly">Monthly</option>
-          <option value="Other">Other</option>
-        </select>
-        <div class="conditional-field hidden" id="reportingScheduleOtherWrap">
-          <div class="field">
-            <label class="field-label" for="reportingScheduleOtherText">Please specify reporting schedule</label>
-            <input type="text" id="reportingScheduleOtherText" name="reportingScheduleOtherText" class="field-input" />
-          </div>
-        </div>
+        <label class="field-label" for="expectedLaunchDate">Expected Launch Date<span class="required-mark">*</span></label>
+        <input type="date" id="expectedLaunchDate" name="expectedLaunchDate" class="field-input" required />
       </div>
 
       <div class="field">
@@ -1138,9 +1081,100 @@
       </div>
 
       <div class="field">
+        <label class="field-label" for="groupType">Is this group for employees, guests, or both?<span class="required-mark">*</span></label>
+        <select id="groupType" name="groupType" class="field-select" required>
+          <option value="">Select an option</option>
+          <option value="Employees">Employees</option>
+          <option value="Guests only">Guests only</option>
+          <option value="Both">Both</option>
+          <option value="Other">Other</option>
+        </select>
+        <div class="conditional-field hidden" id="groupTypeOtherWrap">
+          <div class="field">
+            <label class="field-label" for="groupTypeOther">Please specify — group type</label>
+            <input type="text" id="groupTypeOther" name="groupTypeOther" class="field-input" />
+          </div>
+        </div>
+        <div class="conditional-field" id="personalGuestWrap" style="margin-top:14px;">
+          <div class="field">
+            <label class="field-label" for="personalGuest">Will the passenger be allowed a personal guest?<span class="required-mark">*</span></label>
+            <select id="personalGuest" name="personalGuest" class="field-select" required>
+              <option value="">Select an option</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+            <div class="conditional-field hidden" id="personalGuestYesWrap">
+              <div class="field">
+                <label class="field-label" for="guestChargesCoveredBy">Please specify who will be covering guest charges</label>
+                <input type="text" id="guestChargesCoveredBy" name="guestChargesCoveredBy" class="field-input" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="reporting">If applicable, please indicate preferred reporting</label>
+        <div class="field-subtitle">Charges could apply depending on requirement</div>
+        <select id="reporting" name="reporting" class="field-select">
+          <option value="">Select an option</option>
+          <option value="Arrival/departure manifests">Arrival/departure manifests</option>
+          <option value="Credit card reconciliation">Credit card reconciliation</option>
+          <option value="Other">Other</option>
+        </select>
+        <div class="conditional-field hidden" id="reportingOtherWrap">
+          <div class="field">
+            <label class="field-label" for="reportingOtherText">Please specify report type</label>
+            <input type="text" id="reportingOtherText" name="reportingOtherText" class="field-input" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field hidden" id="reportingScheduleWrap">
+        <label class="field-label" for="reportingSchedule">If applicable, please indicate your preferred reporting schedule</label>
+        <div class="field-subtitle">If you are requesting weekly reporting, please state which day of the week you prefer to receive it on.</div>
+        <select id="reportingSchedule" name="reportingSchedule" class="field-select">
+          <option value="">Select an option</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Other">Other</option>
+        </select>
+        <div class="conditional-field hidden" id="reportingScheduleOtherWrap">
+          <div class="field">
+            <label class="field-label" for="reportingScheduleOtherText">Please specify reporting schedule</label>
+            <input type="text" id="reportingScheduleOtherText" name="reportingScheduleOtherText" class="field-input" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="eventCode">If applicable, please provide Event Code(s)</label>
+        <div class="field-subtitle">If required for billing and/or reporting purposes</div>
+        <input type="text" id="eventCode" name="eventCode" class="field-input" />
+      </div>
+
+      <div class="field hidden" id="reportingRecipientWrap">
+        <label class="field-label" for="reportingRecipient">If applicable, please indicate emails you would like reports to be sent to</label>
+        <div class="field-subtitle">Separate multiple with commas.</div>
+        <input type="text" id="reportingRecipient" name="reportingRecipient" class="field-input" placeholder="e.g. name@company.com, name2@company.com" />
+      </div>
+
+      <div class="field">
         <label class="field-label" for="expenses">Will expenses be covered by Employer or passenger?<span class="required-mark">*</span></label>
         <div class="field-subtitle">Please do not list credit card numbers in this form — Group Agent will follow up</div>
         <input type="text" id="expenses" name="expenses" class="field-input" required placeholder="e.g. Employer, Passenger, Split, etc." />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="deviations">Will you be allowing deviations outside of travel dates?<span class="required-mark">*</span></label>
+        <div class="field-subtitle" style="font-style:italic;">Please specify who will be covering those costs</div>
+        <input type="text" id="deviations" name="deviations" class="field-input" required placeholder="e.g. Yes — covered by Employer" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="upgradesAllowed">Will upgrades be allowed?<span class="required-mark">*</span></label>
+        <div class="field-subtitle" style="font-style:italic;">If applicable, who will be covering these costs?</div>
+        <input type="text" id="upgradesAllowed" name="upgradesAllowed" class="field-input" required placeholder="e.g. Yes — covered by Passenger" />
       </div>
 
       <div class="field">
@@ -1168,18 +1202,6 @@
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </select>
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="deviations">Will you be allowing deviations outside of travel dates?<span class="required-mark">*</span></label>
-        <div class="field-subtitle" style="font-style:italic;">Please specify who will be covering those costs</div>
-        <input type="text" id="deviations" name="deviations" class="field-input" required placeholder="e.g. Yes — covered by Employer" />
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="upgradesAllowed">Will upgrades be allowed?<span class="required-mark">*</span></label>
-        <div class="field-subtitle" style="font-style:italic;">If applicable, who will be covering these costs?</div>
-        <input type="text" id="upgradesAllowed" name="upgradesAllowed" class="field-input" required placeholder="e.g. Yes — covered by Passenger" />
       </div>
     </section>
 
@@ -1309,6 +1331,23 @@
           <div class="field">
             <label class="field-label" for="prepaidSeatsOther">Please specify — prepaid seats</label>
             <input type="text" id="prepaidSeatsOther" name="prepaidSeatsOther" class="field-input" />
+          </div>
+        </div>
+        <div class="conditional-field hidden" id="prepaidChargeWrap">
+          <div class="field">
+            <label class="field-label" for="prepaidChargeResponsible">Who will be responsible for these charges?<span class="required-mark">*</span></label>
+            <select id="prepaidChargeResponsible" name="prepaidChargeResponsible" class="field-select">
+              <option value="">Select an option</option>
+              <option value="Employer">Employer</option>
+              <option value="Passenger">Passenger</option>
+            </select>
+            <div class="conditional-field hidden" id="prepaidEmployerParamsWrap">
+              <div class="field">
+                <label class="field-label" for="prepaidEmployerParams">Please indicate any parameters</label>
+                <div class="field-subtitle">E.g. Maximum allowances, standard seats, upgraded seats</div>
+                <textarea id="prepaidEmployerParams" name="prepaidEmployerParams" class="field-textarea" rows="3"></textarea>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1475,6 +1514,32 @@
       </div>
 
       <div class="field">
+        <label class="field-label">Confirmation email(s)<span class="required-mark">*</span></label>
+        <div class="field-subtitle">Please indicate who should be CC'ed on final confirmations.</div>
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="confirmEventManager" name="confirmEventManager" />
+            <span>Event Manager</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="confirmAltContact" name="confirmAltContact" />
+            <span>Alternate Contact</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="confirmOther" name="confirmOther" />
+            <span>Other</span>
+          </label>
+        </div>
+        <div class="conditional-field hidden" id="confirmOtherWrap">
+          <div class="field">
+            <label class="field-label" for="confirmOtherEmails">Please specify email(s)</label>
+            <div class="field-subtitle">Separate multiple with commas.</div>
+            <input type="text" id="confirmOtherEmails" name="confirmOtherEmails" class="field-input" placeholder="e.g. name@company.com, name2@company.com" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
         <label class="field-label" for="anythingElse">Is there anything else you would like us to know?</label>
         <textarea id="anythingElse" name="anythingElse" class="field-textarea" rows="4"></textarea>
       </div>
@@ -1557,6 +1622,35 @@
     // ---- Group type "Other" reveal ----
     document.getElementById('groupType').addEventListener('change', (e) => {
       e.target.value === 'Other' ? show('groupTypeOtherWrap') : hide('groupTypeOtherWrap');
+    });
+
+    // ---- Personal guest "Yes" reveal ----
+    document.getElementById('personalGuest').addEventListener('change', (e) => {
+      e.target.value === 'Yes' ? show('personalGuestYesWrap') : hide('personalGuestYesWrap');
+    });
+
+    // ---- Prepaid seats "Yes" -> reveal who's responsible for charges ----
+    document.getElementById('prepaidSeats').addEventListener('change', (e) => {
+      const chargeSelect = document.getElementById('prepaidChargeResponsible');
+      if (e.target.value === 'Yes') {
+        show('prepaidChargeWrap');
+        chargeSelect.required = true;
+      } else {
+        hide('prepaidChargeWrap');
+        hide('prepaidEmployerParamsWrap');
+        chargeSelect.required = false;
+        chargeSelect.value = '';
+      }
+    });
+
+    // ---- Prepaid charge "Employer" -> reveal parameters freeform ----
+    document.getElementById('prepaidChargeResponsible').addEventListener('change', (e) => {
+      e.target.value === 'Employer' ? show('prepaidEmployerParamsWrap') : hide('prepaidEmployerParamsWrap');
+    });
+
+    // ---- Confirmation email "Other" checkbox -> reveal freeform ----
+    document.getElementById('confirmOther').addEventListener('change', (e) => {
+      e.target.checked ? show('confirmOtherWrap') : hide('confirmOtherWrap');
     });
 
     // ---- Reporting dropdown -> reveal schedule + recipient email + "Other" specify ----
@@ -1668,6 +1762,21 @@
         return;
       }
 
+      // ── Confirmation email checkboxes: at least one must be selected ──
+      const confirmEM = document.getElementById('confirmEventManager').checked;
+      const confirmAC = document.getElementById('confirmAltContact').checked;
+      const confirmOtherChecked = document.getElementById('confirmOther').checked;
+      if (!confirmEM && !confirmAC && !confirmOtherChecked) {
+        alert('Please select at least one recipient for Confirmation email(s).');
+        document.getElementById('confirmEventManager').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (confirmOtherChecked && !document.getElementById('confirmOtherEmails').value.trim()) {
+        alert('Please specify the "Other" email address(es) for Confirmation email(s).');
+        document.getElementById('confirmOtherEmails').focus();
+        return;
+      }
+
       // Show loading state on button
       const btn = e.target.querySelector('.submit-btn');
       btn.textContent = 'Submitting...';
@@ -1687,6 +1796,13 @@
 
       // Helper to get value or empty string
       const v = (key) => data[key] || '';
+
+      // Build the Confirmation email(s) string from the checkbox selections
+      const confirmParts = [];
+      if (document.getElementById('confirmEventManager').checked) confirmParts.push(v('eventManagerEmail'));
+      if (document.getElementById('confirmAltContact').checked) confirmParts.push(v('altContactEmail'));
+      if (document.getElementById('confirmOther').checked && v('confirmOtherEmails')) confirmParts.push(v('confirmOtherEmails'));
+      const confirmationCCValue = confirmParts.filter(Boolean).join(', ');
       // Helper to join array values (multi-select checkboxes). The target columns
       // (e.g. Cabin Class) are TEXT_NUMBER, which accept any string with no strict
       // validation — so a joined "Economy, Premium Economy" is safe.
@@ -1701,13 +1817,18 @@
         { columnId: 5564614703353732, value: v('eventManagerName') },
         { columnId: 3312814889668484, value: v('eventManagerEmail') },
         { columnId: 7816414517038980, value: v('eventManagerPhone') },
+        { columnId: 2531471078494084, value: v('altContactName') },
+        { columnId: 1393575327993732, value: v('altContactEmail') },
         { columnId: 2186914982825860, value: v('groupType') },
         { columnId: 6690514610196356, value: v('groupTypeOther') },
+        { columnId: 2397266772266884, value: v('personalGuest') },
+        { columnId: 4773225903198084, value: v('guestChargesCoveredBy') },
         { columnId: 4438714796511108, value: v('eventName') },
         { columnId: 8942314423881604, value: v('eventDate') || null },
         { columnId: 40668285407108,   value: v('eventAddress') },
+        { columnId: 3300064066047876, value: v('expectedLaunchDate') || null },
         { columnId: 4544267912777604, value: v('eventCode') },
-        { columnId: 3777687961505668, value: v('confirmationCC') },
+        { columnId: 3777687961505668, value: confirmationCCValue },
         { columnId: 2292468099092356, value: v('reporting') },
         { columnId: 6796067726462852, value: v('reportingOtherText') },
         { columnId: 7324165803904900, value: v('reportingRecipient') },
@@ -1740,6 +1861,8 @@
         { columnId: 7640492656594820, value: v('checkedBag') },
         { columnId: 2010993122381700, value: v('prepaidSeats') },
         { columnId: 6514592749752196, value: v('prepaidSeatsOther') },
+        { columnId: 125498313445252,  value: v('prepaidChargeResponsible') },
+        { columnId: 4967116967284612, value: v('prepaidEmployerParams') },
         { columnId: 4262792936066948, value: v('upgradedSeats') },
         { columnId: 8766392563437444, value: v('upgradedSeatsOther') },
         { columnId: 181405773762436,  value: v('airfareParams') },
