@@ -382,6 +382,25 @@ export default async function handler(req, res) {
     const j = await r.json().catch(() => ({}));
     return res.status(200).json({ status: r.status, data: j });
   }
+  if (req.query?.testGetConnectors === '1') {
+    const token = await getToken();
+    if (!token) return res.status(502).json({ error: 'token failed' });
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/AccountDetails/fromTmc/${TMC_ID}/0?tmcId=${TMC_ID}&branchId=0`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ status: r.status, data: j });
+  }
+  if (req.query?.testRawBranch === '1') {
+    // Inspect the raw CreateBranch response for a numeric branch id (needed
+    // for SetConnector's branchIds array, which is numeric, not GUID).
+    const token = await getToken();
+    if (!token) return res.status(502).json({ error: 'token failed' });
+    const body = [{ name: `RAW ID CHECK ${Date.now()}`, sourceSEBIDForContentConfig: SRC_SEB, sourceSEBIDForNotificationRules: SRC_SEB, sourceSEBIDForGuestSetting: SRC_SEB, sourceSEBIDForCustomField: SRC_SEB, tmcId: TMC_ID, addressLine1: '225 W 34th Street', postalCode: '10122', provinceState: 'NY', servicedEntityId: SRC_SE, city: 'New York', country: 'US', preferredCars: [''], preferredFlightFareBasisCode: [''] }];
+    const r = await fetch(CREATE_BRANCH_URL, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ status: r.status, data: j });
+  }
   if (req.query?.testGetQueue) {
     const id = req.query.testGetQueue;
     const token = await getToken();
