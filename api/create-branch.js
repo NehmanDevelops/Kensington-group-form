@@ -91,6 +91,20 @@ async function associateConnector(amg, connector, branchId) {
   return { ok: r.ok, data: j };
 }
 
+// Removes a numeric branch id from a connector's branchIds and saves it back
+// (2026-08-13: new branches auto-associate with a default connector — e.g.
+// USA — at creation time regardless of the group's actual country, despite
+// Raymond saying the generic template shouldn't associate with any email.
+// We strip that default membership before associating the correct one, so
+// the end result is right regardless of what Amgine's default turns out to be).
+async function disassociateConnector(amg, connector, branchId) {
+  if (!connector.branchIds.includes(branchId)) return { ok: true, alreadyAbsent: true };
+  const body = { ...connector, branchIds: connector.branchIds.filter((id) => id !== branchId) };
+  const r = await amg(connectorUrl(connector.accountDetailsId), body, 'PUT');
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, data: j };
+}
+
 const ZERO_GUID = '00000000-0000-0000-0000-000000000000';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => String(s == null ? '' : s).trim();
@@ -331,6 +345,17 @@ async function onboard(amg, inp) {
     const list = conn.ok && Array.isArray(conn.list) ? conn.list : [];
     const wanted = emailCountry === 'cad' ? 'canada@kensingtoncorporate.com' : 'usa@kensingtoncorporate.com';
     const connector = list.find((c) => norm(c.description).toLowerCase().replace(/\s+/g, '') === wanted);
+    // Strip the branch out of every OTHER email connector it landed in by
+    // default (128/noreply, and whichever of Canada/USA isn't the right one)
+    // before associating the correct one — the webhook connector (143) is
+    // left alone, every branch needs that one regardless of country.
+    for (const c of list) {
+      if (c.notificationChannel !== 'Email' || c === connector) continue;
+      if (c.branchIds.includes(branchId)) {
+        const d = await disassociateConnector(amg, c, branchId);
+        if (!d.ok) onboardNotes.push(`Failed to disassociate branch from ${norm(c.description)}.`);
+      }
+    }
     if (connector) {
       const assoc = await associateConnector(amg, connector, branchId);
       if (!assoc.ok) onboardNotes.push(`Failed to associate branch with ${wanted} connector.`);
