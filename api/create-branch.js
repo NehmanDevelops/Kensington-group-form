@@ -370,6 +370,19 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // ── TEMP DEBUG (2026-08-13): test the new PCC/queue/connector endpoints
+  // Raymond sent, reusing our own already-working credentials server-side.
+  // Remove once confirmed. GET /api/create-branch?testGetPCCs=1
+  if (req.query?.testGetPCCs === '1') {
+    const token = await getToken();
+    if (!token) return res.status(502).json({ error: 'token failed' });
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/TmcPcc?tmcId=${TMC_ID}&isActive=true`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ status: r.status, data: j });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
