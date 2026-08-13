@@ -32,6 +32,65 @@ const CREATE_BRANCH_URL = 'https://app.amgine.ai/publicapi/api/ClientOnboard/bul
 const policyUrl      = (guid) => `https://app.amgine.ai/publicapi/api/servicedEntity/0/Policy?servicedEntityBranchGuid=${guid}`;
 const policyGroupUrl = (guid) => `https://app.amgine.ai/publicapi/api/servicedentity/0/TravelerGroup?servicedEntityBranchGuid=${guid}`;
 
+// ── PCC / Queue / Connector endpoints (Raymond, 2026-08-13) ─────────────────
+const getPCCsUrl  = () => `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/TmcPcc?tmcId=${TMC_ID}&isActive=true`;
+const pccByIdUrl  = (id) => `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/TmcPcc/${id}?tmcId=${TMC_ID}&id=${id}`;
+const connectorsUrl = () => `https://app.amgine.ai/publicapi/api/AccountDetails/fromTmc/${TMC_ID}/0?tmcId=${TMC_ID}&branchId=0`;
+const connectorUrl  = (id) => `https://app.amgine.ai/publicapi/api/AccountDetails/${id}`;
+// Kensington's Sabre address defaults (matches CreatePCCs shape Raymond sent).
+const PCC_DEFAULTS = {
+  addressLine1: '2 Queen St E', cityName: 'Toronto', stateCode: 'ON', countryCode: 'CA', postalCode: 'M5C 3G7',
+  agencyName: 'Kensington Corporate', agencyProfile: '', customerAppId: 'SWS1:SBR-CtntSerLgUI:1f06045fcf',
+  domain: 'DEFAULT', itins: '200ITINS', provider: 'Sabre', gdsCode: 'Default', maxResults: 100, maxSessions: 50,
+  maxProperties: 500, maxSearchRadius: 10, radiusMultiplier: 10,
+  providerLoggingToElasticSearch: true, providerLoggingToFile: true, providerLoggingToFilePath: '/app/log-path',
+};
+
+async function getPCCs(amg) {
+  const r = await amg(getPCCsUrl(), null, 'GET');
+  return { ok: r.ok, list: await r.json().catch(() => []) };
+}
+
+// Creates a missing PCC (no queues attached — real Sabre queue numbers need to
+// be set up manually by Amgine/GDS admin before SavePCCsInfoQueue can add
+// them; we never invent queue numbers).
+async function createPCC(amg, pcc, currency) {
+  const body = { ...PCC_DEFAULTS, pcc, name: `${pcc}-Kensington-${currency}`, currency, isEnabled: false, tmcPccQueues: [] };
+  const r = await amg(getPCCsUrl(), body, 'POST');
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, data: j };
+}
+
+async function getPCCQueueInfo(amg, id) {
+  const r = await amg(pccByIdUrl(id), null, 'GET');
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, data: j };
+}
+
+// Adds queues to an existing PCC by re-sending the full record with an
+// updated tmcPccQueues array (SavePCCsInfoQueue is a full-record PUT, not a
+// partial patch — confirmed from Raymond's Postman example).
+async function savePCCQueues(amg, pccRecord, queues) {
+  const body = { ...pccRecord, tmcPccQueues: queues };
+  const r = await amg(pccByIdUrl(pccRecord.id), body, 'PUT');
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, data: j };
+}
+
+async function getConnectors(amg) {
+  const r = await amg(connectorsUrl(), null, 'GET');
+  return { ok: r.ok, list: await r.json().catch(() => []) };
+}
+
+// Appends a numeric branch id to a connector's branchIds and saves it back.
+async function associateConnector(amg, connector, branchId) {
+  if (connector.branchIds.includes(branchId)) return { ok: true, alreadyAssociated: true };
+  const body = { ...connector, branchIds: [...connector.branchIds, branchId] };
+  const r = await amg(connectorUrl(connector.accountDetailsId), body, 'PUT');
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, data: j };
+}
+
 const ZERO_GUID = '00000000-0000-0000-0000-000000000000';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => String(s == null ? '' : s).trim();
@@ -116,8 +175,47 @@ async function onboard(amg, inp) {
   const KNOWN_PCC_IDS = { VQ9G: 492, SY90: 501, B3SG: 502, '1OEG': 503, W1AL: 504, VB6L: 505, I5BA: 506, B14G: 507 };
   const resolveId = (code) => KNOWN_PCC_IDS[code.toUpperCase()] != null ? String(KNOWN_PCC_IDS[code.toUpperCase()])
     : (/^\d+$/.test(code) ? code : '');
-  const bookingFallback = resolveId(pccIn);
-  const profileFallback = resolveId(profilePccIn);
+
+  // ── Live PCC validate/create + queue wiring (Raymond, 2026-08-13) ─────────
+  // GetPCCs: confirm the group row's PCC(s) actually exist on Amgine's side —
+  // catches a 9th client PCC we don't have in KNOWN_PCC_IDS yet. CreatePCCs:
+  // create it if missing (queues left empty — real Sabre queue numbers need
+  // Amgine/GDS admin setup first; we never invent them).
+  const onboardNotes = [];
+  const pccsResult = await getPCCs(amg);
+  const pccList = pccsResult.ok && Array.isArray(pccsResult.list) ? pccsResult.list : [];
+  const findPcc = (code) => pccList.find((p) => norm(p.identifier).toUpperCase() === code.toUpperCase());
+  const bookingCurrency = norm(inp.emailCountry).toLowerCase() === 'cad' ? 'CAD' : 'USD';
+  async function resolvePccId(code) {
+    if (!code) return '';
+    const found = findPcc(code);
+    if (found) return String(found.id);
+    const known = resolveId(code); // GetPCCs call itself failed — fall back to the static table
+    if (known) return known;
+    const created = await createPCC(amg, code, bookingCurrency);
+    const newId = deepFind(created.data, 'id');
+    if (newId) { onboardNotes.push(`Created new PCC ${code} (id ${newId}) — no queues yet, needs manual Sabre queue setup.`); return String(newId); }
+    onboardNotes.push(`Could not resolve or create PCC ${code}.`);
+    return '';
+  }
+  const bookingFallback = await resolvePccId(pccIn);
+  const profileFallback = profilePccIn === pccIn ? bookingFallback : await resolvePccId(profilePccIn);
+
+  // Wire the booking PCC's Success/Fail queue ids onto the branch itself —
+  // this (not a separate call) is what actually routes a booking's TAW line
+  // to the right queue. Only wires queues we're confident are named exactly
+  // "Success"/"Fail" — leaves OutOfPolicy fields alone (ambiguous naming in
+  // the examples we've seen; confirm with Raymond before wiring those too).
+  if (bookingFallback) {
+    const q = await getPCCQueueInfo(amg, bookingFallback);
+    const queues = (q.ok && Array.isArray(q.data?.tmcPccQueues)) ? q.data.tmcPccQueues : [];
+    const byName = (n) => queues.find((x) => norm(x.name).toLowerCase() === n);
+    const success = byName('success'), fail = byName('fail');
+    if (success) branchBody[0].travelerPnrSuccessQueueId = success.id;
+    if (fail) branchBody[0].travelerPnrFailQueueId = fail.id;
+    if (!queues.length) onboardNotes.push(`PCC ${pccIn} (id ${bookingFallback}) has no queues configured on Amgine's side yet.`);
+    else if (!success || !fail) onboardNotes.push(`PCC ${pccIn} (id ${bookingFallback}) is missing a Success or Fail queue.`);
+  }
   // Per-function numeric PCC ids (Raymond, 2026-08-05): each Amgine function
   // can point at a DIFFERENT numeric PCC id. A per-field value on the group
   // row wins; otherwise PROFILE fields (where the traveler's GDS profile
@@ -169,6 +267,9 @@ async function onboard(amg, inp) {
       error: 'Branch was not created by Amgine. Most likely the Province/State or Country isn\'t a 2-letter code (e.g. ON, NY, CA, US).',
       raw: branchJson };
   }
+  // Numeric branch id (separate from the GUID) — needed for SetConnector's
+  // branchIds array, which is numeric, not GUID-based.
+  const branchId = deepFind(branchJson, 'id');
 
   // 2) CreatePolicyRule (default: economy in-policy — refine once client rules are set)
   const policyBody = {
@@ -218,7 +319,28 @@ async function onboard(amg, inp) {
   }
 
   const policyLink = `https://app.amgine.ai/tmc-management/policy?policygroupguid=${policyGroupGuid}`;
-  return { ok: true, finalName, branchGuid, policyGuid, policyGroupGuid, policyLink, resolvedPccIds };
+
+  // 4) SetConnector — associate the branch with the correct sending email
+  // (Raymond, 2026-08-13): every new branch clones the generic template's
+  // connector (128, noreply@amgine.ai) by default. Explicitly re-associate it
+  // with Kensington's real Canada/US connector based on the group's Email
+  // Country, so notifications stop coming from Amgine's own address.
+  if (branchId) {
+    const emailCountry = norm(inp.emailCountry).toLowerCase() === 'cad' ? 'cad' : 'us';
+    const conn = await getConnectors(amg);
+    const list = conn.ok && Array.isArray(conn.list) ? conn.list : [];
+    const wanted = emailCountry === 'cad' ? 'canada@kensingtoncorporate.com' : 'usa@kensingtoncorporate.com';
+    const connector = list.find((c) => norm(c.description).toLowerCase().replace(/\s+/g, '') === wanted);
+    if (connector) {
+      const assoc = await associateConnector(amg, connector, branchId);
+      if (!assoc.ok) onboardNotes.push(`Failed to associate branch with ${wanted} connector.`);
+    } else {
+      onboardNotes.push(`Could not find the ${wanted} connector in GetConnectors — email not associated.`);
+    }
+  }
+
+  return { ok: true, finalName, branchGuid, branchId, policyGuid, policyGroupGuid, policyLink, resolvedPccIds,
+    ...(onboardNotes.length ? { notes: onboardNotes } : {}) };
 }
 
 // Build the group-row cells to write after onboarding. `colId(title)` returns a
@@ -297,10 +419,10 @@ async function handleGroupWebhook(events, res) {
 
   const token = await getToken();
   if (!token) return res.status(200).json({ ok: false, error: 'Amgine token failed' });
-  const amg = (url, payload) => fetch(url, {
-    method: 'POST',
+  const amg = (url, payload, method = 'POST') => fetch(url, {
+    method,
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    ...(method === 'GET' ? {} : { body: JSON.stringify(payload) }),
   });
 
   // Process sequentially. Each chain can take ~40s, so in practice this is one
@@ -334,6 +456,7 @@ async function handleGroupWebhook(events, res) {
       carSearchPccId: norm(val(row, 'carsearchpccid')),
       travelerProfilePccId: norm(val(row, 'travelerprofilepccid')),
       travelerProfileReadPccId: norm(val(row, 'travelerprofilereadpccid')),
+      emailCountry: norm(val(row, 'email country')),
     };
 
     let r;
@@ -349,7 +472,7 @@ async function handleGroupWebhook(events, res) {
     }
     results.push({ rowId: row.id, groupId: inp.groupId, ok: r.ok, branchGuid: r.branchGuid || null,
       policyGroupGuid: r.policyGroupGuid || null, ...(r.ok ? {} : { step: r.step, error: r.error }),
-      ...(missing.length ? { missingColumns: missing } : {}) });
+      ...(missing.length ? { missingColumns: missing } : {}), ...(r.notes ? { notes: r.notes } : {}) });
   }
 
   return res.status(200).json({ ok: true, processed: results.length, results });
@@ -368,48 +491,6 @@ export default async function handler(req, res) {
   if (hookChallenge) {
     res.setHeader('Smartsheet-Hook-Response', hookChallenge);
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
-  }
-
-  // ── TEMP DEBUG (2026-08-13): test the new PCC/queue/connector endpoints
-  // Raymond sent, reusing our own already-working credentials server-side.
-  // Remove once confirmed. GET /api/create-branch?testGetPCCs=1
-  if (req.query?.testGetPCCs === '1') {
-    const token = await getToken();
-    if (!token) return res.status(502).json({ error: 'token failed' });
-    const r = await fetch(`https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/TmcPcc?tmcId=${TMC_ID}&isActive=true`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ status: r.status, data: j });
-  }
-  if (req.query?.testGetConnectors === '1') {
-    const token = await getToken();
-    if (!token) return res.status(502).json({ error: 'token failed' });
-    const r = await fetch(`https://app.amgine.ai/publicapi/api/AccountDetails/fromTmc/${TMC_ID}/0?tmcId=${TMC_ID}&branchId=0`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ status: r.status, data: j });
-  }
-  if (req.query?.testRawBranch === '1') {
-    // Inspect the raw CreateBranch response for a numeric branch id (needed
-    // for SetConnector's branchIds array, which is numeric, not GUID).
-    const token = await getToken();
-    if (!token) return res.status(502).json({ error: 'token failed' });
-    const body = [{ name: `RAW ID CHECK ${Date.now()}`, sourceSEBIDForContentConfig: SRC_SEB, sourceSEBIDForNotificationRules: SRC_SEB, sourceSEBIDForGuestSetting: SRC_SEB, sourceSEBIDForCustomField: SRC_SEB, tmcId: TMC_ID, addressLine1: '225 W 34th Street', postalCode: '10122', provinceState: 'NY', servicedEntityId: SRC_SE, city: 'New York', country: 'US', preferredCars: [''], preferredFlightFareBasisCode: [''] }];
-    const r = await fetch(CREATE_BRANCH_URL, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ status: r.status, data: j });
-  }
-  if (req.query?.testGetQueue) {
-    const id = req.query.testGetQueue;
-    const token = await getToken();
-    if (!token) return res.status(502).json({ error: 'token failed' });
-    const r = await fetch(`https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/TmcPcc/${id}?tmcId=${TMC_ID}&id=${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ status: r.status, data: j });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -433,10 +514,10 @@ export default async function handler(req, res) {
   try {
     const token = await getToken();
     if (!token) return res.status(502).json({ error: 'Amgine token failed' });
-    const amg = (url, payload) => fetch(url, {
-      method: 'POST',
+    const amg = (url, payload, method = 'POST') => fetch(url, {
+      method,
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      ...(method === 'GET' ? {} : { body: JSON.stringify(payload) }),
     });
 
     const inp = {
@@ -452,6 +533,7 @@ export default async function handler(req, res) {
       profilePccId: body.profilePccId, flightSearchPccId: body.flightSearchPccId,
       hotelSearchPccId: body.hotelSearchPccId, carSearchPccId: body.carSearchPccId,
       travelerProfilePccId: body.travelerProfilePccId, travelerProfileReadPccId: body.travelerProfileReadPccId,
+      emailCountry: body.emailCountry,
     };
     const r = await onboard(amg, inp);
     if (!r.ok) return res.status(502).json(r);
@@ -489,9 +571,9 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ ok: true, branchName: r.finalName, branchGuid: r.branchGuid,
+    return res.status(200).json({ ok: true, branchName: r.finalName, branchGuid: r.branchGuid, branchId: r.branchId,
       policyGuid: r.policyGuid, policyGroupGuid: r.policyGroupGuid, policyLink: r.policyLink,
-      wroteToGroup, ...(missingColumns.length ? { missingColumns } : {}) });
+      wroteToGroup, ...(missingColumns.length ? { missingColumns } : {}), ...(r.notes ? { notes: r.notes } : {}) });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
