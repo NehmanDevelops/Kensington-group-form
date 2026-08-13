@@ -493,6 +493,14 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // TEMP DEBUG (2026-08-13): verify connector associations stuck. Remove after.
+  if (req.query?.testGetConnectors === '1') {
+    const token = await getToken();
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/AccountDetails/fromTmc/${TMC_ID}/0?tmcId=${TMC_ID}&branchId=0`, { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json().catch(() => ([]));
+    return res.status(200).json((j || []).map(c => ({ accountDetailsId: c.accountDetailsId, description: c.description, branchIds: c.branchIds })));
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
