@@ -198,7 +198,15 @@ async function onboard(amg, inp) {
   const onboardNotes = [];
   const pccsResult = await getPCCs(amg);
   const pccList = pccsResult.ok && Array.isArray(pccsResult.list) ? pccsResult.list : [];
-  const findPcc = (code) => pccList.find((p) => norm(p.identifier).toUpperCase() === code.toUpperCase());
+  // VQ9G has TWO entries sharing the same identifier — id 491 (isAuthenticator:
+  // true, auth-only) and id 492 (the real booking PCC). Prefer the non-
+  // authenticator match; only fall back to an auth-only one if that's all
+  // there is (2026-08-13 bug: picking whichever came first silently grabbed
+  // the auth-only PCC, which has no booking queues).
+  const findPcc = (code) => {
+    const matches = pccList.filter((p) => norm(p.identifier).toUpperCase() === code.toUpperCase());
+    return matches.find((p) => !p.isAuthenticator) || matches[0];
+  };
   const bookingCurrency = norm(inp.emailCountry).toLowerCase() === 'cad' ? 'CAD' : 'USD';
   async function resolvePccId(code) {
     if (!code) return '';
