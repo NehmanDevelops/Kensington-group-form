@@ -382,6 +382,16 @@ export default async function handler(req, res) {
     const j = await r.json().catch(() => ({}));
     return res.status(200).json({ status: r.status, data: j });
   }
+  if (req.query?.testGetQueue) {
+    const id = req.query.testGetQueue;
+    const token = await getToken();
+    if (!token) return res.status(502).json({ error: 'token failed' });
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/TmcPcc/${id}?tmcId=${TMC_ID}&id=${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ status: r.status, data: j });
+  }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
