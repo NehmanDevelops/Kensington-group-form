@@ -151,6 +151,7 @@
             <option value="Payout Request">Payout Request</option>
             <option value="Refund Request">Refund Request</option>
             <option value="Concierge Bundled">Concierge Bundled</option>
+            <option value="UDID Request">UDID Request</option>
           </select>
         </div>
 
@@ -449,6 +450,34 @@
           </div>
         </div>
 
+        <!-- UDID REQUEST -->
+        <div class="type-block" data-type="UDID Request" style="margin-top:22px;">
+          <div class="field">
+            <label class="field-label" for="udid_requesterEmail">Your Email (requester)<span class="required-mark">*</span></label>
+            <input type="email" id="udid_requesterEmail" name="udid_requesterEmail" class="field-input" data-req="1" />
+          </div>
+          <div class="field" style="margin-top:22px;">
+            <label class="field-label" for="udid_reason">Reason for updating UDID<span class="required-mark">*</span></label>
+            <div class="field-sub">Please note the reason for the UDID update.</div>
+            <textarea id="udid_reason" name="udid_reason" class="field-textarea" data-req="1"></textarea>
+          </div>
+          <div class="grid2" style="margin-top:22px;">
+            <div class="field">
+              <label class="field-label" for="udid_num">UDID #<span class="required-mark">*</span></label>
+              <input type="text" id="udid_num" name="udid_num" class="field-input" data-req="1" />
+            </div>
+            <div class="field"></div>
+            <div class="field">
+              <label class="field-label" for="udid_old">Original UDID Value<span class="required-mark">*</span></label>
+              <input type="text" id="udid_old" name="udid_old" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="udid_new">New UDID Value<span class="required-mark">*</span></label>
+              <input type="text" id="udid_new" name="udid_new" class="field-input" data-req="1" />
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <div class="form-footer">
@@ -587,9 +616,41 @@
           'Currency: ' + g('con_currency'),
           'Notes: ' + g('con_action')
         );
+      } else if (typeSel.value === 'UDID Request') {
+        lines.push(
+          'Requester Email: ' + g('udid_requesterEmail'), '',
+          'Reason for update:', g('udid_reason'), '',
+          '--- UDID CHANGE ---',
+          'UDID #: ' + g('udid_num'),
+          'Original UDID Value: ' + g('udid_old'),
+          'New UDID Value: ' + g('udid_new')
+        );
+      }
+
+      // UDID Request logs to the finance Excel (best-effort, never blocks the email) —
+      // same endpoint/shape the standalone UDID Update Request form used.
+      if (typeSel.value === 'UDID Request') {
+        fetch('/api/submit-udid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentName: g('agentName'),
+            companyName: g('companyName'),
+            pnr: g('pnr'),
+            invoice: g('invoice'),
+            requesterEmail: g('udid_requesterEmail'),
+            ccEmails: g('ccEmails'),
+            reason: g('udid_reason'),
+            udidNum: g('udid_num'),
+            udidOld: g('udid_old'),
+            udidNew: g('udid_new'),
+            submittedAt: new Date().toISOString(),
+          }),
+        }).catch(function () { /* logging is best-effort; the email below is the source of truth */ });
       }
 
       var subject = typeSel.value + ' — ' + g('agentName') + ' / ' + g('pnr');
+      if (typeSel.value === 'UDID Request') subject = 'UDID Update Request — ' + g('agentName') + ' / ' + g('pnr');
       if (typeSel.value === 'Concierge Bundled') subject = 'Please reconcile — ' + subject;
       var mailto = 'mailto:' + recipient
         + '?cc=' + encodeURIComponent(g('ccEmails'))
