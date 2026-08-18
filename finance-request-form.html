@@ -146,10 +146,10 @@
     ],
     'UDID Request': [
       { id:'requesterEmail', label:'Your Email (requester)', type:'text', req:true },
-      { id:'reasonForUdidUpdate', label:'Reason for updating UDID', type:'textarea', req:true },
+      { id:'reason', label:'Reason for updating UDID', type:'textarea', req:true },
       { id:'udidNum', label:'UDID #', type:'text', req:true },
-      { id:'origUdidValue', label:'Original UDID Value', type:'text', req:true },
-      { id:'newUdidValue', label:'New UDID Value', type:'text', req:true },
+      { id:'origValue', label:'Original UDID Value', type:'text', req:true },
+      { id:'newValue', label:'New UDID Value', type:'text', req:true },
     ],
   };
 
@@ -276,10 +276,10 @@
   function submitForm(){
     var btn = document.getElementById('btnNext');
     btn.disabled = true; btn.textContent = 'Submitting...';
-    fetch('/api/submit-profile', {
+    fetch('/api/submit-udid', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(Object.assign({ __form: 'finance' }, data)),
+      body: JSON.stringify(data),
     })
       .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
       .then(function(res){
