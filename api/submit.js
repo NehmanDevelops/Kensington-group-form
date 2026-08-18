@@ -85,7 +85,7 @@ export default async function handler(req, res) {
       contactEmail:  2923086302449540,   // "Contact E-mail"
       contactPhone:  2157300629671812,   // "Contact Phone"
       status:        6300786022977412,   // "Status"
-      completed:     4048986209292164,   // "Completed"
+      completed:     7249103084097412,   // "Completed"
       startDate:     4893411139424132,   // "Travel Start Date"
       endDate:       2641611325738884,   // "Travel End Date"
     };
@@ -180,7 +180,7 @@ export default async function handler(req, res) {
       2923086302449540: 6508117159612292, // Contact E-mail
       2157300629671812: 4256317345927044, // Contact Phone
       6300786022977412: 8759916973297540, // Status
-      4048986209292164: 8056229531520900, // Completed
+      7249103084097412: 8056229531520900, // Completed
       4893411139424132: 5804429717835652, // Travel Start Date
       2641611325738884: 3552629904150404, // Travel End Date
     };
