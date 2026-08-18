@@ -644,6 +644,8 @@
             udidNum: g('udid_num'),
             udidOld: g('udid_old'),
             udidNew: g('udid_new'),
+            origValue: g('udid_old'),
+            newValue: g('udid_new'),
             submittedAt: new Date().toISOString(),
           }),
         }).catch(function () { /* logging is best-effort; the email below is the source of truth */ });

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — Finance Request</title>
+<style>
+  :root{
+    --ms-purple:#6264A7; --ms-purple-dark:#464775; --ms-bg:#f5f5f5; --ink:#242424;
+    --sub:#616161; --border:#d1d1d1; --green:#1A3E32; --err:#9b3b34;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; background:var(--ms-bg);
+    font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif; color:var(--ink);
+  }
+  .topbar{ height:6px; background:linear-gradient(90deg,var(--ms-purple),var(--ms-purple-dark)); }
+  .progress-wrap{ max-width:720px; margin:0 auto; padding:18px 24px 0; }
+  .progress-track{ height:6px; background:#e1e1e1; border-radius:3px; overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--ms-purple); border-radius:3px; transition:width .25s ease; width:0%; }
+  .progress-label{ font-size:12px; color:var(--sub); margin-top:8px; }
+  .stage{ max-width:720px; margin:32px auto 80px; padding:0 24px; }
+  .card{
+    background:#fff; border:1px solid var(--border); border-radius:4px;
+    padding:40px 36px; box-shadow:0 1px 3px rgba(0,0,0,.06); min-height:220px;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .qnum{ font-size:13px; color:var(--ms-purple); font-weight:600; margin-bottom:10px; }
+  h1.q{ font-size:24px; font-weight:600; margin:0 0 6px; line-height:1.3; }
+  .q-req{ color:var(--err); }
+  .q-sub{ font-size:13px; color:var(--sub); margin:0 0 22px; }
+  input[type=text], input[type=email], textarea, select{
+    width:100%; padding:12px 14px; border:none; border-bottom:2px solid var(--border);
+    font-size:16px; font-family:inherit; background:transparent; color:var(--ink);
+  }
+  input:focus, textarea:focus, select:focus{ outline:none; border-bottom-color:var(--ms-purple); }
+  textarea{ resize:vertical; min-height:80px; border:1px solid var(--border); border-radius:4px; padding:12px 14px; }
+  select{ border:1px solid var(--border); border-radius:4px; background:#fff; padding:12px 14px; }
+  .choices{ display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .choice{
+    border:1px solid var(--border); border-radius:4px; padding:14px 16px; cursor:pointer;
+    font-size:15px; transition:border-color .15s, background .15s;
+  }
+  .choice:hover{ border-color:var(--ms-purple); background:#f7f7fb; }
+  .choice.selected{ border-color:var(--ms-purple); background:#eeeef8; font-weight:600; }
+  .err-msg{ color:var(--err); font-size:13px; margin-top:10px; display:none; }
+  .nav-row{ max-width:720px; margin:20px auto 0; padding:0 24px; display:flex; justify-content:space-between; align-items:center; }
+  button{
+    font-family:inherit; font-size:15px; border-radius:2px; padding:10px 22px; cursor:pointer; border:1px solid var(--border);
+  }
+  .btn-back{ background:#fff; color:var(--ink); }
+  .btn-back:disabled{ opacity:0; pointer-events:none; }
+  .btn-next{ background:var(--ms-purple); border-color:var(--ms-purple); color:#fff; font-weight:600; }
+  .btn-next:hover{ background:var(--ms-purple-dark); }
+  .hint{ font-size:12px; color:var(--sub); margin-top:20px; text-align:center; }
+  .review-list{ font-size:14px; }
+  .review-row{ display:flex; justify-content:space-between; gap:16px; padding:8px 0; border-bottom:1px solid #eee; }
+  .review-row .k{ color:var(--sub); }
+  .review-row .v{ text-align:right; font-weight:500; max-width:60%; word-break:break-word; }
+  .success-wrap{ max-width:560px; margin:80px auto; text-align:center; padding:0 24px; }
+  .success-wrap h2{ color:var(--green); font-size:26px; }
+  .success-wrap p{ color:var(--sub); }
+</style>
+</head>
+<body>
+  <div class="topbar"></div>
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel"></div>
+  </div>
+
+  <div id="app"></div>
+
+<script>
+(function(){
+  var COMMON = [
+    { id:'agentName',   label:'Agent Name',                type:'text', req:true },
+    { id:'companyName', label:'Client / Company Name',     type:'text', req:true },
+    { id:'pcc',         label:'PCC',                        type:'text', req:true },
+    { id:'pnr',         label:'PNR',                        type:'text', req:true },
+    { id:'invoice',     label:'Invoice #',                  type:'text', req:false },
+    { id:'branch',      label:'Branch',                     type:'text', req:false },
+    { id:'ccEmails',    label:'CC (optional)',              type:'text', req:false, sub:'Comma-separate multiple emails.' },
+    { id:'requestType', label:'What type of request is this?', type:'choice', req:true,
+      options:['General','ADM Request','Payment Change','Payout Request','Refund Request','Concierge Bundled','UDID Request'] },
+  ];
+
+  var TYPE_FIELDS = {
+    'General': [
+      { id:'invoiceTotal', label:'Invoice Total', type:'text', req:true },
+      { id:'vendorName',   label:'Vendor Name',    type:'text', req:true },
+      { id:'actionToBeTaken', label:'Action to be taken', type:'textarea', req:true },
+    ],
+    'ADM Request': [
+      { id:'admLocation', label:'ADM Location', type:'choice', req:true, options:['BSP','ARC'] },
+      { id:'admChargedTo', label:'Charged to', type:'choice', req:true, options:['Agent','Client'] },
+      { id:'invoiceTotal', label:'Invoice Total', type:'text', req:true },
+      { id:'vendorName',   label:'Vendor Name',    type:'text', req:true },
+      { id:'actionToBeTaken', label:'Action to be taken', type:'textarea', req:true },
+    ],
+    'Payment Change': [
+      { id:'currency', label:'Currency', type:'choice', req:true, options:['USD','CAD'] },
+      { id:'vendorName', label:'Vendor Name (if applicable)', type:'text', req:false },
+      { id:'origPaymentMethod', label:'Original Payment Method', type:'text', req:true },
+      { id:'origPaymentAmount', label:'Original Payment Amount', type:'text', req:true },
+      { id:'newPaymentMethod', label:'New Payment Method', type:'text', req:true },
+      { id:'newPaymentAmount', label:'New Payment Amount', type:'text', req:true },
+      { id:'refundMethod', label:'Method of refund', type:'choice', req:false, options:['Agent error','Refund to client'] },
+      { id:'typeOfRefund', label:'Type of refund', type:'choice', req:false, options:['Cheque','ACH','CC via Bill Pay'] },
+    ],
+    'Payout Request': [
+      { id:'payoutReason', label:'Payout Reason', type:'text', req:true },
+      { id:'payoutMethod', label:'Payout Method', type:'text', req:true },
+      { id:'vendorName', label:'Vendor', type:'text', req:true },
+      { id:'receivedFromVendor', label:'$ Received from Vendor', type:'text', req:true },
+      { id:'amountOwingToClient', label:'$ Owing to Client', type:'text', req:true },
+      { id:'refundMethod', label:'Method of refund', type:'choice', req:false, options:['Agent error','Refund to client'] },
+      { id:'typeOfRefund', label:'Type of refund', type:'choice', req:false, options:['Cheque','ACH','CC via Bill Pay'] },
+    ],
+    'Refund Request': [
+      { id:'reasonForRefund', label:'Reason for refund', type:'textarea', req:true },
+      { id:'refundPaymentMethod', label:'Refund Payment Method', type:'choice', req:true, options:['Credit Card','Wire','Cheque'] },
+      { id:'totalAmountToRefund', label:'Total amount to refund to client', type:'text', req:true },
+      { id:'currency', label:'Refund Currency', type:'choice', req:true, options:['USD','CAD'] },
+      { id:'cardLast4', label:'Card reference (last 4 only, if CC)', type:'text', req:false },
+      { id:'issuingCountry', label:'Issuing Country of the Credit Card', type:'text', req:false },
+      { id:'issuingBank', label:'Issuing Bank Institution', type:'text', req:false },
+      { id:'mailingAddress', label:'Cheque / client mailing address', type:'text', req:false },
+      { id:'attentionTo', label:'Attention To', type:'text', req:false },
+      { id:'bankingInfo', label:'Banking Information', type:'textarea', req:false },
+      { id:'vendorName', label:'Vendor Name', type:'text', req:false },
+      { id:'clientOriginallyPaid', label:'Client originally paid', type:'text', req:false },
+      { id:'vendorAmountReceived', label:'Vendor amount received', type:'text', req:false },
+      { id:'amountOwingToClient', label:'Amount owing to Client', type:'text', req:false },
+      { id:'additionalComments', label:'Additional information / comments', type:'textarea', req:false },
+    ],
+    'Concierge Bundled': [
+      { id:'passengerName', label:'Passenger Name', type:'text', req:true },
+      { id:'ykInvoice', label:'YK Invoice #', type:'text', req:false },
+      { id:'departureDate', label:'Departure Date', type:'text', req:true },
+      { id:'vendorName', label:'Vendor (Airline)', type:'text', req:false },
+      { id:'serviceDescription', label:'Service / Description', type:'text', req:true },
+      { id:'amount', label:'Amount', type:'text', req:true },
+      { id:'currency', label:'Currency', type:'choice', req:false, options:['USD','CAD'] },
+      { id:'notes', label:'Notes', type:'textarea', req:false },
+    ],
+    'UDID Request': [
+      { id:'requesterEmail', label:'Your Email (requester)', type:'text', req:true },
+      { id:'reason', label:'Reason for updating UDID', type:'textarea', req:true },
+      { id:'udidNum', label:'UDID #', type:'text', req:true },
+      { id:'origValue', label:'Original UDID Value', type:'text', req:true },
+      { id:'newValue', label:'New UDID Value', type:'text', req:true },
+    ],
+  };
+
+  var data = {};
+  var steps = COMMON.slice();
+  var idx = 0;
+  var app = document.getElementById('app');
+
+  function currentSteps(){
+    var s = COMMON.slice();
+    if (data.requestType && TYPE_FIELDS[data.requestType]) {
+      s = s.concat(TYPE_FIELDS[data.requestType]);
+    }
+    s.push({ id:'__review', label:'Review your request', type:'review' });
+    return s;
+  }
+
+  function render(){
+    steps = currentSteps();
+    if (idx >= steps.length) idx = steps.length - 1;
+    var q = steps[idx];
+    updateProgress();
+
+    var html = '<div class="stage"><div class="card">';
+    if (q.type === 'review') {
+      html += '<div class="qnum">Almost done</div><h1 class="q">Review your request</h1>';
+      html += '<div class="review-list">';
+      steps.forEach(function(st){
+        if (st.type === 'review') return;
+        var v = data[st.id];
+        if (!v) return;
+        html += '<div class="review-row"><span class="k">' + st.label + '</span><span class="v">' + escapeHtml(v) + '</span></div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div class="qnum">Question ' + (idx+1) + ' of ' + (steps.length) + '</div>';
+      html += '<h1 class="q">' + q.label + (q.req ? ' <span class="q-req">*</span>' : '') + '</h1>';
+      if (q.sub) html += '<p class="q-sub">' + q.sub + '</p>';
+
+      if (q.type === 'text') {
+        html += '<input type="text" id="qinput" value="' + escapeHtml(data[q.id] || '') + '" autocomplete="off" />';
+      } else if (q.type === 'textarea') {
+        html += '<textarea id="qinput">' + escapeHtml(data[q.id] || '') + '</textarea>';
+      } else if (q.type === 'choice') {
+        html += '<div class="choices">';
+        q.options.forEach(function(opt){
+          var sel = data[q.id] === opt ? ' selected' : '';
+          html += '<div class="choice' + sel + '" data-val="' + escapeHtml(opt) + '">' + opt + '</div>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="err-msg" id="errMsg">Please answer this question to continue.</div>';
+    }
+    html += '</div></div>';
+
+    html += '<div class="nav-row">';
+    html += '<button class="btn-back" id="btnBack"' + (idx===0?' disabled':'') + '>Back</button>';
+    html += '<button class="btn-next" id="btnNext">' + (q.type==='review' ? 'Submit' : 'Next') + '</button>';
+    html += '</div>';
+    html += '<div class="hint">Press Enter to continue</div>';
+
+    app.innerHTML = html;
+    wireUp(q);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      var map = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
+      return map[c];
+    });
+  }
+
+  function updateProgress(){
+    var pct = Math.round((idx / (steps.length - 1)) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = 'Step ' + (idx+1) + ' of ' + steps.length;
+  }
+
+  function wireUp(q){
+    var input = document.getElementById('qinput');
+    if (input) {
+      input.focus();
+      input.addEventListener('keydown', function(e){
+        if (e.key === 'Enter' && q.type !== 'textarea') { e.preventDefault(); goNext(); }
+      });
+    }
+    var choices = document.querySelectorAll('.choice');
+    choices.forEach(function(c){
+      c.addEventListener('click', function(){
+        choices.forEach(function(x){ x.classList.remove('selected'); });
+        c.classList.add('selected');
+        data[q.id] = c.getAttribute('data-val');
+        setTimeout(goNext, 150);
+      });
+    });
+    document.getElementById('btnBack').addEventListener('click', goBack);
+    document.getElementById('btnNext').addEventListener('click', goNext);
+  }
+
+  function goBack(){
+    if (idx > 0) { idx--; render(); }
+  }
+
+  function goNext(){
+    var q = steps[idx];
+    if (q.type === 'review') { submitForm(); return; }
+
+    var val = '';
+    if (q.type === 'choice') {
+      val = data[q.id] || '';
+    } else {
+      var input = document.getElementById('qinput');
+      val = input ? input.value.trim() : '';
+      data[q.id] = val;
+    }
+    if (q.req && !val) {
+      document.getElementById('errMsg').style.display = 'block';
+      return;
+    }
+    idx++;
+    render();
+  }
+
+  // Same routing the original mailto-based form uses (finance-request.html).
+  function recipientFor(type){
+    if (type === 'ADM Request') {
+      var loc = data.admLocation;
+      return loc === 'ARC' ? 'arc.support@trip-arc.com'
+           : loc === 'BSP' ? 'bsp.support@trip-arc.com'
+           : '';
+    }
+    return 'finance.support@traveledge.com';
+  }
+
+  // Builds the same plain-text email body the original form sends, from our data object.
+  function buildEmailLines(){
+    var type = data.requestType;
+    var hk = (type === 'Concierge Bundled') ? ' (HK)' : '';
+    var lines = [
+      (type || '').toUpperCase() + ' — FINANCE REQUEST', '',
+      '** Please ATTACH any supporting documents (invoice, markup invoice, void cheque, etc.) to this email before sending. **', '',
+      'Agent Name: ' + (data.agentName || ''),
+      'Client / Company: ' + (data.companyName || ''),
+    ];
+    if (type === 'Concierge Bundled') lines.push('Branch: ' + (data.branch || ''));
+    lines.push(
+      'PCC: ' + (data.pcc || ''),
+      'PNR' + hk + ': ' + (data.pnr || ''),
+      'Invoice #' + hk + ': ' + (data.invoice || ''),
+      '', '--- ' + type + ' ---'
+    );
+
+    if (type === 'General') {
+      lines.push('Invoice Total: ' + (data.invoiceTotal||''), 'Vendor Name: ' + (data.vendorName||''), 'Action to be taken: ' + (data.actionToBeTaken||''));
+    } else if (type === 'ADM Request') {
+      lines.push('ADM Location: ' + (data.admLocation||''), 'Charged to: ' + (data.admChargedTo||''), 'Invoice Total: ' + (data.invoiceTotal||''), 'Vendor Name: ' + (data.vendorName||''), 'Action to be taken: ' + (data.actionToBeTaken||''));
+    } else if (type === 'Payment Change') {
+      lines.push('Currency: ' + (data.currency||''), 'Vendor Name: ' + (data.vendorName||''), 'Original Payment Method: ' + (data.origPaymentMethod||''), 'Original Payment Amount: ' + (data.origPaymentAmount||''), 'New Payment Method: ' + (data.newPaymentMethod||''), 'New Payment Amount: ' + (data.newPaymentAmount||''), 'Method of refund: ' + (data.refundMethod||''), 'Type of refund: ' + (data.typeOfRefund||''));
+    } else if (type === 'Payout Request') {
+      lines.push('** Leader approval required — ensure leader is CC\'d **', 'Payout Reason: ' + (data.payoutReason||''), 'Payout Method: ' + (data.payoutMethod||''), 'Vendor: ' + (data.vendorName||''), '$ Received from Vendor: ' + (data.receivedFromVendor||''), '$ Owing to Client: ' + (data.amountOwingToClient||''), 'Method of refund: ' + (data.refundMethod||''), 'Type of refund: ' + (data.typeOfRefund||''));
+    } else if (type === 'Refund Request') {
+      lines.push('Reason for refund: ' + (data.reasonForRefund||''), 'Refund Payment Method: ' + (data.refundPaymentMethod||''), 'Card reference: ' + (data.cardLast4||''), 'Total to refund to client: ' + (data.totalAmountToRefund||''), 'Refund Currency: ' + (data.currency||''));
+      if (data.refundPaymentMethod === 'Credit Card') {
+        lines.push('Issuing Country: ' + (data.issuingCountry||''), 'Issuing Bank: ' + (data.issuingBank||''));
+      } else if (data.refundPaymentMethod === 'Wire' || data.refundPaymentMethod === 'Cheque') {
+        lines.push('Cheque / client address: ' + (data.mailingAddress||''), 'Attention To: ' + (data.attentionTo||''), 'Banking Information: ' + (data.bankingInfo||''));
+      }
+      lines.push('', 'Vendor Name: ' + (data.vendorName||''), 'Client originally paid: ' + (data.clientOriginallyPaid||''), 'Vendor amount received: ' + (data.vendorAmountReceived||''), 'Amount owing to Client: ' + (data.amountOwingToClient||''), '', 'Comments: ' + (data.additionalComments||''));
+    } else if (type === 'Concierge Bundled') {
+      lines.push(
+        'Please reconcile the below Concierge booking as client payment has been processed.', '',
+        'Passenger name: ' + (data.passengerName||''),
+        'YK Invoice #: ' + (data.ykInvoice||''),
+        'Departure Date: ' + (data.departureDate||''),
+        'Vendor (Airline): ' + (data.vendorName||''),
+        'PNR and invoice number from mark up invoice (YK/GK): ' + (data.pnr||'') + (data.invoice ? ' / ' + data.invoice : ''),
+        '',
+        'Service / Description: ' + (data.serviceDescription||''),
+        'Amount: ' + (data.amount||''),
+        'Currency: ' + (data.currency||''),
+        'Notes: ' + (data.notes||'')
+      );
+    } else if (type === 'UDID Request') {
+      lines.push(
+        'Requester Email: ' + (data.requesterEmail||''), '',
+        'Reason for update:', (data.reason||''), '',
+        '--- UDID CHANGE ---',
+        'UDID #: ' + (data.udidNum||''),
+        'Original UDID Value: ' + (data.origValue||''),
+        'New UDID Value: ' + (data.newValue||'')
+      );
+    }
+    return lines;
+  }
+
+  function submitForm(){
+    var btn = document.getElementById('btnNext');
+    btn.disabled = true; btn.textContent = 'Submitting...';
+
+    var type = data.requestType;
+    var recipient = recipientFor(type);
+    if (!recipient) {
+      btn.disabled = false; btn.textContent = 'Submit';
+      alert('Please select the ADM location so we can route to the right support inbox.');
+      return;
+    }
+
+    fetch('/api/submit-udid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+      .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+      .then(function(res){
+        if (!res.ok) throw new Error(res.j.error || 'Submission failed');
+        showSuccess(recipient);
+        // Same pattern the original form uses: open a pre-filled email in the
+        // agent's own mail client so it genuinely sends FROM them, not from us.
+        var subject = type + ' — ' + (data.agentName||'') + ' / ' + (data.pnr||'');
+        if (type === 'UDID Request') subject = 'UDID Update Request — ' + (data.agentName||'') + ' / ' + (data.pnr||'');
+        if (type === 'Concierge Bundled') subject = 'Please reconcile — ' + subject;
+        var mailto = 'mailto:' + recipient
+          + '?cc=' + encodeURIComponent(data.ccEmails || '')
+          + '&subject=' + encodeURIComponent(subject)
+          + '&body=' + encodeURIComponent(buildEmailLines().join('\n'));
+        window.location.href = mailto;
+      })
+      .catch(function(err){
+        btn.disabled = false; btn.textContent = 'Submit';
+        alert(err.message || 'Something went wrong - please try again.');
+      });
+  }
+
+  function showSuccess(recipient){
+    document.getElementById('progressWrap').style.display = 'none';
+    app.innerHTML =
+      '<div class="success-wrap">' +
+      '<h2>Request submitted</h2>' +
+      '<p>Logged to the tracker, and we\'ve opened a pre-filled email to <strong>' + recipient + '</strong>. Attach any supporting documents, then review and hit Send.</p>' +
+      '<button class="btn-next" onclick="location.reload()">Submit another</button>' +
+      '</div>';
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
