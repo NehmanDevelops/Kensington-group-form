@@ -273,9 +273,90 @@
     render();
   }
 
+  // Same routing the original mailto-based form uses (finance-request.html).
+  function recipientFor(type){
+    if (type === 'ADM Request') {
+      var loc = data.admLocation;
+      return loc === 'ARC' ? 'arc.support@trip-arc.com'
+           : loc === 'BSP' ? 'bsp.support@trip-arc.com'
+           : '';
+    }
+    return 'finance.support@traveledge.com';
+  }
+
+  // Builds the same plain-text email body the original form sends, from our data object.
+  function buildEmailLines(){
+    var type = data.requestType;
+    var hk = (type === 'Concierge Bundled') ? ' (HK)' : '';
+    var lines = [
+      (type || '').toUpperCase() + ' — FINANCE REQUEST', '',
+      '** Please ATTACH any supporting documents (invoice, markup invoice, void cheque, etc.) to this email before sending. **', '',
+      'Agent Name: ' + (data.agentName || ''),
+      'Client / Company: ' + (data.companyName || ''),
+    ];
+    if (type === 'Concierge Bundled') lines.push('Branch: ' + (data.branch || ''));
+    lines.push(
+      'PCC: ' + (data.pcc || ''),
+      'PNR' + hk + ': ' + (data.pnr || ''),
+      'Invoice #' + hk + ': ' + (data.invoice || ''),
+      '', '--- ' + type + ' ---'
+    );
+
+    if (type === 'General') {
+      lines.push('Invoice Total: ' + (data.invoiceTotal||''), 'Vendor Name: ' + (data.vendorName||''), 'Action to be taken: ' + (data.actionToBeTaken||''));
+    } else if (type === 'ADM Request') {
+      lines.push('ADM Location: ' + (data.admLocation||''), 'Charged to: ' + (data.admChargedTo||''), 'Invoice Total: ' + (data.invoiceTotal||''), 'Vendor Name: ' + (data.vendorName||''), 'Action to be taken: ' + (data.actionToBeTaken||''));
+    } else if (type === 'Payment Change') {
+      lines.push('Currency: ' + (data.currency||''), 'Vendor Name: ' + (data.vendorName||''), 'Original Payment Method: ' + (data.origPaymentMethod||''), 'Original Payment Amount: ' + (data.origPaymentAmount||''), 'New Payment Method: ' + (data.newPaymentMethod||''), 'New Payment Amount: ' + (data.newPaymentAmount||''), 'Method of refund: ' + (data.refundMethod||''), 'Type of refund: ' + (data.typeOfRefund||''));
+    } else if (type === 'Payout Request') {
+      lines.push('** Leader approval required — ensure leader is CC\'d **', 'Payout Reason: ' + (data.payoutReason||''), 'Payout Method: ' + (data.payoutMethod||''), 'Vendor: ' + (data.vendorName||''), '$ Received from Vendor: ' + (data.receivedFromVendor||''), '$ Owing to Client: ' + (data.amountOwingToClient||''), 'Method of refund: ' + (data.refundMethod||''), 'Type of refund: ' + (data.typeOfRefund||''));
+    } else if (type === 'Refund Request') {
+      lines.push('Reason for refund: ' + (data.reasonForRefund||''), 'Refund Payment Method: ' + (data.refundPaymentMethod||''), 'Card reference: ' + (data.cardLast4||''), 'Total to refund to client: ' + (data.totalAmountToRefund||''), 'Refund Currency: ' + (data.currency||''));
+      if (data.refundPaymentMethod === 'Credit Card') {
+        lines.push('Issuing Country: ' + (data.issuingCountry||''), 'Issuing Bank: ' + (data.issuingBank||''));
+      } else if (data.refundPaymentMethod === 'Wire' || data.refundPaymentMethod === 'Cheque') {
+        lines.push('Cheque / client address: ' + (data.mailingAddress||''), 'Attention To: ' + (data.attentionTo||''), 'Banking Information: ' + (data.bankingInfo||''));
+      }
+      lines.push('', 'Vendor Name: ' + (data.vendorName||''), 'Client originally paid: ' + (data.clientOriginallyPaid||''), 'Vendor amount received: ' + (data.vendorAmountReceived||''), 'Amount owing to Client: ' + (data.amountOwingToClient||''), '', 'Comments: ' + (data.additionalComments||''));
+    } else if (type === 'Concierge Bundled') {
+      lines.push(
+        'Please reconcile the below Concierge booking as client payment has been processed.', '',
+        'Passenger name: ' + (data.passengerName||''),
+        'YK Invoice #: ' + (data.ykInvoice||''),
+        'Departure Date: ' + (data.departureDate||''),
+        'Vendor (Airline): ' + (data.vendorName||''),
+        'PNR and invoice number from mark up invoice (YK/GK): ' + (data.pnr||'') + (data.invoice ? ' / ' + data.invoice : ''),
+        '',
+        'Service / Description: ' + (data.serviceDescription||''),
+        'Amount: ' + (data.amount||''),
+        'Currency: ' + (data.currency||''),
+        'Notes: ' + (data.notes||'')
+      );
+    } else if (type === 'UDID Request') {
+      lines.push(
+        'Requester Email: ' + (data.requesterEmail||''), '',
+        'Reason for update:', (data.reason||''), '',
+        '--- UDID CHANGE ---',
+        'UDID #: ' + (data.udidNum||''),
+        'Original UDID Value: ' + (data.origValue||''),
+        'New UDID Value: ' + (data.newValue||'')
+      );
+    }
+    return lines;
+  }
+
   function submitForm(){
     var btn = document.getElementById('btnNext');
     btn.disabled = true; btn.textContent = 'Submitting...';
+
+    var type = data.requestType;
+    var recipient = recipientFor(type);
+    if (!recipient) {
+      btn.disabled = false; btn.textContent = 'Submit';
+      alert('Please select the ADM location so we can route to the right support inbox.');
+      return;
+    }
+
     fetch('/api/submit-udid', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -284,7 +365,17 @@
       .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
       .then(function(res){
         if (!res.ok) throw new Error(res.j.error || 'Submission failed');
-        showSuccess();
+        showSuccess(recipient);
+        // Same pattern the original form uses: open a pre-filled email in the
+        // agent's own mail client so it genuinely sends FROM them, not from us.
+        var subject = type + ' — ' + (data.agentName||'') + ' / ' + (data.pnr||'');
+        if (type === 'UDID Request') subject = 'UDID Update Request — ' + (data.agentName||'') + ' / ' + (data.pnr||'');
+        if (type === 'Concierge Bundled') subject = 'Please reconcile — ' + subject;
+        var mailto = 'mailto:' + recipient
+          + '?cc=' + encodeURIComponent(data.ccEmails || '')
+          + '&subject=' + encodeURIComponent(subject)
+          + '&body=' + encodeURIComponent(buildEmailLines().join('\n'));
+        window.location.href = mailto;
       })
       .catch(function(err){
         btn.disabled = false; btn.textContent = 'Submit';
@@ -292,12 +383,12 @@
       });
   }
 
-  function showSuccess(){
+  function showSuccess(recipient){
     document.getElementById('progressWrap').style.display = 'none';
     app.innerHTML =
       '<div class="success-wrap">' +
       '<h2>Request submitted</h2>' +
-      '<p>Your finance request has been logged and the team will follow up.</p>' +
+      '<p>Logged to the tracker, and we\'ve opened a pre-filled email to <strong>' + recipient + '</strong>. Attach any supporting documents, then review and hit Send.</p>' +
       '<button class="btn-next" onclick="location.reload()">Submit another</button>' +
       '</div>';
   }
