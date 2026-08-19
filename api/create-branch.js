@@ -544,6 +544,28 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // TEMP DEBUG (2026-08-19): probe for a GET-by-id branch endpoint, read-only. Remove after.
+  if (req.query?.testGetBranch) {
+    const id = req.query.testGetBranch;
+    const token = await getToken();
+    const urls = [
+      `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/ServicedEntityBranch/${id}?tmcId=${TMC_ID}&id=${id}`,
+      `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/ServicedEntityBranch?tmcId=${TMC_ID}&id=${id}`,
+      `https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`,
+    ];
+    const results = [];
+    for (const url of urls) {
+      try {
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const j = await r.json().catch(() => null);
+        results.push({ url, status: r.status, ok: r.ok, dataPreview: j ? JSON.stringify(j).slice(0, 300) : null });
+      } catch (e) {
+        results.push({ url, error: e.message });
+      }
+    }
+    return res.status(200).json(results);
+  }
+
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
