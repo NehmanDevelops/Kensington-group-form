@@ -571,6 +571,15 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // TEMP DEBUG (2026-08-19): verify queue fix worked automatically. Remove after.
+  if (req.query?.testGetBranch) {
+    const id = req.query.testGetBranch;
+    const token = await getToken();
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json().catch(() => null);
+    return res.status(200).json({ successId: j?.travelerPnrSuccessQueueId, failId: j?.travelerPnrFailQueueId });
+  }
+
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
