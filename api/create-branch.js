@@ -37,6 +37,7 @@ const getPCCsUrl  = () => `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/Tmc
 const pccByIdUrl  = (id) => `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/TmcPcc/${id}?tmcId=${TMC_ID}&id=${id}`;
 const connectorsUrl = () => `https://app.amgine.ai/publicapi/api/AccountDetails/fromTmc/${TMC_ID}/0?tmcId=${TMC_ID}&branchId=0`;
 const connectorUrl  = (id) => `https://app.amgine.ai/publicapi/api/AccountDetails/${id}`;
+const branchUrl = (id) => `https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`;
 // Kensington's Sabre address defaults (matches CreatePCCs shape Raymond sent).
 const PCC_DEFAULTS = {
   addressLine1: '2 Queen St E', cityName: 'Toronto', stateCode: 'ON', countryCode: 'CA', postalCode: 'M5C 3G7',
@@ -80,6 +81,24 @@ async function savePCCQueues(amg, pccRecord, queues) {
 async function getConnectors(amg) {
   const r = await amg(connectorsUrl(), null, 'GET');
   return { ok: r.ok, list: await r.json().catch(() => []) };
+}
+
+// Re-applies the correct Success/Fail queue ids to an already-created branch
+// (2026-08-19): CreateBranch's own payload fields for these are silently
+// ignored — every new branch inherits the generic template's queue (VQ9G's)
+// regardless of what's sent at creation. Confirmed by reading the branch back
+// right after creation: it showed VQ9G's queue ids even though we'd sent
+// SY90's. A GET + full-record PUT to ServicedEntityBranch afterward is the
+// only way that actually sticks. Required step for every branch now, not
+// just a manual-override nicety.
+async function fixBranchQueues(amg, branchId, successQueueId, failQueueId) {
+  const getRes = await amg(branchUrl(branchId), null, 'GET');
+  const branch = await getRes.json().catch(() => null);
+  if (!getRes.ok || !branch) return { ok: false, error: 'could not read branch back' };
+  const body = { ...branch, travelerPnrSuccessQueueId: successQueueId, travelerPnrFailQueueId: failQueueId };
+  const putRes = await amg(branchUrl(branchId), body, 'PUT');
+  const j = await putRes.json().catch(() => ({}));
+  return { ok: putRes.ok, data: j };
 }
 
 // Appends a numeric branch id to a connector's branchIds and saves it back.
@@ -300,6 +319,14 @@ async function onboard(amg, inp) {
   // Numeric branch id (separate from the GUID) — needed for SetConnector's
   // branchIds array, which is numeric, not GUID-based.
   const branchId = deepFind(branchJson, 'id');
+
+  // CreateBranch's own travelerPnrSuccessQueueId/FailQueueId fields are
+  // silently ignored (2026-08-19 finding) — re-apply them now that the
+  // branch actually exists, via GET + full-record PUT. Required, not optional.
+  if (branchId && resolvedQueueIds.successQueueIdOverride && resolvedQueueIds.failQueueIdOverride) {
+    const fix = await fixBranchQueues(amg, branchId, resolvedQueueIds.successQueueIdOverride, resolvedQueueIds.failQueueIdOverride);
+    if (!fix.ok) onboardNotes.push(`Branch created, but re-applying the correct queue ids afterward failed — queue may still be wrong.`);
+  }
 
   // 2) CreatePolicyRule (default: economy in-policy — refine once client rules are set)
   const policyBody = {
@@ -542,31 +569,6 @@ export default async function handler(req, res) {
   if (hookChallenge) {
     res.setHeader('Smartsheet-Hook-Response', hookChallenge);
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
-  }
-
-  // TEMP DEBUG (2026-08-19): probe for a GET-by-id branch endpoint, read-only. Remove after.
-  if (req.query?.testGetBranch) {
-    const id = req.query.testGetBranch;
-    const token = await getToken();
-    const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
-    const j = await r.json().catch(() => null);
-    return res.status(200).json({ status: r.status, data: j });
-  }
-  // TEMP DEBUG (2026-08-19): test fixing an existing branch's queue ids via PUT. Remove after.
-  if (req.query?.testFixQueue) {
-    const id = req.query.testFixQueue;
-    const successId = Number(req.query.successId);
-    const failId = Number(req.query.failId);
-    const token = await getToken();
-    const getRes = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
-    const branch = await getRes.json().catch(() => null);
-    if (!branch) return res.status(502).json({ error: 'GET failed', status: getRes.status });
-    const body = { ...branch, travelerPnrSuccessQueueId: successId, travelerPnrFailQueueId: failId };
-    const putRes = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`, {
-      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    });
-    const putJson = await putRes.json().catch(() => null);
-    return res.status(200).json({ putStatus: putRes.status, putOk: putRes.ok, putResponse: putJson });
   }
 
 
