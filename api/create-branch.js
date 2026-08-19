@@ -552,6 +552,22 @@ export default async function handler(req, res) {
     const j = await r.json().catch(() => null);
     return res.status(200).json({ status: r.status, data: j });
   }
+  // TEMP DEBUG (2026-08-19): test fixing an existing branch's queue ids via PUT. Remove after.
+  if (req.query?.testFixQueue) {
+    const id = req.query.testFixQueue;
+    const successId = Number(req.query.successId);
+    const failId = Number(req.query.failId);
+    const token = await getToken();
+    const getRes = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    const branch = await getRes.json().catch(() => null);
+    if (!branch) return res.status(502).json({ error: 'GET failed', status: getRes.status });
+    const body = { ...branch, travelerPnrSuccessQueueId: successId, travelerPnrFailQueueId: failId };
+    const putRes = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch/${id}?id=${id}`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const putJson = await putRes.json().catch(() => null);
+    return res.status(200).json({ putStatus: putRes.status, putOk: putRes.ok, putResponse: putJson });
+  }
 
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
