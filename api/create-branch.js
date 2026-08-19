@@ -225,18 +225,26 @@ async function onboard(amg, inp) {
 
   // Wire the booking PCC's Success/Fail queue ids onto the branch itself —
   // this (not a separate call) is what actually routes a booking's TAW line
-  // to the right queue. Only wires queues we're confident are named exactly
-  // "Success"/"Fail" — leaves OutOfPolicy fields alone (ambiguous naming in
-  // the examples we've seen; confirm with Raymond before wiring those too).
+  // to the right queue. A manual override on the group row (numeric queue id)
+  // wins — for cases like duplicate-named queues where auto-matching by name
+  // could grab the wrong one. Otherwise falls back to matching queues named
+  // exactly "Success"/"Fail". Leaves OutOfPolicy fields alone (ambiguous
+  // naming in the examples we've seen; confirm with Raymond before wiring).
+  const successOverride = norm(inp.successQueueIdOverride);
+  const failOverride = norm(inp.failQueueIdOverride);
+  const resolvedQueueIds = {};
   if (bookingFallback) {
     const q = await getPCCQueueInfo(amg, bookingFallback);
     const queues = (q.ok && Array.isArray(q.data?.tmcPccQueues)) ? q.data.tmcPccQueues : [];
     const byName = (n) => queues.find((x) => norm(x.name).toLowerCase() === n);
-    const success = byName('success'), fail = byName('fail');
-    if (success) branchBody[0].travelerPnrSuccessQueueId = success.id;
-    if (fail) branchBody[0].travelerPnrFailQueueId = fail.id;
-    if (!queues.length) onboardNotes.push(`PCC ${pccIn} (id ${bookingFallback}) has no queues configured on Amgine's side yet.`);
-    else if (!success || !fail) onboardNotes.push(`PCC ${pccIn} (id ${bookingFallback}) is missing a Success or Fail queue.`);
+    const success = successOverride && /^\d+$/.test(successOverride) ? { id: Number(successOverride) } : byName('success');
+    const fail = failOverride && /^\d+$/.test(failOverride) ? { id: Number(failOverride) } : byName('fail');
+    if (success) { branchBody[0].travelerPnrSuccessQueueId = success.id; resolvedQueueIds.successQueueIdOverride = success.id; }
+    if (fail) { branchBody[0].travelerPnrFailQueueId = fail.id; resolvedQueueIds.failQueueIdOverride = fail.id; }
+    if (!successOverride && !failOverride) {
+      if (!queues.length) onboardNotes.push(`PCC ${pccIn} (id ${bookingFallback}) has no queues configured on Amgine's side yet.`);
+      else if (!success || !fail) onboardNotes.push(`PCC ${pccIn} (id ${bookingFallback}) is missing a Success or Fail queue.`);
+    }
   }
   // Per-function numeric PCC ids (Raymond, 2026-08-05): each Amgine function
   // can point at a DIFFERENT numeric PCC id. A per-field value on the group
@@ -373,7 +381,7 @@ async function onboard(amg, inp) {
   }
 
   return { ok: true, finalName, branchGuid, branchId, policyGuid, policyGroupGuid, policyLink, resolvedPccIds,
-    ...(onboardNotes.length ? { notes: onboardNotes } : {}) };
+    resolvedQueueIds, ...(onboardNotes.length ? { notes: onboardNotes } : {}) };
 }
 
 // Build the group-row cells to write after onboarding. `colId(title)` returns a
@@ -404,6 +412,14 @@ function buildWriteCells(colId, inp, r) {
     // guessing whether the PCC-code lookup resolved without asking Amgine.
     for (const [f, v] of Object.entries(r.resolvedPccIds || {})) {
       if (colId(f)) cells.push({ columnId: colId(f), value: v });
+    }
+    // Same visibility write-back for the queue ids actually used (whether from
+    // an override or auto-matched by name) — titles have spaces, unlike the
+    // *PccId columns, so mapped explicitly rather than by direct colId(field).
+    const queueCols = { successQueueIdOverride: 'success queue id override', failQueueIdOverride: 'fail queue id override' };
+    for (const [f, title] of Object.entries(queueCols)) {
+      const v = (r.resolvedQueueIds || {})[f];
+      if (v != null && colId(title)) cells.push({ columnId: colId(title), value: v });
     }
   }
   // A human-readable outcome, if the sheet has a status column.
@@ -490,6 +506,8 @@ async function handleGroupWebhook(events, res) {
       travelerProfilePccId: norm(val(row, 'travelerprofilepccid')),
       travelerProfileReadPccId: norm(val(row, 'travelerprofilereadpccid')),
       emailCountry: norm(val(row, 'email country')),
+      successQueueIdOverride: norm(val(row, 'success queue id override')),
+      failQueueIdOverride: norm(val(row, 'fail queue id override')),
     };
 
     let r;
@@ -568,6 +586,8 @@ export default async function handler(req, res) {
       hotelSearchPccId: body.hotelSearchPccId, carSearchPccId: body.carSearchPccId,
       travelerProfilePccId: body.travelerProfilePccId, travelerProfileReadPccId: body.travelerProfileReadPccId,
       emailCountry: body.emailCountry,
+      successQueueIdOverride: body.successQueueIdOverride,
+      failQueueIdOverride: body.failQueueIdOverride,
     };
     const r = await onboard(amg, inp);
     if (!r.ok) return res.status(502).json(r);
