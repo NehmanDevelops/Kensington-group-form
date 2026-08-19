@@ -526,18 +526,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
-  // TEMP DEBUG (2026-08-19): compare VQ9G vs SY90 queue numbers. Remove after.
-  if (req.query?.testCompareQueues === '1') {
-    const token = await getToken();
-    const [a, b] = await Promise.all([492, 501].map(id =>
-      fetch(pccByIdUrl(id), { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
-    ));
-    return res.status(200).json({
-      VQ9G_492: { pcc: a.pcc, queues: a.tmcPccQueues },
-      SY90_501: { pcc: b.pcc, queues: b.tmcPccQueues },
-    });
-  }
-
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
