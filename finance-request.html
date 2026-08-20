@@ -251,7 +251,7 @@
                 <option value="" disabled selected>Select…</option>
                 <option value="Cheque">Cheque</option>
                 <option value="ACH">ACH</option>
-                <option value="CC via Bill Pay">Back to CC via Bill Pay</option>
+                <option value="CC via Bill Pay" id="pay_refundType_cc">Back to CC via Bill Pay</option>
               </select>
             </div>
           </div>
@@ -284,6 +284,14 @@
               <input type="text" id="po_owing" name="po_owing" class="field-input" data-req="1" />
             </div>
             <div class="field">
+              <label class="field-label" for="po_country">Country<span class="required-mark">*</span></label>
+              <select id="po_country" name="po_country" class="field-input" data-req="1">
+                <option value="" disabled selected>Select…</option>
+                <option value="Canada">Canada</option>
+                <option value="USA">USA</option>
+              </select>
+            </div>
+            <div class="field">
               <label class="field-label" for="po_refundMethod">Method of refund</label>
               <div class="field-sub">If this payout is a refund — how it's being handled</div>
               <select id="po_refundMethod" name="po_refundMethod" class="field-input">
@@ -298,7 +306,7 @@
                 <option value="" disabled selected>Select…</option>
                 <option value="Cheque">Cheque</option>
                 <option value="ACH">ACH</option>
-                <option value="CC via Bill Pay">Back to CC via Bill Pay</option>
+                <option value="CC via Bill Pay" id="po_refundType_cc">Back to CC via Bill Pay</option>
               </select>
             </div>
           </div>
@@ -524,6 +532,26 @@
       document.querySelectorAll('.hk-suffix').forEach(function (el) { el.style.display = isConcierge ? '' : 'none'; });
     });
 
+    // "Back to CC via Bill Pay" isn't offered for USD (Payment Change) or USA (Payout
+    // Request) -- removing the <option> itself rather than hiding it, since hidden
+    // <option> support is inconsistent across browsers.
+    function wireCcOption(triggerId, excludedValue, selectId, optionId) {
+      var trigger = document.getElementById(triggerId);
+      var select = document.getElementById(selectId);
+      var option = document.getElementById(optionId);
+      if (!trigger || !select || !option) return;
+      trigger.addEventListener('change', function () {
+        if (trigger.value === excludedValue) {
+          if (option.parentNode) select.removeChild(option);
+          if (select.value === option.value) select.value = '';
+        } else if (!option.parentNode) {
+          select.appendChild(option);
+        }
+      });
+    }
+    wireCcOption('pay_currency', 'USD', 'pay_refundType', 'pay_refundType_cc');
+    wireCcOption('po_country', 'USA', 'po_refundType', 'po_refundType_cc');
+
     // Refund method sub-conditionals.
     var refMethod = document.getElementById('ref_method');
     if (refMethod) {
@@ -593,7 +621,7 @@
       } else if (typeSel.value === 'Payment Change') {
         lines.push('Currency: ' + g('pay_currency'), 'Vendor Name: ' + g('pay_vendor'), 'Original Payment Method: ' + g('pay_origMethod'), 'Original Payment Amount: ' + g('pay_origAmount'), 'New Payment Method: ' + g('pay_newMethod'), 'New Payment Amount: ' + g('pay_newAmount'), 'Method of refund: ' + g('pay_refundMethod'), 'Type of refund: ' + g('pay_refundType'));
       } else if (typeSel.value === 'Payout Request') {
-        lines.push('** Leader approval required — ensure leader is CC\'d **', 'Payout Reason: ' + g('po_reason'), 'Payout Method: ' + g('po_method'), 'Vendor: ' + g('po_vendor'), '$ Received from Vendor: ' + g('po_received'), '$ Owing to Client: ' + g('po_owing'), 'Method of refund: ' + g('po_refundMethod'), 'Type of refund: ' + g('po_refundType'));
+        lines.push('** Leader approval required — ensure leader is CC\'d **', 'Payout Reason: ' + g('po_reason'), 'Payout Method: ' + g('po_method'), 'Vendor: ' + g('po_vendor'), '$ Received from Vendor: ' + g('po_received'), '$ Owing to Client: ' + g('po_owing'), 'Country: ' + g('po_country'), 'Method of refund: ' + g('po_refundMethod'), 'Type of refund: ' + g('po_refundType'));
       } else if (typeSel.value === 'Refund Request') {
         lines.push('Reason for refund: ' + g('ref_reason'), 'Refund Payment Method: ' + g('ref_method'), 'Card reference: ' + g('ref_cardLast4'), 'Total to refund to client: ' + g('ref_total'), 'Refund Currency: ' + g('ref_currency'));
         if (g('ref_method') === 'Credit Card') {
