@@ -571,6 +571,29 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // TEMP DEBUG (2026-08-21): audit which real (non-test) branches are still
+  // stuck on the generic default connector. Read-only. Remove after.
+  if (req.query?.testAuditConnectors === '1') {
+    const token = await getToken();
+    const amg = (url, payload, method = 'POST') => fetch(url, {
+      method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      ...(method === 'GET' ? {} : { body: JSON.stringify(payload) }),
+    });
+    const conn = await getConnectors(amg);
+    const generic = (conn.list || []).find(c => norm(c.description).toLowerCase().includes('amgine kensington'));
+    // Pull the full branch list (paginated) to map id -> name.
+    const branches = {};
+    for (let page = 1; page <= 40; page++) {
+      const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}&pageNumber=${page}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => null);
+      const items = j?.items || [];
+      if (!items.length) break;
+      for (const b of items) branches[b.id] = b.name;
+    }
+    const stuck = (generic?.branchIds || []).filter(id => id !== 0).map(id => ({ id, name: branches[id] || '(unknown)' }));
+    return res.status(200).json({ genericConnectorId: generic?.accountDetailsId, stuckCount: stuck.length, stuck });
+  }
+
 
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
