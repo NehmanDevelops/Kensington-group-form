@@ -572,21 +572,48 @@ export default async function handler(req, res) {
   }
 
   // TEMP DEBUG (2026-08-19): find a branch's numeric id from its GUID/name. Remove after.
-  if (req.query?.testFindBranch) {
-    const q = req.query.testFindBranch.toLowerCase();
+  // TEMP DEBUG (2026-08-19): fix an existing (pre-fix) branch's connector + queue. Remove after.
+  if (req.query?.testFixExistingBranch) {
+    const branchId = Number(req.query.testFixExistingBranch);
+    const pccCode = (req.query.pcc || '').toUpperCase();
+    const emailCountry = (req.query.emailCountry || 'us').toLowerCase() === 'cad' ? 'cad' : 'us';
     const token = await getToken();
-    const allItems = [];
-    let match = null;
-    for (let page = 1; page <= 40; page++) {
-      const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}&pageNumber=${page}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } });
-      const j = await r.json().catch(() => null);
-      const items = j?.items || [];
-      if (!items.length) break;
-      allItems.push(...items);
-      const found = items.find(b => (b.guid || '').toLowerCase().includes(q) || (b.name || '').toLowerCase().includes(q));
-      if (found) { match = found; break; }
+    const amg = (url, payload, method = 'POST') => fetch(url, {
+      method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      ...(method === 'GET' ? {} : { body: JSON.stringify(payload) }),
+    });
+    const notes = [];
+    // Queue
+    const pccsRes = await getPCCs(amg);
+    const pccList = pccsRes.ok ? pccsRes.list : [];
+    const found = pccList.filter(p => norm(p.identifier).toUpperCase() === pccCode).find(p => !p.isAuthenticator);
+    if (found) {
+      const q = await getPCCQueueInfo(amg, found.id);
+      const queues = (q.ok && Array.isArray(q.data?.tmcPccQueues)) ? q.data.tmcPccQueues : [];
+      const success = queues.find(x => norm(x.name).toLowerCase() === 'success');
+      const fail = queues.find(x => norm(x.name).toLowerCase() === 'fail');
+      if (success && fail) {
+        const fix = await fixBranchQueues(amg, branchId, success.id, fail.id);
+        notes.push({ step: 'queue', pccId: found.id, successId: success.id, failId: fail.id, ok: fix.ok });
+      } else notes.push({ step: 'queue', error: 'missing success/fail queue', pccId: found.id });
+    } else notes.push({ step: 'queue', error: 'pcc not found' });
+    // Connector
+    const conn = await getConnectors(amg);
+    const list = conn.ok ? conn.list : [];
+    const wanted = emailCountry === 'cad' ? 'canada@kensingtoncorporate.com' : 'usa@kensingtoncorporate.com';
+    const connector = list.find(c => norm(c.description).toLowerCase().replace(/\s+/g, '') === wanted);
+    for (const c of list) {
+      if (c.notificationChannel !== 'Email' || c === connector) continue;
+      if (c.branchIds.includes(branchId)) {
+        const d = await disassociateConnector(amg, c, branchId);
+        notes.push({ step: 'disassociate', from: c.description, ok: d.ok });
+      }
     }
-    return res.status(200).json({ totalScanned: allItems.length, match, otherKeys: Object.keys((await (await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`, { headers: { Authorization: `Bearer ${token}` } })).json()) || {}) });
+    if (connector) {
+      const a = await associateConnector(amg, connector, branchId);
+      notes.push({ step: 'associate', to: connector.description, ok: a.ok });
+    } else notes.push({ step: 'associate', error: 'connector not found' });
+    return res.status(200).json({ notes });
   }
 
 
