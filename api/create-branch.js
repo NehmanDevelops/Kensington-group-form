@@ -573,10 +573,13 @@ export default async function handler(req, res) {
 
   // TEMP DEBUG (2026-08-19): find a branch's numeric id from its GUID/name. Remove after.
   if (req.query?.testFindBranch) {
+    const q = req.query.testFindBranch.toLowerCase();
     const token = await getToken();
     const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`, { headers: { Authorization: `Bearer ${token}` } });
     const j = await r.json().catch(() => null);
-    return res.status(200).json({ status: r.status, preview: JSON.stringify(j).slice(0, 2000) });
+    const items = j?.items || [];
+    const match = items.find(b => (b.guid || '').toLowerCase().includes(q) || (b.name || '').toLowerCase().includes(q));
+    return res.status(200).json({ totalItems: items.length, match });
   }
 
 
