@@ -573,26 +573,10 @@ export default async function handler(req, res) {
 
   // TEMP DEBUG (2026-08-19): find a branch's numeric id from its GUID/name. Remove after.
   if (req.query?.testFindBranch) {
-    const q = req.query.testFindBranch.toLowerCase();
     const token = await getToken();
-    const urls = [
-      `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/ServicedEntityBranch?tmcId=${TMC_ID}`,
-      `https://app.amgine.ai/publicapi/api/ServicedEntityBranch/fromTmc/${TMC_ID}?tmcId=${TMC_ID}`,
-      `https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`,
-    ];
-    const results = [];
-    for (const url of urls) {
-      try {
-        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        const j = await r.json().catch(() => null);
-        let match = null;
-        if (Array.isArray(j)) match = j.find(b => JSON.stringify(b).toLowerCase().includes(q));
-        results.push({ url, status: r.status, isArray: Array.isArray(j), count: Array.isArray(j) ? j.length : null, match });
-      } catch (e) {
-        results.push({ url, error: e.message });
-      }
-    }
-    return res.status(200).json(results);
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`, { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json().catch(() => null);
+    return res.status(200).json({ status: r.status, preview: JSON.stringify(j).slice(0, 2000) });
   }
 
 
