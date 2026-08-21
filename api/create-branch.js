@@ -575,11 +575,18 @@ export default async function handler(req, res) {
   if (req.query?.testFindBranch) {
     const q = req.query.testFindBranch.toLowerCase();
     const token = await getToken();
-    const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`, { headers: { Authorization: `Bearer ${token}` } });
-    const j = await r.json().catch(() => null);
-    const items = j?.items || [];
-    const match = items.find(b => (b.guid || '').toLowerCase().includes(q) || (b.name || '').toLowerCase().includes(q));
-    return res.status(200).json({ totalItems: items.length, match });
+    const allItems = [];
+    let match = null;
+    for (let page = 1; page <= 40; page++) {
+      const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}&pageNumber=${page}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => null);
+      const items = j?.items || [];
+      if (!items.length) break;
+      allItems.push(...items);
+      const found = items.find(b => (b.guid || '').toLowerCase().includes(q) || (b.name || '').toLowerCase().includes(q));
+      if (found) { match = found; break; }
+    }
+    return res.status(200).json({ totalScanned: allItems.length, match, otherKeys: Object.keys((await (await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`, { headers: { Authorization: `Bearer ${token}` } })).json()) || {}) });
   }
 
 
