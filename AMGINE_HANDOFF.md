@@ -397,7 +397,7 @@ Test artifacts (`PIPETEST0824`, `PIPETEST0824CAD`, `PIPETEST0824CAD2` group rows
 
 ## 18. OPEN ITEMS (as of 2026-08-24)
 
-1. **Branch address defaults to NYC instead of Toronto** (§15.4) — our bug, straightforward fix, not yet applied.
+1. ~~**Branch address defaults to NYC instead of Toronto** (§15.4)~~ — **FIXED 2026-08-24.** Address fallback in `create-branch.js` now reuses `PCC_DEFAULTS` (Kensington's real Toronto address) instead of the hardcoded `225 W 34th Street` placeholder. Verified live: a fresh branch onboarded via the real checkbox path, no address supplied, correctly came back `city: Toronto, country: CA`.
 2. **No way to re-apply the queue/connector fix to an existing branch from Smartsheet** (§15.3) — would need a small dedicated trigger; currently manual one-off scripts only.
 3. **Full sweep of pre-2026-08-21 branches not completed** (§16) — only spot-checked ones are confirmed fixed.
 4. **`PSGR SECURITY DATA REQUIRED PLEASE UPDATE AND RETRY`** — appeared multiple times in a real booking's request history (Cheryl Day, itinerary 284517) during `EndTransaction`, retried automatically and the booking ultimately completed successfully (`PNR WGAMQS`, `Flight Booking Process Completed!`). Not yet understood whether this is expected noise or worth asking Raymond about if it ever blocks a booking outright instead of just retrying.
