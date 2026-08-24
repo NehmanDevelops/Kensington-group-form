@@ -1,11 +1,13 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-08-05 — Air Snap Codes / negotiated rate codes / tour codes implemented and pushed live (§12). Guest→external and EmailSettings still open with Raymond (§11)._
+_Last updated: 2026-08-24 — Full PCC/Queue/Connector onboarding automation built, tested, and multiple real bugs found + fixed (§13-§17). See §18 for what's still open._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
-> **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup automatically) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (now also auto-attaches GDS BookingProfile, no extra checkbox) → statuses flow back.
-> **Open with Amgine:** why booking (`CreatePNR`) fails on some branches but not others (see §10.3); whether traveller type should be "external" instead of "guest" (§10.4); how to control **Show Price** (their side). Existing branches loanDepot/TESTING lack a working policy link (old wrong GUID) — re-onboard if needed.
+**🔐 Credentials:** Every secret (Smartsheet API token, all `AMGINE_*` values) lives ONLY in Vercel's environment variables (marked Sensitive — write-only, can't be viewed again once set). They are deliberately **not** written anywhere in this repo, including this file. To run any of the manual `node -e "fetch(...)"` one-off scripts referenced below from a fresh machine, you need the Smartsheet token pasted to you directly (ask Nehman) — never commit it to a file.
+
+> **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup → **PCC validate/create → queue fix → email connector fix**, all automatic, §13-§15) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (auto-attaches GDS BookingProfile) → statuses flow back.
+> **Open with Amgine:** why booking (`CreatePNR`) intermittently shows `PSGR SECURITY DATA REQUIRED` retries (§18); branch address defaults to a NYC placeholder instead of Kensington's real Toronto address (§18, our bug, not yet fixed); whether "PCC Target for Authentication" always correctly shows the shared VQ9G-AUTH entry (expected, not a bug — confirmed §14).
 
 ---
 
@@ -204,6 +206,7 @@ Do NOT hand-edit `api/amgine.js` live during the call — a bad edit to the payl
 2. Why was the traveller profile not pulling before?
 3. `EmailSettings`: exact field name + shape? Our subject/body or Amgine's emails?
 4. Can we get it fully working before next week (2 groups launching)?
+5. Snap codes / test-pricing: our manager can't get a snap code to test-price. §12.3 already shows Raymond said placeholder codes never price out because a code has to be **programmed against a real client on Amgine's side** first — confirm: does a snap code need to be provisioned against a specific **airline account** on Amgine's end (separate from what we send in `NegotiatedRateCodes`) before it'll ever return a rate, even with a real client? If so, what does Ray need from us (airline, client name, code) to provision one for a real test?
 
 ### 11.5 Deploy reminder
 All Amgine code lives in `api/amgine.js` (Vercel). Commit email must be `nehmanmain@gmail.com` or Vercel blocks the deploy. Secrets only in Vercel env vars.
@@ -253,3 +256,138 @@ On any group's row in the LIVE GROUP MASTERSHEET, fill in:
 - **`Tour Code`**: e.g. `DL:YYZNYC`
 
 Next booking sent for that group will automatically include `BranchInfo.AirConfig.NegotiatedRateCodes` built from those columns. No code change needed per client — just fill the columns.
+
+---
+
+## 13. PCC-CODE → NUMERIC-ID MAPPING (2026-08-05 to 2026-08-13)
+
+### 13.1 The problem
+Every `*PccId` field on a branch (FlightBookingPccId, TicketingPccId, etc. — see §14) is an **integer internal Amgine id**, not the PCC code itself. Raymond originally sent a Postman example with values `506`/`501` and no explanation of which PCC each belonged to.
+
+### 13.2 Resolved via Amgine's own `GetPCCs` endpoint (confirmed 2026-08-13)
+`GET https://app.amgine.ai/publicapi/api/tmc/116/TmcPcc?tmcId=116&isActive=true` returns every PCC's real numeric id. Confirmed mapping for Kensington's 8 PCCs:
+
+| Code | Numeric id | Currency |
+|---|---|---|
+| VQ9G | 492 (booking) / **491 = VQ9G-Kensington-AUTH, a separate auth-only entry — see §13.3** | USD |
+| SY90 | 501 | CAD |
+| B3SG | 502 | USD |
+| 1OEG | 503 | USD |
+| W1AL | 504 | CAD |
+| VB6L | 505 | USD |
+| I5BA | 506 | CAD |
+| B14G | 507 | USD |
+
+Hardcoded as `KNOWN_PCC_IDS` in `api/create-branch.js` (search that exact string) — used as the fallback when `GetPCCs` itself can't be reached.
+
+### 13.3 Bug found: VQ9G has TWO entries sharing the same identifier
+`GetPCCs` returns id `491` (`VQ9G-Kensington-AUTH`, `isAuthenticator:true`, no booking queues) **and** id `492` (`VQ9G-Kensington-US`, the real booking PCC) — both with `identifier: "VQ9G"`. Naive `Array.find()` by identifier silently grabbed whichever came first (491, the auth-only one), which has no Success/Fail queues — this broke every VQ9G branch's queue setup until fixed.
+**Fix (commit, 2026-08-13):** `findPcc()` in `create-branch.js` explicitly filters out `isAuthenticator:true` entries unless that's the only match.
+
+---
+
+## 14. FULL PCC / QUEUE / CONNECTOR ONBOARDING AUTOMATION (live since 2026-08-13)
+
+Raymond's meeting summary (email to Vera, 2026-08-13) described three capabilities to build:
+1. Retrieve/select PCCs configured in Amgine for profile read/shop/book.
+2. Retrieve/select PCC/Queue numbers for PNR pass/fail.
+3. Send air snap codes with each request (already done, §12).
+
+All three are now wired automatically into `api/create-branch.js`'s `onboard()` function, running right after the existing `CreateBranch → CreatePolicyRule → CreatePolicyGroup` chain, no extra checkbox/step for the agent:
+
+| Step | Endpoint | What it does |
+|---|---|---|
+| 1 | `GET /publicapi/api/tmc/116/TmcPcc?tmcId=116&isActive=true` (`GetPCCs`) | Validates the group's PCC(s) exist |
+| 2 | `POST` same URL (`CreatePCCs`) | Creates a missing PCC (full record body — see `PCC_DEFAULTS` in code). **Queues left empty** — real Sabre queue numbers need Amgine/GDS admin setup first; we never invent them. |
+| 3 | `GET /publicapi/api/tmc/116/TmcPcc/{id}?tmcId=116&id={id}` (`GetPCCsInfoQueue`) | Gets that PCC's `tmcPccQueues` array (queue `id`, `number`, `name`) |
+| 4 | `PUT` same URL (`SavePCCsInfoQueue`) | Adds queues to an existing PCC — full-record PUT, not a partial patch. Rarely triggers; all 8 known PCCs already have queues. |
+| 5 | `GET /publicapi/api/AccountDetails/fromTmc/116/0?tmcId=116&branchId=0` (`GetConnectors`) | Lists the 5 email connectors (see §15.2) |
+| 6 | `PUT /publicapi/api/AccountDetails/{accountDetailsId}` (`SetConnector`) | Associates/disassociates a branch (by **numeric** branch id, not GUID) with a connector, via its `branchIds` array |
+
+### 14.1 Where in the code
+`api/create-branch.js`:
+- Endpoint URL builders + `PCC_DEFAULTS`: search `getPCCsUrl`.
+- Helper functions `getPCCs`, `createPCC`, `getPCCQueueInfo`, `savePCCQueues`, `getConnectors`, `associateConnector`, `disassociateConnector`, `fixBranchQueues`: all defined near the top of the file, right after `deepFind`.
+- Wired into `onboard()`: search `Live PCC validate/create + queue wiring` for the PCC/queue block; search `SetConnector — associate the branch` for the connector block.
+
+### 14.2 New Smartsheet columns (LIVE GROUP MASTERSHEET)
+- **`PCC`** — converted from free text to a validated **picklist** (the 8 codes in §13.2 table).
+- **`Email Country`** — picklist, `us` / `cad`. Drives which connector a branch uses (§15.2) AND (separately) the `BranchInfo.Notifications.CustomTripData.Country` field sent on every booking (§14.3).
+- **`TravelerProfilePccId`, `TravelerProfileReadPccId`, `ProfilePccId`, `FlightSearchPccId`, `HotelSearchPccId`, `CarSearchPccId`, `FlightBookingPccId`, `HotelBookingPccId`, `CarBookingPccId`, `TicketingPccId`** — the 10 branch-level `*PccId` fields. Normally left blank (manual override only); auto-filled with the resolved number after onboarding, for visibility/proof of what was actually sent. **Profile-related** fields (`ProfilePccId`, `TravelerProfilePccId`, `TravelerProfileReadPccId`) resolve from `Profile PCC`; everything else resolves from `PCC` (mixing these up was a real bug, fixed 2026-08-15 — see commit history on `create-branch.js`).
+- **`Success Queue ID Override`, `Fail Queue ID Override`** — TEXT_NUMBER, normally blank. Auto-filled with the actual queue id used. Type a specific numeric queue id here to force a specific queue instead of the automatic Success/Fail name-match (e.g. if a PCC ever has duplicate-named queues).
+
+### 14.3 Email Country content flag (separate from the connector — don't confuse the two)
+`BranchInfo.Notifications.CustomTripData.Country` (`"cad"` or `"us"`, defaults `"us"`) is sent on **every booking** — per Raymond, this controls **email content/wording**, not which address it's sent from. Built in `api/amgine.js` (search `CustomTripData`), merged into the same `BranchInfo` object as `NegotiatedRateCodes` so neither spread clobbers the other.
+
+### 14.4 There is no true two-dropdown UI (and why)
+Raymond originally described "two dropdowns — pick the PCC, then pick the queue for that PCC." Smartsheet **cannot** do a dropdown whose options dynamically change based on another column's value on the same row (no per-cell scripting layer, unlike Google Sheets Apps Script). What's built instead achieves the same real-world result: `PCC` is a real (static) dropdown; the queue is resolved automatically and shown via the override columns (§14.2), which double as a manual force-a-specific-queue mechanism. Confirmed with Raymond this is acceptable.
+
+---
+
+## 15. BUGS FOUND *AFTER* THE §14 IMPLEMENTATION SHIPPED (2026-08-19 to 2026-08-21) — important, read before assuming anything from §14 "just works"
+
+### 15.1 `CreateBranch` silently ignores the queue-id fields — the real queue bug
+Setting `travelerPnrSuccessQueueId`/`travelerPnrFailQueueId` directly in the `CreateBranch` payload (what §14 originally shipped with) **does not stick.** Confirmed by creating a branch with `PCC: SY90` (whose queue ids are 349/350) and immediately reading the branch back (`GET /publicapi/api/ServicedEntityBranch/{id}?id={id}`) — it showed **VQ9G's** queue ids (333/334) instead, i.e. the branch silently inherited the generic template's (`sourceSEBIDForNotificationRules` = branch 1687, VQ9G-based) default queue, regardless of what was sent at creation.
+- This was initially misdiagnosed as "just a display label bug" (the Content Config page showed `[VQ9G-Kensington-US] Success (151-)` on an SY90 branch) — **it was not cosmetic; the underlying id really was wrong.**
+- **Fix:** `fixBranchQueues()` — a required (not optional) step that runs right after every `CreateBranch` call succeeds: `GET` the branch back, then `PUT` the full record with the correct `travelerPnrSuccessQueueId`/`travelerPnrFailQueueId` forced in. Confirmed this actually sticks (re-read after the PUT shows the corrected ids), and confirmed on Amgine's own Content Config page the label corrects too (not just the number).
+- **Any branch created between 2026-08-13 (when §14 first shipped) and 2026-08-21 (when this fix landed) may have the wrong queue baked in** and needs the same correction manually applied (see §16 for the pattern).
+
+### 15.2 New branches auto-associate with the wrong email connector by default
+Contradicts what Raymond said ("I've updated the generic branch so it is not associated to any email address") — empirically, every new branch was landing in the **USA** connector's `branchIds` list by default at creation, regardless of the group's actual `Email Country`. The 5 connectors (from `GetConnectors`):
+
+| accountDetailsId | Address | Notes |
+|---|---|---|
+| 128 | `noreply@amgine.ai` | The old wrong default (before the fix below) |
+| 139 | `canada@kensingtoncorporate.com` | |
+| 140 | `usa@kensingtoncorporate.com` | The *new* default every branch was landing in |
+| 141 | `concierge@kensingtoncorporate.com` | Not used by our automation |
+| 143 | our own webhook (`/api/amgine`) | Every real branch should be in this one — separate from Email |
+
+**Fix:** before associating the correct connector, the code now explicitly loops through every OTHER `notificationChannel: 'Email'` connector and disassociates the branch from it first (search `Strip the branch out of every OTHER email connector` in `create-branch.js`). Confirmed clean on both a CAD and a US test branch (branch shows up in exactly one connector's `branchIds`, never two).
+
+### 15.3 There is no way to fix the queue/connector on an already-existing branch from Smartsheet
+Both fixes above (§15.1, §15.2) only run at **branch creation time**. Nothing re-triggers them for a branch that already exists — the "already onboarded" guard prevents re-running the whole chain (which would also create a *second* duplicate branch, not fix the first). **Not yet built:** a lightweight, Smartsheet-triggerable "re-apply queue+connector fix to this existing branch" action. Today, fixing an old branch requires a manual one-off script (see §16 for the exact pattern used).
+
+### 15.4 Branch address defaults to a US placeholder, not Kensington's real Toronto address
+`api/create-branch.js` (~line 180-184, search `225 W 34th Street`) falls back to `225 W 34th Street, New York, NY, US` whenever a group row doesn't explicitly provide address fields — which is every real group, since address should be Kensington's own, not something staff types per client. **This is why every branch shows "New York" instead of Toronto/YTO like the manually-configured "Generic Branch."** Flagged by Colin Braganza (Amgine) 2026-08-24 (question E). **Not yet fixed** — the fix is simply swapping the fallback to Kensington's real address (`2 Queen St E, Toronto, ON, M5C 3G7, CA` — already used correctly in `PCC_DEFAULTS` for PCC creation, just not for branch creation).
+
+---
+
+## 16. REAL (PRE-FIX) BRANCHES MANUALLY CORRECTED — 2026-08-21
+
+The §15.1/§15.2 bugs affected any branch created 2026-08-13 to 2026-08-21. Found by auditing every branch in connector 128's/140's `branchIds` list against real (non-test) group names in the LIVE GROUP MASTERSHEET.
+
+- **`VQ9GPANOCT26DFW`** (numeric branch id **1965**, guid `ce1b98ba-d3de-4a0a-b9af-8332e53ce131`) — a real client (Pancreatic Cancer Action Network) booking (Cheryl Day, itinerary 284517) was confirmed sent from `noreply@amgine.ai` instead of Kensington's address. **Manually corrected**: disassociated from connector 128, associated with connector 140 (USA); queue confirmed already correct (VQ9G's own 333/334 — coincidentally right since this branch's actual PCC is VQ9G).
+- **`SY90WOLSEP26LAX`** (Wolseley, real client) — flagged as needing the same check/fix; **not yet confirmed fixed** at last check.
+- **`VQ9GPANOCT26DFW` id 1964** — a second, separate, older branch sharing the same name (duplicate-creation leftover). **Not the one actually in use** — the group row's `Amgine Branch GUID` points at 1965, not 1964. Left alone; likely safe to ignore or eventually clean up.
+- **How to find a branch's numeric id from its GUID/name** (needed for any manual connector/queue fix — there is no Amgine admin UI page that shows this, only the API): `GET https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=116&page={n}&pageNumber={n}&pageSize=100` is a **paginated** list of every branch (`{ items: [...], paging: {...} }`) — scan pages for a matching `guid` or `name`. (This was built as a temp debug endpoint each time, then removed — search the git log for `testFindBranch`/`testFindByGuid` to see the exact pattern if you need to rebuild it.)
+
+**⚠️ Not yet done: a full sweep.** Only the branches surfaced by an actual real booking or by spot-checking were fixed. A systematic audit (list every connector-128/140-stuck branch, cross-reference against real Group IDs in the master sheet, fix each) has not been completed — the one-off audit in this session found 92 stuck branches, all but 2-3 of which were obvious test/demo junk.
+
+---
+
+## 17. OTHER BUGS FOUND & FIXED THIS SESSION (unrelated to §13-§16, found while investigating adjacent issues)
+
+### 17.1 Every form submission silently failed to mirror to the LIVE GROUP MASTERSHEET
+`api/submit.js`'s hardcoded `MASTER.completed` column id (`4048986209292164`) no longer matched a real column (it was recreated at some point, getting a new id). Smartsheet rejects the **entire row** if any single column id in the payload is invalid — so this one stale id silently broke the mirror-to-master step for **every** group-form submission, for an unknown period of time. The intake row still saved fine (that's a separate write), so nobody noticed anything was wrong except that the master sheet and its Group ID auto-assignment/notification pipeline never saw those submissions.
+- **Fixed:** updated to the correct current id (`7249103084097412`), including the matching key in the `MASTER_TO_AGENT` mirror map (KC Agent Groups sheet).
+- **Real-world impact found:** at least two genuinely-missed real client submissions (Subaru Canada — Danielle Trottier, Jennifer Wedley) were stuck on the intake sheet with no Group ID and no master row. Manually created their master rows (blank Group ID, same pattern the automatic mirror would have used) — someone still needs to assign them real Group IDs.
+- **Root lesson:** `submit.js`, `create-branch.js`, and any other file with a hardcoded Smartsheet column id map should have those ids spot-checked occasionally — Smartsheet columns silently deleted/recreated (even by intent, e.g. converting a column type) get a new id with no warning, and any hardcoded old id just silently drops that one field (or, worse, breaks the whole write) from then on.
+
+### 17.2 Stale hardcoded Amgine workspace GUID
+`api/amgine.js`'s `AMGINE_WORKSPACE_GUID` fallback constant (used to build the Agent Experience link when Amgine's webhook doesn't supply its own `WorkspaceGuid`) was outdated (`8f4a9dd8-d0c9-49cd-aded-000485f5deae`), producing wrong agent-app links. **Fixed** — updated to the correct value (`963f7455-194e-4ecb-b92e-a5122730f18f`). Confirmed nothing overrides this via a Vercel env var of the same name (checked — not present), so the code fallback is what's actually in effect.
+
+### 17.3 Smartsheet "duplicate branch" symptom — usually just test-session residue, not a pipeline bug
+If you see two branches for the same Group ID (one plain name, one with a timestamp suffix), check whether it's really a pipeline bug first: the normal "Create Amgine Branch" checkbox flow has a guard that blocks re-onboarding an already-onboarded group (Branch GUID must be blank), so duplicates from that path shouldn't happen. Duplicates usually come from someone (often Nehman, testing) calling `/api/create-branch` **directly** multiple times for the same Group ID, bypassing that guard — each call that finds the name already taken auto-retries with a timestamp suffix (intentional collision-avoidance, not a bug). Always check the group row's `Amgine Branch GUID` to see which one is actually linked/in-use before assuming both matter.
+
+---
+
+## 18. OPEN ITEMS (as of 2026-08-24)
+
+1. **Branch address defaults to NYC instead of Toronto** (§15.4) — our bug, straightforward fix, not yet applied.
+2. **No way to re-apply the queue/connector fix to an existing branch from Smartsheet** (§15.3) — would need a small dedicated trigger; currently manual one-off scripts only.
+3. **Full sweep of pre-2026-08-21 branches not completed** (§16) — only spot-checked ones are confirmed fixed.
+4. **`PSGR SECURITY DATA REQUIRED PLEASE UPDATE AND RETRY`** — appeared multiple times in a real booking's request history (Cheryl Day, itinerary 284517) during `EndTransaction`, retried automatically and the booking ultimately completed successfully (`PNR WGAMQS`, `Flight Booking Process Completed!`). Not yet understood whether this is expected noise or worth asking Raymond about if it ever blocks a booking outright instead of just retrying.
+5. **Colin Braganza's question F** (2026-08-24): whether Kensington's own team can self-serve edit/delete/clean up branches directly in Amgine's admin UI without needing Amgine's help each time — purely a question about Amgine's tool/permissions, not something in our code. Unanswered as of this writing.
+6. **CreatePNR failures on specific branches** (§10.3, from July) — never fully resolved; last known conclusion was a GDS/PCC provisioning issue on Amgine's side, not our payload. Not retested recently.
+7. **`SY90WOLSEP26LAX` (Wolseley)** — flagged in §16 as needing the same connector check as `VQ9GPANOCT26DFW`; confirm and fix if needed.
