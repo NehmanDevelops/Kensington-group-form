@@ -382,6 +382,19 @@ If you see two branches for the same Group ID (one plain name, one with a timest
 
 ---
 
+## 18a. FULL PIPELINE TEST — 2026-08-24 (confirms §14/§15 fixes work end-to-end)
+
+Ran a complete real test: new group → onboard via the **actual checkbox-webhook path** (not the manual form) → traveller added → Ready to Book → instant booking. All confirmed working:
+- Branch created, PCC `VQ9G` resolved to numeric `492`, queues auto-corrected to `333`/`334` (the §15.1 fix holds).
+- Traveller booked automatically the instant "Ready to Book" was checked — itinerary created, status "Ready — agent to action", Agent App link generated. No Power Automate polling delay involved (this is the instant-webhook path, separate from PA).
+- **Email Country → connector routing confirmed correct on the real pipeline**: a group with `Email Country = cad`, onboarded via the checkbox (simulated the exact webhook event Smartsheet sends), landed in the `canada@kensingtoncorporate.com` connector — the §15.2 fix holds for the path that actually matters.
+
+**New finding — low priority, explicitly not worth fixing per Nehman (2026-08-24):** the *manual* `/api/create-branch` direct-POST path (what `branch-request.html`'s form uses, also reachable via Postman/manual testing) has **no way to set Email Country at all** — it only reads `body.emailCountry`, which the form never sends and which has no row-lookup fallback (unlike the checkbox path, which reads `Email Country` off the group row via `handleGroupWebhook`'s `val()` helper). Any branch onboarded through the manual form always defaults to the USA connector, regardless of the group's actual `Email Country` setting. **Not a real-world problem** — the checkbox path is the one actually used for real client onboarding — but worth knowing this if `branch-request.html` is ever relied on for a real Canadian client instead of the checkbox.
+
+Test artifacts (`PIPETEST0824`, `PIPETEST0824CAD`, `PIPETEST0824CAD2` group rows + traveller row) were cleaned up from Smartsheet after. The 3 Amgine test branches created (ids `2257`, `2258`, `2259`) still exist on Amgine's side — no delete capability built, same as the existing test-branch junk noted in §16.
+
+---
+
 ## 18. OPEN ITEMS (as of 2026-08-24)
 
 1. **Branch address defaults to NYC instead of Toronto** (§15.4) — our bug, straightforward fix, not yet applied.
