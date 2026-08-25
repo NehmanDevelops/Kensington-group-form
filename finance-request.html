@@ -655,29 +655,36 @@
         );
       }
 
-      // UDID Request logs to the finance Excel (best-effort, never blocks the email) —
-      // same endpoint/shape the standalone UDID Update Request form used.
+      // Every request type logs to the finance Excel tracker (best-effort, never
+      // blocks the email) — same endpoint/flow the standalone UDID Update Request
+      // form used. UDID Request keeps its dedicated fields for the flow's existing
+      // columns; every other type sends the common fields plus a "details" block
+      // built from the same lines used in the email body, so nothing is lost.
+      var trackerPayload = {
+        requestType: typeSel.value,
+        agentName: g('agentName'),
+        companyName: g('companyName'),
+        pnr: g('pnr'),
+        invoice: g('invoice'),
+        ccEmails: g('ccEmails'),
+        submittedAt: new Date().toISOString(),
+      };
       if (typeSel.value === 'UDID Request') {
-        fetch('/api/submit-udid', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agentName: g('agentName'),
-            companyName: g('companyName'),
-            pnr: g('pnr'),
-            invoice: g('invoice'),
-            requesterEmail: g('udid_requesterEmail'),
-            ccEmails: g('ccEmails'),
-            reason: g('udid_reason'),
-            udidNum: g('udid_num'),
-            udidOld: g('udid_old'),
-            udidNew: g('udid_new'),
-            origValue: g('udid_old'),
-            newValue: g('udid_new'),
-            submittedAt: new Date().toISOString(),
-          }),
-        }).catch(function () { /* logging is best-effort; the email below is the source of truth */ });
+        trackerPayload.requesterEmail = g('udid_requesterEmail');
+        trackerPayload.reason = g('udid_reason');
+        trackerPayload.udidNum = g('udid_num');
+        trackerPayload.udidOld = g('udid_old');
+        trackerPayload.udidNew = g('udid_new');
+        trackerPayload.origValue = g('udid_old');
+        trackerPayload.newValue = g('udid_new');
+      } else {
+        trackerPayload.details = lines.join('\n');
       }
+      fetch('/api/submit-udid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trackerPayload),
+      }).catch(function () { /* logging is best-effort; the email below is the source of truth */ });
 
       var subject = typeSel.value + ' — ' + g('agentName') + ' / ' + g('pnr');
       if (typeSel.value === 'UDID Request') subject = 'UDID Update Request — ' + g('agentName') + ' / ' + g('pnr');
