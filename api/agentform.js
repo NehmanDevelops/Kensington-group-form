@@ -44,16 +44,31 @@ export default async function handler(req, res) {
     submissionDate: 2067338580234116, // Submission Date
   };
 
+  // Agent Assigned: is a Smartsheet contact-list column — it needs an email to
+  // resolve to the matching contact, not a plain name. Hardcoded (not built
+  // from free-typed first/last name) per Vera's request — a dropdown of real
+  // agents so nobody can typo their own name into a mismatched contact.
+  const AGENT_EMAILS = {
+    'Ivana Petrovic': 'ivana.petrovic@kensingtoncorporate.com',
+    'Lori Bartella': 'lori.bartella@kensingtoncorporate.com',
+    'Cheryl Scheckel': 'cheryl.scheckel@kensingtoncorporate.com',
+    'Jennifer Cardwell': 'jennifer.cardwell@kensingtoncorporate.com',
+    'John Driscoll': 'john.driscoll@kensingtoncorporate.com',
+    'Kate Anderson': 'kate.anderson@kensingtoncorporate.com',
+    'Liam Mckeown': 'liam.mckeown@kensingtoncorporate.com',
+    'Melissa Sawicki': 'melissa.sawicki@kensingtoncorporate.com',
+    'Rami Itani': 'rami.itani@kensingtoncorporate.com',
+    'Grace Northrop': 'grace.northrop@kensingtoncorporate.com',
+    'Vera Perisic': 'vera.perisic@kensingtoncorporate.com',
+  };
+
   try {
     const d = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    if (!d.groupId || !d.agentFirstName || !d.agentLastName || !d.firstName || !d.lastName) {
-      return res.status(400).json({ error: 'Group ID, Agent First/Last Name, and traveller First/Last Name are required.' });
+    const agentEmail = AGENT_EMAILS[d.agentAssigned];
+    if (!d.groupId || !agentEmail || !d.firstName || !d.lastName) {
+      return res.status(400).json({ error: 'Group ID, Agent, and traveller First/Last Name are required.' });
     }
     const today = new Date().toISOString().split('T')[0];
-    // Agent Assigned: is a Smartsheet contact-list column — it needs an email,
-    // not a plain name, to resolve to the matching contact. Kensington's
-    // convention (matches existing data): firstname.lastname@kensingtoncorporate.com
-    const agentEmail = `${String(d.agentFirstName).trim().toLowerCase()}.${String(d.agentLastName).trim().toLowerCase()}@kensingtoncorporate.com`;
 
     const cells = [
       { columnId: COL.groupId,        value: String(d.groupId).trim() },

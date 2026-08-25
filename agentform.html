@@ -26,11 +26,11 @@
   .sub{ font-size:14px; color:var(--taupe); margin:0 0 22px; }
   label{ display:block; font-size:13px; font-weight:bold; margin:16px 0 6px; color:var(--purple); }
   label .req{ color:#9b3b34; }
-  input{
+  input, select{
     width:100%; padding:12px 14px; border:1px solid #d8d2c4; border-radius:8px;
     font-size:15px; font-family:inherit; background:var(--cream); color:var(--purple);
   }
-  input:focus{ outline:none; border-color:var(--green); background:#fff; }
+  input:focus, select:focus{ outline:none; border-color:var(--green); background:#fff; }
   .hint{ font-size:12px; color:var(--taupe); margin-top:5px; }
   button{
     width:100%; margin-top:26px; padding:14px; border:0; border-radius:8px;
@@ -62,11 +62,21 @@
           <input id="groupId" name="groupId" required placeholder="e.g. 1OEGLOASEP26" list="groupIdList" autocomplete="off" />
           <datalist id="groupIdList"></datalist>
 
-          <label for="agentFirstName">Agent First Name <span class="req">*</span></label>
-          <input id="agentFirstName" name="agentFirstName" required />
-
-          <label for="agentLastName">Agent Last Name <span class="req">*</span></label>
-          <input id="agentLastName" name="agentLastName" required />
+          <label for="agentAssigned">Agent <span class="req">*</span></label>
+          <select id="agentAssigned" name="agentAssigned" required>
+            <option value="" disabled selected>Select agent…</option>
+            <option value="Ivana Petrovic">Ivana Petrovic</option>
+            <option value="Lori Bartella">Lori Bartella</option>
+            <option value="Cheryl Scheckel">Cheryl Scheckel</option>
+            <option value="Jennifer Cardwell">Jennifer Cardwell</option>
+            <option value="John Driscoll">John Driscoll</option>
+            <option value="Kate Anderson">Kate Anderson</option>
+            <option value="Liam Mckeown">Liam Mckeown</option>
+            <option value="Melissa Sawicki">Melissa Sawicki</option>
+            <option value="Rami Itani">Rami Itani</option>
+            <option value="Grace Northrop">Grace Northrop</option>
+            <option value="Vera Perisic">Vera Perisic</option>
+          </select>
 
           <label for="firstName">First Name <span class="req">*</span></label>
           <input id="firstName" name="firstName" required />
@@ -113,8 +123,7 @@
     msg.className = 'msg'; msg.textContent = '';
     const payload = {
       groupId:          document.getElementById('groupId').value.trim(),
-      agentFirstName:   document.getElementById('agentFirstName').value.trim(),
-      agentLastName:    document.getElementById('agentLastName').value.trim(),
+      agentAssigned:    document.getElementById('agentAssigned').value,
       firstName:        document.getElementById('firstName').value.trim(),
       lastName:         document.getElementById('lastName').value.trim(),
       additionalAgents: document.getElementById('additionalAgents').value.trim(),
