@@ -54,7 +54,6 @@ export default async function handler(req, res) {
     'Cheryl Scheckel': 'cheryl.scheckel@kensingtoncorporate.com',
     'Jennifer Cardwell': 'jennifer.cardwell@kensingtoncorporate.com',
     'John Driscoll': 'john.driscoll@kensingtoncorporate.com',
-    'Kate Anderson': 'kate.anderson@kensingtoncorporate.com',
     'Liam Mckeown': 'liam.mckeown@kensingtoncorporate.com',
     'Melissa Sawicki': 'melissa.sawicki@kensingtoncorporate.com',
     'Rami Itani': 'rami.itani@kensingtoncorporate.com',
