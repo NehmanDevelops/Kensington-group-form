@@ -36,6 +36,7 @@ export default async function handler(req, res) {
   const MASTER_SHEET_ID = '8780932377956228'; // Traveller Profile MasterSheet
   const COL = {
     groupId:        5029597388509060, // Group ID
+    agentAssigned:  4516209625436036, // Agent Assigned: (contact-list — value must be the agent's email)
     firstName:      5726513277472644, // First Name
     lastName:       7978313091157892, // Last Name
     agentNotes:     886668210245508,  // Agent Notes  (additional agents go here)
@@ -45,13 +46,18 @@ export default async function handler(req, res) {
 
   try {
     const d = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    if (!d.groupId || !d.firstName || !d.lastName) {
-      return res.status(400).json({ error: 'Group ID, First Name and Last Name are required.' });
+    if (!d.groupId || !d.agentFirstName || !d.agentLastName || !d.firstName || !d.lastName) {
+      return res.status(400).json({ error: 'Group ID, Agent First/Last Name, and traveller First/Last Name are required.' });
     }
     const today = new Date().toISOString().split('T')[0];
+    // Agent Assigned: is a Smartsheet contact-list column — it needs an email,
+    // not a plain name, to resolve to the matching contact. Kensington's
+    // convention (matches existing data): firstname.lastname@kensingtoncorporate.com
+    const agentEmail = `${String(d.agentFirstName).trim().toLowerCase()}.${String(d.agentLastName).trim().toLowerCase()}@kensingtoncorporate.com`;
 
     const cells = [
       { columnId: COL.groupId,        value: String(d.groupId).trim() },
+      { columnId: COL.agentAssigned,  value: agentEmail },
       { columnId: COL.firstName,      value: String(d.firstName).trim() },
       { columnId: COL.lastName,       value: String(d.lastName).trim() },
       { columnId: COL.agentNotes,     value: d.additionalAgents ? `Additional agent notes: ${String(d.additionalAgents).trim()}` : '' },

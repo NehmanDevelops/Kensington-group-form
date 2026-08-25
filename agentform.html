@@ -62,6 +62,12 @@
           <input id="groupId" name="groupId" required placeholder="e.g. 1OEGLOASEP26" list="groupIdList" autocomplete="off" />
           <datalist id="groupIdList"></datalist>
 
+          <label for="agentFirstName">Agent First Name <span class="req">*</span></label>
+          <input id="agentFirstName" name="agentFirstName" required />
+
+          <label for="agentLastName">Agent Last Name <span class="req">*</span></label>
+          <input id="agentLastName" name="agentLastName" required />
+
           <label for="firstName">First Name <span class="req">*</span></label>
           <input id="firstName" name="firstName" required />
 
@@ -107,6 +113,8 @@
     msg.className = 'msg'; msg.textContent = '';
     const payload = {
       groupId:          document.getElementById('groupId').value.trim(),
+      agentFirstName:   document.getElementById('agentFirstName').value.trim(),
+      agentLastName:    document.getElementById('agentLastName').value.trim(),
       firstName:        document.getElementById('firstName').value.trim(),
       lastName:         document.getElementById('lastName').value.trim(),
       additionalAgents: document.getElementById('additionalAgents').value.trim(),
