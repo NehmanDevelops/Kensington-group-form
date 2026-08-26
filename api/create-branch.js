@@ -667,6 +667,47 @@ export default async function handler(req, res) {
       successQueueIdOverride: body.successQueueIdOverride,
       failQueueIdOverride: body.failQueueIdOverride,
     };
+
+    // Guard against re-onboarding an already-onboarded group (2026-08-26): the
+    // webhook path has always checked "does this group already have a Branch
+    // GUID?" before running onboard() — this direct-POST path never did. A
+    // second form submission / duplicate API call for an already-onboarded
+    // group silently created a SECOND branch (forced into a name collision,
+    // hence the ugly timestamp-suffixed names like "VQ9GNTAOCT26PHX 178733...")
+    // and overwrote the group row to point at the new one, orphaning the
+    // original — the actual root cause of the recurring duplicate-branch
+    // incidents. Mirror the webhook path's guard here.
+    const groupIdForGuard = norm(body.groupId);
+    if (groupIdForGuard) {
+      const TOKEN_GUARD = process.env.SMARTSHEET_API_TOKEN;
+      try {
+        const sheet = await ssRetry(`https://api.smartsheet.com/2.0/sheets/${GROUPS}`, { headers: { Authorization: `Bearer ${TOKEN_GUARD}` } });
+        const idByTitleGuard = {};
+        for (const c of sheet.columns) idByTitleGuard[c.title.trim().toLowerCase()] = c.id;
+        const gidColGuard = idByTitleGuard['group id'];
+        const guidColGuard = idByTitleGuard['amgine branch guid'];
+        const existingRow = (sheet.rows || []).find(rw => {
+          const c = (rw.cells || []).find(x => x.columnId === gidColGuard);
+          return c && norm(c.value ?? c.displayValue).toLowerCase() === groupIdForGuard.toLowerCase();
+        });
+        if (existingRow && guidColGuard) {
+          const existingGuidCell = (existingRow.cells || []).find(x => x.columnId === guidColGuard);
+          const existingGuid = norm(existingGuidCell?.value ?? existingGuidCell?.displayValue);
+          if (existingGuid) {
+            return res.status(409).json({
+              error: `Group "${body.groupId}" is already onboarded (Branch GUID ${existingGuid} already set on its row) — refusing to create a duplicate branch.`,
+              existingBranchGuid: existingGuid,
+            });
+          }
+        }
+      } catch (guardErr) {
+        // If the guard check itself fails (e.g. transient Smartsheet error),
+        // don't block onboarding entirely — log it and proceed, same as the
+        // pre-existing behavior, rather than turn a blip into a hard failure.
+        console.error(`Duplicate-onboard guard check failed for group ${groupIdForGuard} — proceeding without it:`, guardErr.message);
+      }
+    }
+
     const r = await onboard(amg, inp);
     if (!r.ok) return res.status(502).json(r);
 
