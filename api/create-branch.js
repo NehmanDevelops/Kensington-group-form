@@ -623,49 +623,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
-  // TEMP DEBUG (2026-08-26): find all branches matching a name substring, with status. Remove after.
-  if (req.query?.testFindAllByName) {
-    const q = req.query.testFindAllByName.toLowerCase();
-    const token = await getToken();
-    const amg = (url, payload, method = 'POST') => fetch(url, {
-      method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      ...(method === 'GET' ? {} : { body: JSON.stringify(payload) }),
-    });
-    const matches = [];
-    for (let page = 1; page <= 40; page++) {
-      const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}&pageNumber=${page}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } });
-      const j = await r.json().catch(() => null);
-      const items = j?.items || [];
-      if (!items.length) break;
-      matches.push(...items.filter(b => (b.name || '').toLowerCase().includes(q)));
-    }
-    const conn = await getConnectors(amg);
-    const enriched = matches.map(m => ({
-      id: m.id, name: m.name, guid: m.guid, isActive: m.isActive,
-      connector: (conn.list || []).find(c => (c.branchIds || []).includes(m.id))?.description || null,
-    }));
-    return res.status(200).json({ matches: enriched });
-  }
-
-  // TEMP DEBUG (2026-08-26): compare two branches' full config side by side. Remove after.
-  if (req.query?.testCompareBranches) {
-    const ids = req.query.testCompareBranches.split(',');
-    const token = await getToken();
-    const out = {};
-    for (const id of ids) {
-      const r = await fetch(branchUrl(id), { headers: { Authorization: `Bearer ${token}` } });
-      const j = await r.json().catch(() => null);
-      out[id] = {
-        name: j?.name, isActive: j?.isActive,
-        travelerPnrSuccessQueueId: j?.travelerPnrSuccessQueueId, travelerPnrFailQueueId: j?.travelerPnrFailQueueId,
-        flightBookingPcc: j?.flightBookingPcc?.identifier, ticketingPcc: j?.ticketingPcc?.identifier,
-        profilePcc: j?.profilePcc?.identifier, addressLine1: j?.addressLine1, city: j?.city,
-        travelerGroupId: j?.travelerGroupId,
-      };
-    }
-    return res.status(200).json(out);
-  }
-
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
