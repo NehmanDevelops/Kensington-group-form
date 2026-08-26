@@ -594,6 +594,22 @@ export default async function handler(req, res) {
     return res.status(200).json({ match, currentConnector: currentConnector?.description || null });
   }
 
+  // TEMP DEBUG (2026-08-26): find a branch by name substring. Remove after.
+  if (req.query?.testFindByName) {
+    const q = req.query.testFindByName.toLowerCase();
+    const token = await getToken();
+    let match = null;
+    for (let page = 1; page <= 40; page++) {
+      const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}&pageNumber=${page}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => null);
+      const items = j?.items || [];
+      if (!items.length) break;
+      const found = items.find(b => (b.name || '').toLowerCase().includes(q));
+      if (found) { match = found; break; }
+    }
+    return res.status(200).json({ match });
+  }
+
   // TEMP DEBUG (2026-08-21): audit which real (non-test) branches are still
   // stuck on the generic default connector. Read-only. Remove after.
   if (req.query?.testAuditConnectors === '1') {
