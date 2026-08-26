@@ -129,6 +129,30 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => String(s == null ? '' : s).trim();
 const splitList = (v) => norm(v) ? norm(v).split(',').map(x => x.trim()).filter(Boolean) : [''];
 
+// Smartsheet's API intermittently throws transient errorCode 4003 ("Access
+// Denied") on otherwise-valid, correctly-authorized requests (confirmed
+// 2026-08-26 pipeline test — same token/sheet succeeds on retry seconds
+// later). Without a retry, a single blip during branch-onboarding write-back
+// silently loses the Branch GUID: the row is left looking un-onboarded, stays
+// "eligible" forever, and the next trigger re-runs onboarding and creates a
+// SECOND branch. `ssRetry` retries transient failures with backoff before
+// giving up; callers still get a clean thrown error after exhausting retries.
+async function ssRetry(url, opts = {}, tries = 4, baseDelayMs = 1500) {
+  let lastErr;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      const r = await fetch(url, opts);
+      const j = await r.json().catch(() => null);
+      if (r.ok && j && j.errorCode == null) return j;
+      lastErr = new Error(`Smartsheet ${r.status}: ${j?.message || 'bad response'}`);
+    } catch (err) {
+      lastErr = err;
+    }
+    if (attempt < tries) await sleep(baseDelayMs * attempt);
+  }
+  throw lastErr;
+}
+
 // Recursively hunt for the first value of `key` anywhere in a response.
 function deepFind(obj, key) {
   if (obj == null || typeof obj !== 'object') return undefined;
@@ -466,7 +490,7 @@ async function handleGroupWebhook(events, res) {
     ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
   });
 
-  const sheet = await (await ss(`/sheets/${GROUPS}`)).json();
+  const sheet = await ssRetry(`https://api.smartsheet.com/2.0/sheets/${GROUPS}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
   const idByTitle = {};
   for (const c of sheet.columns) idByTitle[c.title.trim().toLowerCase()] = c.id;
   const colId = (t) => idByTitle[t.trim().toLowerCase()];
@@ -544,12 +568,40 @@ async function handleGroupWebhook(events, res) {
       r = { ok: false, step: 'exception', error: err.message };
     }
 
+    // Write-back is the critical step when onboard() succeeded: losing it here
+    // leaves the Branch GUID blank, so this row stays "eligible" and the next
+    // trigger re-onboards it, creating a duplicate branch in Amgine. Retry hard,
+    // and if it still fails, fall back to a minimal write (just the GUID + a
+    // loud status note) so the row is never left silently un-onboarded.
     const { cells, missing } = buildWriteCells(colId, inp, r);
+    let writeBackFailed = false;
     if (cells.length) {
-      await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells }]) });
+      try {
+        await ssRetry(`https://api.smartsheet.com/2.0/sheets/${GROUPS}/rows`, {
+          method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ id: row.id, cells }]),
+        });
+      } catch (err) {
+        writeBackFailed = true;
+        console.error(`Write-back FAILED for row ${row.id} (group ${inp.groupId}) after retries — branchGuid ${r.branchGuid || '(none)'} may be orphaned:`, err.message);
+        if (r.ok && r.branchGuid && colId('amgine branch guid') && colId('amgine onboard status')) {
+          try {
+            await ssRetry(`https://api.smartsheet.com/2.0/sheets/${GROUPS}/rows`, {
+              method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify([{ id: row.id, cells: [
+                { columnId: colId('amgine branch guid'), value: r.branchGuid },
+                { columnId: colId('amgine onboard status'), value: `⚠ Branch created (${r.branchGuid}) but full write-back failed after retries — check other PCC/queue/connector fields manually.` },
+              ] }]),
+            }, 3, 2000);
+          } catch (err2) {
+            console.error(`Minimal fallback write-back ALSO failed for row ${row.id} — branchGuid ${r.branchGuid} is orphaned, needs manual fix:`, err2.message);
+          }
+        }
+      }
     }
     results.push({ rowId: row.id, groupId: inp.groupId, ok: r.ok, branchGuid: r.branchGuid || null,
       policyGroupGuid: r.policyGroupGuid || null, ...(r.ok ? {} : { step: r.step, error: r.error }),
+      ...(writeBackFailed ? { writeBackFailed: true } : {}),
       ...(missing.length ? { missingColumns: missing } : {}), ...(r.notes ? { notes: r.notes } : {}) });
   }
 
@@ -631,7 +683,14 @@ export default async function handler(req, res) {
       let gRow, colId;
       for (let attempt = 1; attempt <= 4 && !gRow; attempt++) {
         if (attempt > 1) await sleep(2000);
-        const sheet = await (await ss(`/sheets/${GROUPS}`)).json();
+        // Smartsheet intermittently throws a transient errorCode (confirmed
+        // 2026-08-26) even for valid requests — swallow it here and just retry,
+        // rather than letting it throw and lose the already-created branch info.
+        let sheet;
+        try {
+          sheet = await (await ss(`/sheets/${GROUPS}`)).json();
+        } catch { continue; }
+        if (!sheet || !Array.isArray(sheet.columns)) continue;
         const idByTitle = {};
         for (const c of sheet.columns) idByTitle[c.title.trim().toLowerCase()] = c.id;
         colId = (t) => idByTitle[t.trim().toLowerCase()];
@@ -645,8 +704,29 @@ export default async function handler(req, res) {
         const built = buildWriteCells(colId, inp, r);
         missingColumns = built.missing;
         if (built.cells.length) {
-          await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: gRow.id, cells: built.cells }]) });
-          wroteToGroup = true;
+          try {
+            await ssRetry(`https://api.smartsheet.com/2.0/sheets/${GROUPS}/rows`, {
+              method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify([{ id: gRow.id, cells: built.cells }]),
+            });
+            wroteToGroup = true;
+          } catch (err) {
+            console.error(`Direct-POST write-back FAILED for group ${groupId} after retries — branchGuid ${r.branchGuid} may be orphaned:`, err.message);
+            if (colId('amgine branch guid') && colId('amgine onboard status')) {
+              try {
+                await ssRetry(`https://api.smartsheet.com/2.0/sheets/${GROUPS}/rows`, {
+                  method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify([{ id: gRow.id, cells: [
+                    { columnId: colId('amgine branch guid'), value: r.branchGuid },
+                    { columnId: colId('amgine onboard status'), value: `⚠ Branch created (${r.branchGuid}) but full write-back failed after retries — check other PCC/queue/connector fields manually.` },
+                  ] }]),
+                }, 3, 2000);
+                wroteToGroup = true;
+              } catch (err2) {
+                console.error(`Minimal fallback write-back ALSO failed for group ${groupId} — branchGuid ${r.branchGuid} is orphaned, needs manual fix:`, err2.message);
+              }
+            }
+          }
         }
       }
     }
