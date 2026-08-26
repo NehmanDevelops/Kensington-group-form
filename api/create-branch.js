@@ -623,6 +623,19 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // TEMP DEBUG (2026-08-26): deactivate a stray branch by id (cleanup of accidental test dupe). Remove after.
+  if (req.query?.testDeactivateBranch) {
+    const id = req.query.testDeactivateBranch;
+    const token = await getToken();
+    const getRes = await fetch(branchUrl(id), { headers: { Authorization: `Bearer ${token}` } });
+    const branch = await getRes.json().catch(() => null);
+    if (!getRes.ok || !branch) return res.status(200).json({ ok: false, error: 'could not read branch' });
+    const body = { ...branch, isActive: false };
+    const putRes = await fetch(branchUrl(id), { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await putRes.json().catch(() => ({}));
+    return res.status(200).json({ ok: putRes.ok, id, name: branch.name, data: j });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
