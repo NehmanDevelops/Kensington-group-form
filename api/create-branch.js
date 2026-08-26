@@ -623,6 +623,27 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // TEMP DEBUG (2026-08-26): verify retest branch's queue ids. Remove after.
+  if (req.query?.testFindByGuid2) {
+    const q = req.query.testFindByGuid2.toLowerCase();
+    const token = await getToken();
+    let match = null;
+    for (let page = 1; page <= 40; page++) {
+      const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}&pageNumber=${page}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => null);
+      const items = j?.items || [];
+      if (!items.length) break;
+      const found = items.find(b => (b.guid || '').toLowerCase().includes(q));
+      if (found) { match = found; break; }
+    }
+    if (!match) return res.status(200).json({ match: null });
+    const detailRes = await fetch(branchUrl(match.id), { headers: { Authorization: `Bearer ${token}` } });
+    const detail = await detailRes.json().catch(() => null);
+    return res.status(200).json({ id: match.id, name: match.name, city: match.city, country: match.country,
+      travelerPnrSuccessQueueId: detail?.travelerPnrSuccessQueueId, travelerPnrFailQueueId: detail?.travelerPnrFailQueueId,
+      flightBookingPcc: detail?.flightBookingPcc });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
