@@ -594,6 +594,20 @@ export default async function handler(req, res) {
     return res.status(200).json({ match, currentConnector: currentConnector?.description || null });
   }
 
+  // TEMP DEBUG (2026-08-26): get a branch's full record (queue ids etc) by numeric id. Remove after.
+  if (req.query?.testBranchDetail) {
+    const id = req.query.testBranchDetail;
+    const token = await getToken();
+    const r = await fetch(branchUrl(id), { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json().catch(() => null);
+    return res.status(200).json({
+      id: j?.id, name: j?.name,
+      travelerPnrSuccessQueueId: j?.travelerPnrSuccessQueueId, travelerPnrFailQueueId: j?.travelerPnrFailQueueId,
+      flightBookingPccId: j?.flightBookingPccId, ticketingPccId: j?.ticketingPccId,
+      addressLine1: j?.addressLine1, city: j?.city, country: j?.country,
+    });
+  }
+
   // TEMP DEBUG (2026-08-26): find a branch by name substring. Remove after.
   if (req.query?.testFindByName) {
     const q = req.query.testFindByName.toLowerCase();
