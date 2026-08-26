@@ -647,6 +647,25 @@ export default async function handler(req, res) {
     return res.status(200).json({ matches: enriched });
   }
 
+  // TEMP DEBUG (2026-08-26): compare two branches' full config side by side. Remove after.
+  if (req.query?.testCompareBranches) {
+    const ids = req.query.testCompareBranches.split(',');
+    const token = await getToken();
+    const out = {};
+    for (const id of ids) {
+      const r = await fetch(branchUrl(id), { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => null);
+      out[id] = {
+        name: j?.name, isActive: j?.isActive,
+        travelerPnrSuccessQueueId: j?.travelerPnrSuccessQueueId, travelerPnrFailQueueId: j?.travelerPnrFailQueueId,
+        flightBookingPcc: j?.flightBookingPcc?.identifier, ticketingPcc: j?.ticketingPcc?.identifier,
+        profilePcc: j?.profilePcc?.identifier, addressLine1: j?.addressLine1, city: j?.city,
+        travelerGroupId: j?.travelerGroupId,
+      };
+    }
+    return res.status(200).json(out);
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
