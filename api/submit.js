@@ -124,6 +124,7 @@ export default async function handler(req, res) {
     const MASTER = {
       groupId:       671286488764292,    // primary "GROUP ID" column
       companyName:   8552585836662660,   // "Company Name"
+      eventName:     3138281524203396,   // "Event Name" — verified 2026-08-27, was missing entirely
       contactName:   5174886116134788,   // "Contact Name"
       contactEmail:  2923086302449540,   // "Contact E-mail"
       contactPhone:  2157300629671812,   // "Contact Phone"
@@ -135,6 +136,7 @@ export default async function handler(req, res) {
 
     const masterCells = [
       { columnId: MASTER.companyName,  value: cellMap[INTAKE.companyName]      || '' },
+      { columnId: MASTER.eventName,    value: cellMap[INTAKE.eventName]        || '' },
       { columnId: MASTER.contactName,  value: cellMap[INTAKE.eventManagerName] || '' },
       { columnId: MASTER.contactEmail, value: cellMap[INTAKE.eventManagerEmail]|| '' },
       { columnId: MASTER.contactPhone, value: cellMap[INTAKE.eventManagerPhone]|| '' },
