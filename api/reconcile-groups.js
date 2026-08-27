@@ -92,15 +92,24 @@ export default async function handler(req, res) {
     return { statusBackfilled: fixes.length };
   }
 
-  // ── Duplicate self-heal (2026-07-09) ──────────────────────────────────────
+  // ── Duplicate self-heal (2026-07-09, widened 2026-08-27) ──────────────────
   // A Smartsheet "Copy row" workflow (invisible to the automationrules API)
   // copies rows back onto the master: manager types a group on the master →
   // sync-groups mirrors it to the Agent sheet → the workflow copies it back →
   // the master shows the group twice (seen with SY90CANOCT26YYC, created by
   // automation@smartsheet.com 61s after the manual row). Until that workflow
   // is deleted in the UI, this removes any master row whose GROUP ID
-  // duplicates an OLDER row, but only if the newer row was created by
-  // automation@smartsheet.com — manual rows are never touched.
+  // duplicates an OLDER row.
+  //
+  // Originally this only deleted duplicates created by
+  // automation@smartsheet.com specifically, to avoid ever touching a manual
+  // row. Widened 2026-08-27 (Vera reported SY90CANSEP26/SY90CANOCT26 each
+  // tripled on the master) after confirming the creator-based guard is no
+  // longer the right check: a Group ID is a unique key by design -- two rows
+  // sharing one is always an error regardless of who/what created the extra
+  // copy, and the "Copy row" workflow's rows aren't reliably attributed to
+  // automation@smartsheet.com anymore. Now always keeps the OLDEST row for a
+  // given Group ID and deletes every newer one, no creator check.
   async function dedupeMaster() {
     const master = await api(`/sheets/${MASTER_SHEET}?include=writerInfo`);
     if (master.error || !master.columns) return { dedupeError: 'could not read master' };
@@ -118,7 +127,6 @@ export default async function handler(req, res) {
       if (rows.length < 2) continue;
       rows.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       for (const row of rows.slice(1)) {
-        if (row.createdBy?.email !== 'automation@smartsheet.com') continue;
         toDelete.push({ id: row.id, gid });
       }
     }
