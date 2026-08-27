@@ -314,7 +314,19 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       // an explicit null for DateOfBirth/Phone was blanking out those fields on
       // a traveler who resolves as an EXTERNAL match, instead of letting Amgine
       // fall back to the matched Sabre profile's own DOB/phone.
-    ].filter((f) => f.Data != null) }, ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
+    ].filter((f) => f.Data != null) },
+      // ★ PE Emails custom field (Raymond, 2026-08-26): the traveler's email we
+      // send above wasn't landing in the Sabre PNR's own "PE" (Passenger Email)
+      // field, so Ray added a branch-level Custom Field named "PE Emails" that
+      // we populate ourselves — his backend maps this into the actual PNR.
+      // Format per his example: "PE" + delimiter + email + delimiter, multiple
+      // travelers tethered with "[|]" (not used here — we only ever send one
+      // traveler per request). NOTE: his emailed example rendered the delimiter
+      // as "¥" — almost certainly a backslash mangled by font/locale rendering,
+      // not a literal yen sign. Using "\" here; confirm with Ray if PE Emails
+      // isn't showing up correctly on a real PNR.
+      ...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: `PE\\${t.email}\\` }] } : {}),
+      ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
     Intent: { Nodes: intentNodes }, IntentOnly: true, ...flow,
   };
 
