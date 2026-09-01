@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-01 — Departure Airport/City columns merged, real Intent-building shipped, IntentOnly set to false per Raymond after the timeout recurred even with real Intent data (§25-§31). See §32 for what's still open — §31.4 (whether IntentOnly:false actually fixes the timeout) is the most important unresolved item._
+_Last updated: 2026-09-01 — Departure Airport/City columns merged, real Intent-building shipped, IntentOnly set to false per Raymond after the timeout recurred even with real Intent data, stuck Processing/Suspense itineraries traced to a healthy branch (likely Amgine-side) (§25-§33). See §32 for what's still open — §31.4 (whether IntentOnly:false actually fixes the timeout) is the most important unresolved item._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -13,6 +13,7 @@ _Last updated: 2026-09-01 — Departure Airport/City columns merged, real Intent
 > **Traveller MasterSheet column rename**: `Departure City` is now called **`Departure Airport`** (§25) — the old `Departure Airport (IATA)` column no longer exists. Update any external references/reports accordingly.
 > **The "AI timer" / Agent-Experience timeout bug**: real Intent data required (3 fields, §29.4) — SHIPPED. `IntentOnly` also set to `false` (§31) after the timeout recurred even with real Intent present — **NOT yet confirmed this actually fixes it** (§31.4/§32.13), needs a few more real bookings to observe.
 > **Cleaning up a test itinerary needs TWO steps**: delete the Smartsheet row AND click "Decline Itinerary" in Agent Experience (§29.5) — deleting only the row leaves it live/client-visible in Amgine. Itineraries `289098` and `289151` still need this done.
+> **We have NO API visibility into Amgine's email-delivery logs** (§33.4) — can't confirm client emails actually sent; only the Agent Experience "Request History" tab (manual, per itinerary) can answer that.
 
 ---
 
@@ -648,3 +649,23 @@ Itinerary `289151` had its Smartsheet row deleted, but per §29.5 it **still nee
 11. **No cancel/decline API exists in our code** (§29.5) — worth asking Raymond if one exists on Amgine's side so future test cleanup can be done in one step instead of two.
 12. **Real audit finding (2026-09-01, not yet acted on)**: pulled every traveller row for `VQ9GNTAOCT26PHX` — most (Patrick Doering, Brandyn Barrowcliff, Michael Clyde, Morgan Krumeich, Hunter Pollock, Andrea Potter, Shane Rogers, Trenton Roth, Cornelia Anna Maria Langeveld, Kameron Evans) are missing Airport/Dep-date/Ret-date entirely (never booked yet) — expected, they're not ready. But **Aaron Bowles** (itinerary `287518`, already "Sent to traveler (agent approved)") and **Justin Marshall** (itinerary `286911`, already "Booked") are ALSO currently missing this data on the sheet despite having gone through — meaning either they booked successfully via agent-built options without needing Intent (normal, pre-Intent-only-style booking) or their Intent was empty when sent. Not urgent (both already booked), but worth a quick check if either shows Edit-mode lockup (§26) later.
 13. **§31.4 — IntentOnly:false is NOT yet confirmed to fix the recurring timeout.** This is the single most important open item right now — needs Vera/the team to report back after several more real bookings whether the Edit-mode lockup still happens. If it does, escalate back to Raymond; this may be a deeper issue than either the missing-Intent or IntentOnly settings alone.
+
+---
+
+## 33. STUCK "PROCESSING"/"SUSPENSE" ON A HEALTHY BRANCH — LIKELY AMGINE-SIDE (2026-09-01)
+
+### 33.1 The report
+Vera: sent 11 real quotes to clients for approval, none had come back yet, got paranoid and ran her own test booking to confirm emails were actually going out. That test itinerary (`289546`) got stuck on **"Processing"** and wouldn't change. A second one (`289527`) showed **"Suspense"**. Both belong to group `VQ9GMONFEB27CUN`. Her own read: "I think Amgine is down."
+
+### 33.2 What was checked
+Pulled the branch (`VQ9GMONFEB27CUN`, guid `3a71d5a4-16c7-446f-99d2-5425c38b4cac`, Amgine id `2314`) directly:
+```json
+{"isActive":true,"travelerPnrSuccessQueueId":333,"travelerPnrFailQueueId":334,"flightBookingPcc":"VQ9G","currentConnector":"Usa@kensingtoncorporate.com"}
+```
+**Completely healthy** — active, correct VQ9G queues, correct connector. This rules out the "wrong/disabled branch" class of bug that hit VQ9GPANOCT26DFW (§20.1) and VQ9GNTAOCT26PHX (§20.2) — nothing misconfigured on our side for this branch.
+
+### 33.3 Conclusion
+With branch config confirmed clean, a itinerary stuck indefinitely on "Processing" (never resolving) or landing in "Suspense" points to something on **Amgine's own processing/GDS side** — their system load, a GDS outage, or an internal queue backup — not our payload or branch setup. Matches Vera's own suspicion.
+
+### 33.4 What we can't check — email delivery to real clients
+Vera separately asked us to confirm whether emails actually went out for the 11 real "Agent Approved" quotes. **We have no way to check this** — there's no API access to Amgine's email-delivery logs from our side. The only way to confirm is the **"Request History"** tab in Agent Experience, checked manually per itinerary, by someone with Agent Experience access (same limitation as §22's PNR-notification issue). The actual list of 11 itinerary IDs wasn't available to check individually (referenced in a table that didn't come through) — if this recurs, get the itinerary IDs directly so branch/queue health can at least be spot-checked per one (though that still won't confirm email delivery itself).
