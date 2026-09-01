@@ -1,13 +1,15 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-08-24 — Full PCC/Queue/Connector onboarding automation built, tested, and multiple real bugs found + fixed (§13-§17). See §18 for what's still open._
+_Last updated: 2026-08-27 — Duplicate-branch root cause found + fixed, two real production branches repaired, PE Emails custom field shipped (§19-§23). See §24 for what's still open._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
 **🔐 Credentials:** Every secret (Smartsheet API token, all `AMGINE_*` values) lives ONLY in Vercel's environment variables (marked Sensitive — write-only, can't be viewed again once set). They are deliberately **not** written anywhere in this repo, including this file. To run any of the manual `node -e "fetch(...)"` one-off scripts referenced below from a fresh machine, you need the Smartsheet token pasted to you directly (ask Nehman) — never commit it to a file.
 
-> **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup → **PCC validate/create → queue fix → email connector fix**, all automatic, §13-§15) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (auto-attaches GDS BookingProfile) → statuses flow back.
-> **Open with Amgine:** why booking (`CreatePNR`) intermittently shows `PSGR SECURITY DATA REQUIRED` retries (§18); branch address defaults to a NYC placeholder instead of Kensington's real Toronto address (§18, our bug, not yet fixed); whether "PCC Target for Authentication" always correctly shows the shared VQ9G-AUTH entry (expected, not a bug — confirmed §14).
+> **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup → **PCC validate/create → queue fix → email connector fix**, all automatic, §13-§15) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (auto-attaches GDS BookingProfile + PE Emails custom field, §22) → statuses flow back.
+> **Open with Amgine:** why booking (`CreatePNR`) intermittently shows `PSGR SECURITY DATA REQUIRED` retries (§24); whether "PCC Target for Authentication" always correctly shows the shared VQ9G-AUTH entry (expected, not a bug — confirmed §14); white-labeling JENi — spec not yet received (§24).
+> **Branch address is FIXED and confirmed Toronto/ON/CA** on every branch created since 2026-08-24 (§15.4 closed) — do not re-flag this.
+> **Duplicate-branch bug is FIXED** as of 2026-08-26 (§19) — any new duplicate would be a NEW bug, not a recurrence of the old one.
 
 ---
 
@@ -364,6 +366,8 @@ The §15.1/§15.2 bugs affected any branch created 2026-08-13 to 2026-08-21. Fou
 
 **⚠️ Not yet done: a full sweep.** Only the branches surfaced by an actual real booking or by spot-checking were fixed. A systematic audit (list every connector-128/140-stuck branch, cross-reference against real Group IDs in the master sheet, fix each) has not been completed — the one-off audit in this session found 92 stuck branches, all but 2-3 of which were obvious test/demo junk.
 
+**⚠️ CORRECTION (2026-08-26) — the "id 1965 is the plain-name one" claim above was wrong.** Re-checked directly against Amgine: id **1964** has the plain name `VQ9GPANOCT26DFW` and has **zero queues configured** (`travelerPnrSuccessQueueId`/`FailQueueId` both `null`) — it's the broken leftover. Id **1965** is actually named `VQ9GPANOCT26DFW 1784230830229` (WITH the timestamp suffix) and has VQ9G's real working queues (333/334) — it's the one the group row is correctly linked to (guid `ce1b98ba-d3de-4a0a-b9af-8332e53ce131`) and the one actually in use. The naming convention ("plain name = keep, numbered = disable") that Vera assumed is **not a reliable rule** — see §19 for why duplicates happen and §21 for the full re-investigation. Always check queue config + `isActive`, never just the name shape.
+
 ---
 
 ## 17. OTHER BUGS FOUND & FIXED THIS SESSION (unrelated to §13-§16, found while investigating adjacent issues)
@@ -404,3 +408,110 @@ Test artifacts (`PIPETEST0824`, `PIPETEST0824CAD`, `PIPETEST0824CAD2` group rows
 5. **Colin Braganza's question F** (2026-08-24): whether Kensington's own team can self-serve edit/delete/clean up branches directly in Amgine's admin UI without needing Amgine's help each time — purely a question about Amgine's tool/permissions, not something in our code. Unanswered as of this writing.
 6. **CreatePNR failures on specific branches** (§10.3, from July) — never fully resolved; last known conclusion was a GDS/PCC provisioning issue on Amgine's side, not our payload. Not retested recently.
 7. **`SY90WOLSEP26LAX` (Wolseley)** — flagged in §16 as needing the same connector check as `VQ9GPANOCT26DFW`; confirm and fix if needed.
+
+---
+
+## 19. ROOT CAUSE OF RECURRING DUPLICATE BRANCHES — FOUND AND FIXED (2026-08-26)
+
+### 19.1 The mechanism
+The **webhook** onboarding path (`handleGroupWebhook` in `create-branch.js`) has always correctly guarded against re-onboarding: it only processes a row if its `Amgine Branch GUID` is blank. The **direct-POST** path (`branch-request.html` / manual API calls / Postman) had **no such guard at all** — it would run the full `CreateBranch` chain regardless of whether that `groupId` was already onboarded.
+
+Consequence: any duplicate submission for an already-onboarded group (double-click on the form, a resubmit "just in case," a retried call) silently:
+1. Created a **second branch** in Amgine with the same intended name → CreateBranch's own name-collision handling forced a retry with a `Date.now()` timestamp suffix appended (hence names like `VQ9GNTAOCT26PHX 1787339826356`)
+2. **Overwrote the group row's `Amgine Branch GUID`** to point at this brand-new duplicate, silently orphaning the original — with no warning, no error, nothing in the response to flag it happened
+
+This is the real explanation for the recurring "why do these branches keep doubling up" pattern (previously misdiagnosed in §17.3 as just manual test residue) — two real incidents hit this in the same week (§21).
+
+### 19.2 The fix (commit `f8be65a`)
+Added the same guard to the direct-POST path: before calling `onboard()`, look up the group row by `groupId`; if it already has a non-blank `Amgine Branch GUID`, refuse with `409` and return the existing GUID instead of creating anything:
+```json
+{"error":"Group \"X\" is already onboarded (Branch GUID ... already set on its row) — refusing to create a duplicate branch.","existingBranchGuid":"..."}
+```
+**Verified live**: re-tested against `VQ9GNTAOCT26PHX` (already onboarded) — correctly blocked, no duplicate created. (First verification attempt raced the Vercel deploy and hit stale code, creating one more accidental stray branch — id `2305` — which was found and deactivated immediately after; not a flaw in the fix itself, just a timing mistake in how it was tested.)
+
+### 19.3 Also fixed the same day: silent write-back failures (commit `779e8ae`)
+Separately, Smartsheet was observed throwing **transient `errorCode 4003` ("Access Denied")** on otherwise-valid, correctly-authorized requests — confirmed reproducible (same call fails then succeeds seconds later with zero changes). If this hit *during* the write-back step right after a branch was created, the branch existed in Amgine but the GUID never made it onto the sheet — leaving that row looking "not yet onboarded" and eligible to be re-onboarded on the next trigger, which is a second way to get a duplicate.
+- **Fix**: added `ssRetry()` — retries the sheet fetch/write with backoff (up to 4 attempts) before giving up. If the full write-back still fails after retries, falls back to a minimal write (just the Branch GUID + a loud `⚠` warning in the status column) so the row is never left silently un-onboarded.
+- Applied to both the webhook path and the direct-POST path's group-row lookup/write-back.
+- **Verified live**: re-ran a full onboarding test after this shipped — completed with zero manual intervention (previously required a manual fix after hitting the transient error mid-test).
+
+### 19.4 Also removed: a duplicate webhook registration
+Two separate Smartsheet webhooks named "Amgine branch onboarding" were both registered against the LIVE GROUP MASTERSHEET, both pointing at `/api/create-branch` (ids `395926712936324` and `6201348107593604`). Both fired on a single checkbox tick, doubling Amgine API load per trigger and doubling the odds of hitting the §19.3 race. Deleted the older/unmaintained one (`395926712936324`); kept `6201348107593604`.
+
+---
+
+## 20. REAL BRANCHES FOUND AND REPAIRED — 2026-08-26/27
+
+### 20.1 `VQ9GPANOCT26DFW` (Pancreatic Cancer Action Network) — re-investigated, see correction in §16
+Group row confirmed correctly linked to branch **1965** (guid `ce1b98ba-...`, the one with working queues 333/334) — **no relink needed**, the original 2026-08-21 fix held. What actually needed fixing was two travellers whose bookings had no `BookingProfile` attached (flagged by Raymond: itineraries `286185`/`286186`/`286187` — "Does not contain a profile"):
+- **Connie Stegora** (row `5136058717175684`): old itinerary `286186` (broken) → resent → new itinerary **`286815`**
+- **Kimberly McMullen** (row `138653714218884`): old itinerary `286185` (broken, and its Itinerary-ID column was stale/mismatched vs its own Link column — a minor but harmless leftover from Raymond's own manual resend) → resent → new itinerary **`286817`**
+- Group row confirmed to already have real `Company Profile ID` (`213953538`) and `Group Profile ID` (`946172509`) set, so `BookingProfile` should now build correctly on resend — **not independently confirmed on the real PNR**, just confirmed the payload shape is right and the resend succeeded end-to-end.
+
+### 20.2 `VQ9GNTAOCT26PHX` (National Tactical Officers Association) — real disabled-branch incident
+Justin Marshall's booking (itinerary `286900`) went to **Suspense**. Investigation found the group row was linked to branch **2250** (`VQ9GNTAOCT26PHX 1787339826356`) which was **`isActive: false`** — disabled on Amgine's side. The actually-active, correctly-configured branch (**2249**, plain name `VQ9GNTAOCT26PHX`, same PCC/queues) existed but wasn't linked to anything.
+- **Fix**: repointed the group row's `Amgine Branch GUID` to `1e05aa73-b9e5-49b5-aae2-b108e7b8d537` (branch `2249`).
+- **Resent** Justin Marshall's booking (row `7534718708481924`): old itinerary `286900` (suspended) → new itinerary **`286911`**.
+- This branch pair was created **2026-08-26 at 19:33 UTC** — well after the §19 guard fix went live (~13:36 UTC same day) — so this specific incident predates the fix or was created by a different path than the one patched. Worth checking Vercel logs around that timestamp if it recurs, to confirm whether it was direct-POST (should now be blocked) or something else.
+
+### 20.3 The real lesson from both incidents
+**"Plain name vs numbered suffix" is not a reliable signal for which branch is correct.** In the PAN case, the *suffixed* branch was the good one. In the NTA case, the *plain* one was. The only reliable check is: **is it `isActive`, and does it have real queue ids set?** Both incidents were diagnosed the same way — pull all branches matching the group name, compare `isActive`/queues/PCC/connector side by side, cross-reference against what the Smartsheet group row's `Amgine Branch GUID` actually points to.
+
+---
+
+## 21. PE EMAILS CUSTOM FIELD — SABRE PNR EMAIL FIX (Raymond, 2026-08-26/27)
+
+### 21.1 The problem
+Vera reported: the traveller's email reaches Amgine fine (confirmed — `GuestFieldSnapshots` has sent `{FieldName:'Email', Data:t.email}` correctly since the 2026-07 fix, §10.5) but **doesn't end up written into the actual Sabre PNR's native "PE" (Passenger Email) field** once the reservation books. Real consequence: airline/GDS-side systems and anyone pulling the raw PNR directly have no traveller contact info on the actual reservation.
+
+### 21.2 The fix
+Raymond added a branch-level **Custom Field** named `"PE Emails"` and asked us to populate it ourselves; his backend maps it into the real PNR. Format (his example): `"PE" + delimiter + email + delimiter`, multiple travellers tethered with `[|]` (not used in practice — we only ever send one traveller per request).
+
+**Shipped in `api/amgine.js` (commit `8d6e4f1`)**, inside `TravelerInformation[0]`, sibling to `GuestSettings`/`BookingProfile`:
+```js
+...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: `PE\\${t.email}\\` }] } : {}),
+```
+Produces e.g. `"PE\nehman.rahimi@kensingtoncorporate.com\"`.
+
+**⚠️ Delimiter note**: Raymond's emailed example rendered the delimiter as **`¥`** (yen sign) — judged to almost certainly be a `\` (backslash) mangled by font/locale rendering, not literal. **Confirmed correct** — verified via a live test (itinerary `287048`, row `8676367404760964`, kept intentionally for reference): the Custom Fields panel in Agent Experience shows exactly `PE\nehman.rahimi@kensingtoncorporate.com\`, matching what we sent byte-for-byte.
+
+### 21.3 What's still unconfirmed
+The Custom Field is confirmed **received and stored correctly** by Amgine. Whether it actually propagates into the real Sabre PNR's native PE field once a booking completes has **not** been independently verified (no visibility into the raw GDS record from our side) — ask Raymond to confirm on a completed booking, or check via whatever tool shows the actual PNR.
+
+### 21.4 No new Smartsheet column needed
+The field is built entirely from the traveller's existing `Email` column — fully automatic, nothing for agents to fill in separately.
+
+---
+
+## 22. NOTIFICATIONS-NOT-RECEIVED — NOT OUR SIDE (2026-08-26)
+
+Vera also reported two other things in the same round of feedback:
+1. **PNR-creation notification not reaching Kensington's inbox** — nothing in our payload triggers or configures this at all; it's entirely Amgine's internal notification engine. Raymond's own response ("I think it's already set up that way") didn't resolve it — still open, not actionable on our side until he investigates further.
+2. Separately, Raymond asked Vera for **the list of branches + their configured `Email Country`** so he could consider hardcoding email routing manually per branch instead of relying on our dynamic country-driven connector logic — see §23 for what that pull revealed.
+
+---
+
+## 23. DATA FINDING: `Email Country` IS BLANK ON MOST REAL GROUPS (2026-08-26)
+
+Pulled the full LIVE GROUP MASTERSHEET to answer Raymond's request above. Finding: **only ~5 of ~28 real groups have `Email Country` filled in at all** — everything else is blank. The code defaults blank/unrecognized values to `"us"`:
+```js
+const emailCountry = norm(inp.emailCountry).toLowerCase() === 'cad' ? 'cad' : 'us';
+```
+This is defensible logic, but it means **every group where nobody filled in the field silently got the USA connector at onboarding**, regardless of the client's actual country. If any of those blank groups are genuinely Canadian, they've been sending from the wrong address the whole time — not because the connector logic is broken, but because the *input* driving it was never set. This is a workflow/data-entry gap, not a code bug.
+
+Also found a typo: `VQ9GNTAOCT26PHX` had `Email Country = "usd"` (should be `"us"`) — harmless functionally (still defaults to `us` either way) but noted.
+
+**Decision (Nehman, 2026-08-26): not being retroactively fixed.** The logic is already correct for every *future* group — as long as the Email Country dropdown is set to `us`/`cad` at onboarding time, routing works correctly automatically. No further action needed unless someone chooses to audit the existing blank groups later.
+
+---
+
+## 24. OPEN ITEMS (as of 2026-08-27)
+
+1. **White-labeling JENi** — Kensington + Amgine had a training call 2026-08-26 about white-labeling. Real per-branch fields exist in Amgine's schema already (`EnableWhiteLabel`, `WhiteLabelMode`, `WhiteLabelTravelFormUrl`, `WhiteLabelWelcomeMessage`) plus a dedicated **"White Label Config"** page in the branch admin sidebar. **Not yet spec'd**: whether `WhiteLabelTravelFormUrl` needs to be a page *we* host (a real, small build — a Kensington-branded landing page on Vercel) or something Amgine hosts and just skins with our branding. Also unclear whether it goes on the generic template branch (`1687`) so all future branches inherit it automatically, or needs setting per-branch. **Waiting on Raymond's answer before any code is written.**
+2. **PE Emails field** — confirmed received correctly by Amgine (§21.3); NOT yet confirmed to actually populate the real Sabre PNR. Needs Raymond or a completed-booking check.
+3. **PNR-creation notification to inbox** — still not reaching Kensington's inbox; Raymond hasn't resolved it, not actionable on our side (§22).
+4. **`PSGR SECURITY DATA REQUIRED PLEASE UPDATE AND RETRY`** — still unexplained (carried over from §18, no new information).
+5. **Colin Braganza's question F** (self-serve branch editing in Amgine's UI) — still unanswered, purely Amgine's side.
+6. **`SY90WOLSEP26LAX` (Wolseley)** — still flagged from §16, never explicitly reconfirmed.
+7. **Whether the 2026-08-26 19:33 UTC `VQ9GNTAOCT26PHX` duplicate (§20.2) predates the §19 guard fix or slipped through a different path** — worth a quick Vercel-logs check if a similar incident happens again; if it does, the guard isn't fully closing the gap and needs another look.
+8. **Email Country blank on ~23 real groups** (§23) — deliberately not being retroactively fixed per Nehman's call; flagged here only so it isn't rediscovered as "new" later.
