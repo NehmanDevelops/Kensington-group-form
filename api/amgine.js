@@ -419,6 +419,23 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: read-only dump of a group's traveller rows with the fields that
+  // matter for Intent-building, to compare Vera's stuck test vs. ours (remove
+  // after use, no writes).
+  if (norm(body.__compareGroupTravellers)) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const wantGroup = norm(body.__compareGroupTravellers).toLowerCase();
+    const list = (master.rows || []).filter(r => norm(M.val(r, 'Group ID')).toLowerCase() === wantGroup).map(r => ({
+      rowId: r.id, first: M.val(r, 'First Name'), last: M.val(r, 'Last Name'), email: M.val(r, 'Email'),
+      depAirport: M.val(r, 'Departure Airport'), arrAirport: M.val(r, 'Arrival Airport (IATA)'),
+      depDate: M.val(r, 'Departure Date'), depTime: M.val(r, 'Departure Time'),
+      retDate: M.val(r, 'Return Date'), retTime: M.val(r, 'Return Time'),
+      readyToBook: M.val(r, 'Ready to Book'), status: M.val(r, 'Amgine Status'), itinId: M.val(r, 'Amgine Itinerary ID'),
+    }));
+    return res.status(200).json({ ok: true, count: list.length, rows: list });
+  }
+
 
 
 
