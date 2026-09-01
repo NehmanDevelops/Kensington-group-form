@@ -1,17 +1,18 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-01 — Departure Airport/City columns merged, Intent-building for the Agent-Experience timeout bug confirmed working end-to-end, root cause found for Vera's "intent not going through" report (§25-§27). See §28 for what's still open._
+_Last updated: 2026-09-01 — Departure Airport/City columns merged, Intent-building for the Agent-Experience timeout bug confirmed working end-to-end, real root cause found (Departure/Return Time fallback shipped) for Vera's "intent not going through" report (§25-§29). See §30 for what's still open._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
 **🔐 Credentials:** Every secret (Smartsheet API token, all `AMGINE_*` values) lives ONLY in Vercel's environment variables (marked Sensitive — write-only, can't be viewed again once set). They are deliberately **not** written anywhere in this repo, including this file. To run any of the manual `node -e "fetch(...)"` one-off scripts referenced below from a fresh machine, you need the Smartsheet token pasted to you directly (ask Nehman) — never commit it to a file.
 
 > **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup → **PCC validate/create → queue fix → email connector fix**, all automatic, §13-§15) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (auto-attaches GDS BookingProfile + PE Emails custom field, §22, + real Intent flight legs when Departure Airport/Date/Return Date are filled, §26) → statuses flow back.
-> **Open with Amgine:** why booking (`CreatePNR`) intermittently shows `PSGR SECURITY DATA REQUIRED` retries (§28); whether "PCC Target for Authentication" always correctly shows the shared VQ9G-AUTH entry (expected, not a bug — confirmed §14); white-labeling JENi — spec not yet received (§28).
+> **Open with Amgine:** why booking (`CreatePNR`) intermittently shows `PSGR SECURITY DATA REQUIRED` retries (§30); whether "PCC Target for Authentication" always correctly shows the shared VQ9G-AUTH entry (expected, not a bug — confirmed §14); white-labeling JENi — spec not yet received (§30).
 > **Branch address is FIXED and confirmed Toronto/ON/CA** on every branch created since 2026-08-24 (§15.4 closed) — do not re-flag this.
 > **Duplicate-branch bug is FIXED** as of 2026-08-26 (§19) — any new duplicate would be a NEW bug, not a recurrence of the old one.
 > **Traveller MasterSheet column rename**: `Departure City` is now called **`Departure Airport`** (§25) — the old `Departure Airport (IATA)` column no longer exists. Update any external references/reports accordingly.
-> **The "AI timer" / Agent-Experience timeout bug (Raymond, 2026-08-28)** is solved by filling in real data, NOT a code change — see §26/§27 before assuming this needs a build.
+> **The "AI timer" / Agent-Experience timeout bug (Raymond, 2026-08-28)** — the 3 required fields are Departure Airport + Departure Date/Time + Return Date/Time (either Date or Time column works, §29.4). No further code change needed unless the requirement itself changes.
+> **Cleaning up a test itinerary needs TWO steps**: delete the Smartsheet row AND click "Decline Itinerary" in Agent Experience (§29.5) — deleting only the row leaves it live/client-visible in Amgine.
 
 ---
 
@@ -579,7 +580,38 @@ Since `intentNodes.push()` requires `origin && dest && toISODate(depDate)` to be
 
 ---
 
-## 28. OPEN ITEMS (as of 2026-09-01)
+## 29. DEPARTURE/RETURN TIME FALLBACK — REAL FIX FOR "INTENT NOT GOING THROUGH" (2026-09-01)
+
+### 29.1 The actual root cause (not what §27 first assumed)
+§27 diagnosed the symptom (blank dates → no Intent) but the deeper cause is: **agents have been typing the real date into `Departure Time` / `Return Time` instead of `Departure Date` / `Return Date`** — confirmed directly from a Teams conversation with Vera ("why is it going under departure time and return time the dates"). The column names are genuinely confusing (`Departure Time` sounds like it should hold a time-of-day, not a date), so this is a natural mistake, not carelessness.
+
+### 29.2 The fix (commit `ec42056`)
+Rather than force a data-entry habit change, the code now falls back to the Time columns automatically:
+```js
+depDate: M.val(mrow, 'Departure Date') || M.val(mrow, 'Departure Time'),
+retDate: M.val(mrow, 'Return Date') || M.val(mrow, 'Return Time'),
+```
+Whichever column actually has the date in it gets used — no more "wrong column" failure mode.
+
+### 29.3 Bonus: "morning/afternoon/evening" text doesn't break anything
+Vera asked whether the system could detect and strip words like "morning"/"afternoon"/"evening" that get typed alongside the date in the Time columns (e.g. `"2027-03-01 morning"`). **No change needed** — `toISODate()`'s regex already searches for a date pattern anywhere in the string and ignores everything else, so trailing time-of-day words are automatically harmless. **Verified live**: booked a test row with `"2027-03-01 morning"` / `"2027-03-08 evening"` in the Time columns → correctly built both flight legs (itinerary `289098`).
+
+### 29.4 The 3 fields required for Intent to send (final, simple answer)
+1. **Departure Airport** (single code or `"X -> Y"` round-trip string)
+2. **Departure Date** (or **Departure Time** — either column works now)
+3. **Return Date** (or **Return Time** — either column works now)
+
+If any of the 3 (accounting for the fallback) is blank, `Intent.Nodes` stays empty and the Agent-Experience timeout risk from §26 applies.
+
+### 29.5 ⚠️ Process lesson: cleaning up a test itinerary requires TWO steps, not one
+Deleting a test row from Smartsheet does **not** remove the itinerary from Amgine — the itinerary already exists independently once a booking request has been sent. Itinerary `289098` (the test above) was left visible in Agent Experience — potentially client-visible — because only the Smartsheet row was deleted, not the itinerary itself.
+- **We have no API-based way to cancel/decline an itinerary** — nothing in `amgine.js` calls a cancel/decline endpoint; the only itinerary-state changes we've ever built are *receiving* status via webhook, not *sending* a cancel.
+- **Correct cleanup for any future test booking**: delete the Smartsheet row AND manually click **"Decline Itinerary"** in Agent Experience for that itinerary. Going forward, always do both.
+- **Not yet built, worth considering**: an actual "cancel/decline itinerary" API call, if Amgine's public API exposes one — would need to ask Raymond whether such an endpoint exists before assuming it does.
+
+---
+
+## 30. OPEN ITEMS (as of 2026-09-01, updated)
 
 1. **White-labeling JENi** — training call happened 2026-08-26. Real per-branch fields exist in Amgine's schema already (`EnableWhiteLabel`, `WhiteLabelMode`, `WhiteLabelTravelFormUrl`, `WhiteLabelWelcomeMessage`) plus a dedicated **"White Label Config"** page in the branch admin sidebar. **Not yet spec'd**: whether `WhiteLabelTravelFormUrl` needs to be a page *we* host (a real, small build — a Kensington-branded landing page on Vercel) or something Amgine hosts and just skins with our branding. Also unclear whether it goes on the generic template branch (`1687`) so all future branches inherit it automatically, or needs setting per-branch. **Waiting on Raymond's answer before any code is written.**
 2. **PE Emails field** — confirmed received correctly by Amgine (§21.3); NOT yet confirmed to actually populate the real Sabre PNR. Needs Raymond or a completed-booking check.
@@ -588,6 +620,8 @@ Since `intentNodes.push()` requires `origin && dest && toISODate(depDate)` to be
 5. **Colin Braganza's question F** (self-serve branch editing in Amgine's UI) — still unanswered, purely Amgine's side.
 6. **`SY90WOLSEP26LAX` (Wolseley)** — still flagged from §16, never explicitly reconfirmed.
 7. **Email Country blank on ~23 real groups** (§23) — deliberately not being retroactively fixed per Nehman's call; flagged here only so it isn't rediscovered as "new" later.
-8. **Whether Vera's team is now actually filling in all 3 fields (§27.3)** — the fix requires a data-entry habit change, not just a one-time conversation; worth spot-checking new rows in a few days to confirm it stuck.
-9. **Empty, unused `Return Airport` column on the Traveller MasterSheet** (§25.1) — not touched during the §25 cleanup since it wasn't explicitly in scope; may be worth folding into `Return Trip/City` the same way if it's confirmed to be dead the same way the departure duplicates were.
-10. **Whether the 2026-08-26 19:33 UTC `VQ9GNTAOCT26PHX` duplicate (§20.2) predates the §19 guard fix or slipped through a different path** — no recurrence since, treat as resolved unless it happens again.
+8. **Empty, unused `Return Airport` column on the Traveller MasterSheet** (§25.1) — not touched during the §25 cleanup since it wasn't explicitly in scope; may be worth folding into `Return Trip/City` the same way if it's confirmed to be dead the same way the departure duplicates were.
+9. **Whether the 2026-08-26 19:33 UTC `VQ9GNTAOCT26PHX` duplicate (§20.2) predates the §19 guard fix or slipped through a different path** — no recurrence since, treat as resolved unless it happens again.
+10. **Itinerary `289098`** — a test booking left active in Agent Experience (§29.5), potentially client-visible. Needs manual "Decline Itinerary" — not yet confirmed done.
+11. **No cancel/decline API exists in our code** (§29.5) — worth asking Raymond if one exists on Amgine's side so future test cleanup can be done in one step instead of two.
+12. **Real audit finding (2026-09-01, not yet acted on)**: pulled every traveller row for `VQ9GNTAOCT26PHX` — most (Patrick Doering, Brandyn Barrowcliff, Michael Clyde, Morgan Krumeich, Hunter Pollock, Andrea Potter, Shane Rogers, Trenton Roth, Cornelia Anna Maria Langeveld, Kameron Evans) are missing Airport/Dep-date/Ret-date entirely (never booked yet) — expected, they're not ready. But **Aaron Bowles** (itinerary `287518`, already "Sent to traveler (agent approved)") and **Justin Marshall** (itinerary `286911`, already "Booked") are ALSO currently missing this data on the sheet despite having gone through — meaning either they booked successfully via agent-built options without needing Intent (normal, pre-Intent-only-style booking) or their Intent was empty when sent. Not urgent (both already booked), but worth a quick check if either shows Edit-mode lockup (§26) later.
