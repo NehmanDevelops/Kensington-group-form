@@ -428,7 +428,7 @@ export default async function handler(req, res) {
     const wantGroup = norm(body.__compareGroupTravellers).toLowerCase();
     const list = (master.rows || []).filter(r => norm(M.val(r, 'Group ID')).toLowerCase() === wantGroup).map(r => ({
       rowId: r.id, first: M.val(r, 'First Name'), last: M.val(r, 'Last Name'), email: M.val(r, 'Email'),
-      depAirport: M.val(r, 'Departure Airport'), arrAirport: M.val(r, 'Arrival Airport (IATA)'),
+      depAirport: M.val(r, 'Departure Airport'), arrAirport: M.val(r, 'Arrival Airport (IATA)'), retTrip: M.val(r, 'Return Trip/City'),
       depDate: M.val(r, 'Departure Date'), depTime: M.val(r, 'Departure Time'),
       retDate: M.val(r, 'Return Date'), retTime: M.val(r, 'Return Time'),
       readyToBook: M.val(r, 'Ready to Book'), status: M.val(r, 'Amgine Status'), itinId: M.val(r, 'Amgine Itinerary ID'),
