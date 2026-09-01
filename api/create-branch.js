@@ -623,6 +623,35 @@ export default async function handler(req, res) {
     return res.status(200).json({ smartsheetHookResponse: hookChallenge });
   }
 
+  // TEMP DEBUG (2026-09-01): check branch config + connector by guid. Remove after.
+  if (req.query?.testCheckGuid) {
+    const guid = req.query.testCheckGuid;
+    const token = await getToken();
+    const amg = (url, payload, method = 'POST') => fetch(url, {
+      method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      ...(method === 'GET' ? {} : { body: JSON.stringify(payload) }),
+    });
+    let match = null;
+    for (let page = 1; page <= 40; page++) {
+      const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}&pageNumber=${page}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => null);
+      const items = j?.items || [];
+      if (!items.length) break;
+      const found = items.find(b => (b.guid || '').toLowerCase() === guid.toLowerCase());
+      if (found) { match = found; break; }
+    }
+    if (!match) return res.status(200).json({ match: null });
+    const detailRes = await fetch(branchUrl(match.id), { headers: { Authorization: `Bearer ${token}` } });
+    const detail = await detailRes.json().catch(() => null);
+    const conn = await getConnectors(amg);
+    const currentConnector = (conn.list || []).find(c => (c.branchIds || []).includes(match.id));
+    return res.status(200).json({
+      id: match.id, name: match.name, isActive: match.isActive,
+      travelerPnrSuccessQueueId: detail?.travelerPnrSuccessQueueId, travelerPnrFailQueueId: detail?.travelerPnrFailQueueId,
+      flightBookingPcc: detail?.flightBookingPcc?.identifier, currentConnector: currentConnector?.description || null,
+    });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
