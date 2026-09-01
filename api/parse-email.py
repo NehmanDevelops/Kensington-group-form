@@ -560,6 +560,31 @@ def normalize_date_field(value):
     return value
 
 
+def extract_date_only(value):
+    """Return (matched_date_substring, leftover_text) if `value` contains a
+    recognizable date, else (None, value). Same patterns as normalize_date_field,
+    but reports whether a date was actually found (not just echoing input back)."""
+    if not value:
+        return None, value
+    match = re.match(r'(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})', value)
+    if match:
+        leftover = (value[:match.start()] + value[match.end():]).strip()
+        return match.group(1), leftover
+    month_pattern = re.search(
+        r'(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|'
+        r'Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},?\s+\d{4}',
+        value, re.IGNORECASE
+    )
+    if month_pattern:
+        leftover = (value[:month_pattern.start()] + value[month_pattern.end():]).strip()
+        return month_pattern.group(0), leftover
+    short_month = re.match(r'\d{1,2}[\-\s][A-Za-z]{3}[\-\s]\d{2,4}', value)
+    if short_month:
+        leftover = value[short_month.end():].strip()
+        return short_month.group(0), leftover
+    return None, value
+
+
 def normalize_phone(value):
     if not value:
         return value
@@ -697,6 +722,24 @@ def parse_email(html_email_body, email_subject=''):
                 output[field] = extract_field(text, field, exclude_prefixes=GUEST_EXCLUDE)
             else:
                 output[field] = extract_field(text, field)
+
+    # ── CVENT date-mislabeled-as-time fix (Vera, 2026-09-01) ─────────────────
+    # CVENT's own email template sometimes labels a field "Departure Time" /
+    # "Return Time" but puts a full DATE in it (not just a time-of-day word like
+    # "Morning"). Since we match by label text, that value lands in
+    # departure_time_pref / return_time_pref — which maps to the master sheet's
+    # Departure Time / Return Time column, leaving Departure Date / Return Date
+    # blank. If departure_time (the real date field) is empty but its _pref
+    # sibling actually contains a parseable date, promote that date into the
+    # date field and leave only the leftover text (e.g. "Morning") in _pref.
+    def _promote_date_from_pref(date_key, pref_key):
+        if not output.get(date_key) and output.get(pref_key):
+            found_date, leftover = extract_date_only(output[pref_key])
+            if found_date:
+                output[date_key] = found_date
+                output[pref_key] = leftover
+    _promote_date_from_pref('departure_time', 'departure_time_pref')
+    _promote_date_from_pref('return_time', 'return_time_pref')
 
     for field in ['departure_time', 'return_time', 'event_date', 'date_of_birth',
                   'passport_expiration_date', 'request_date']:
