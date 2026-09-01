@@ -422,21 +422,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: check where the parser's hardcoded date/time column IDs actually
-  // point today, to diagnose Vera's "CVENT dates land in Time not Date"
-  // report (remove after use, no writes).
-  if (norm(body.__checkParserColIds)) {
-    const sheet = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
-    const byId = {};
-    for (const c of sheet.columns || []) byId[c.id] = c.title;
-    const ids = {
-      departure_time: 6797642721169284, departure_time_pref: 2117685625524100,
-      return_time: 5671742814326660, return_time_pref: 5554005685342084,
-    };
-    const out = {};
-    for (const [field, id] of Object.entries(ids)) out[field] = { expectedId: id, liveTitle: byId[id] || 'MISSING/STALE — column no longer exists at this id' };
-    return res.status(200).json({ ok: true, columns: out });
-  }
 
 
 
