@@ -419,6 +419,52 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: add a full test traveller row WITHOUT ticking Ready to Book, so it
+  // can be ticked as a separate real Smartsheet change (testing the actual
+  // checkbox -> webhook path, not a manual rowId send). Remove after use.
+  if (norm(body.__addUnreadyTestTraveller) && body.__groupId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const cells = [];
+    const put = (title, value) => { if (M.id(title) && value !== undefined) cells.push({ columnId: M.id(title), value }); };
+    put('Group ID', norm(body.__groupId));
+    put('First Name', norm(body.__first) || 'Nehman');
+    put('Last Name', norm(body.__last) || 'ReadyToBookTest');
+    put('Email', norm(body.__email) || 'nehmanreadytobooktest@example.com');
+    put('Departure Airport', norm(body.__depAirport) || 'YYZ -> LAX');
+    put('Departure Date', norm(body.__depDate) || '2027-03-01');
+    put('Return Date', norm(body.__retDate) || '2027-03-08');
+    const r = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+    const j = await r.json().catch(() => ({}));
+    const newRowId = j.result && j.result[0] && j.result[0].id;
+    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
+  }
+
+  // TEMP: tick Ready to Book on a specific row (the real checkbox trigger — a
+  // Smartsheet-registered webhook should fire /api/amgine automatically after
+  // this PUT, same as a human checking the box in the UI). Remove after use.
+  if (norm(body.__tickReadyToBook) && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const colId = M.id('Ready to Book');
+    if (!colId) return res.status(200).json({ ok: false, error: 'Ready to Book column not found' });
+    await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: colId, value: true }] }]) });
+    return res.status(200).json({ ok: true, rowId: body.__rowId, ticked: true });
+  }
+
+  // TEMP: check a row's current Amgine Status / Itinerary ID (to see if the
+  // webhook auto-booked it). Remove after use.
+  if (norm(body.__checkRowStatus) && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
+    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
+    return res.status(200).json({
+      ok: true, status: M.val(row, 'Amgine Status'), itineraryId: M.val(row, 'Amgine Itinerary ID'),
+      readyToBook: M.val(row, 'Ready to Book'),
+    });
+  }
+
 
   // TEMP: add a dummy test traveller row to a test group (remove after call — do not leave live).
   if (body.__addTestTraveller && body.__groupId) {
