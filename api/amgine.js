@@ -419,6 +419,23 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: sample real data in the two destination-ish columns before merging (remove after use).
+  if (norm(body.__sampleArrivalCols)) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const rows = master.rows || [];
+    const withArr = rows.filter(r => norm(M.val(r, 'Arrival Airport (IATA)'))).slice(0, 15)
+      .map(r => ({ rowId: r.id, dep: M.val(r, 'Departure Airport'), arr: M.val(r, 'Arrival Airport (IATA)') }));
+    const withRet = rows.filter(r => norm(M.val(r, 'Return Trip/City'))).slice(0, 15)
+      .map(r => ({ rowId: r.id, dep: M.val(r, 'Departure Airport'), ret: M.val(r, 'Return Trip/City') }));
+    return res.status(200).json({
+      ok: true,
+      arrivalAirportPopulatedCount: rows.filter(r => norm(M.val(r, 'Arrival Airport (IATA)'))).length,
+      returnTripPopulatedCount: rows.filter(r => norm(M.val(r, 'Return Trip/City'))).length,
+      sampleArrivalAirport: withArr, sampleReturnTrip: withRet,
+    });
+  }
+
   // TEMP: check specific rowIds' existence + position on the master sheet (remove after use).
   if (norm(body.__checkRowIds)) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
