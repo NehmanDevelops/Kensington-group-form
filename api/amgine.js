@@ -419,26 +419,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: add a full test traveller row (with airport/dates so Intent actually
-  // sends per §29.4) to a given group, for the VQ9GMONFEB27CUN "does it not
-  // like me" test (remove after use).
-  if (norm(body.__addFullTestTraveller) && body.__groupId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const cells = [];
-    const put = (title, value) => { if (M.id(title) && value !== undefined) cells.push({ columnId: M.id(title), value }); };
-    put('Group ID', norm(body.__groupId));
-    put('First Name', norm(body.__first) || 'Nehman');
-    put('Last Name', norm(body.__last) || 'TestBooking');
-    put('Email', norm(body.__email) || 'nehmantestbooking@example.com');
-    put('Departure Airport', norm(body.__depAirport) || 'YYZ -> LAX');
-    put('Departure Date', norm(body.__depDate) || '2027-03-01');
-    put('Return Date', norm(body.__retDate) || '2027-03-08');
-    const r = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
-    const j = await r.json().catch(() => ({}));
-    const newRowId = j.result && j.result[0] && j.result[0].id;
-    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
-  }
 
   // TEMP: add a dummy test traveller row to a test group (remove after call — do not leave live).
   if (body.__addTestTraveller && body.__groupId) {
