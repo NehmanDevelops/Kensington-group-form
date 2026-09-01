@@ -423,18 +423,6 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
 
-  // TEMP: check specific rowIds' existence + position on the master sheet (remove after use).
-  if (norm(body.__checkRowIds)) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const ids = String(body.__checkRowIds).split(',').map(s => s.trim());
-    const total = (master.rows || []).length;
-    const found = ids.map(id => {
-      const r = (master.rows || []).find(x => String(x.id) === id);
-      return r ? { rowId: id, rowNumber: r.rowNumber, first: M.val(r, 'First Name'), last: M.val(r, 'Last Name'), email: M.val(r, 'Email') } : { rowId: id, found: false };
-    });
-    return res.status(200).json({ ok: true, totalRowsOnSheet: total, results: found });
-  }
 
 
 
