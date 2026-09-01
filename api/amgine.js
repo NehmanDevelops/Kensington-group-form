@@ -194,7 +194,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     // empty in practice; all real data (IATA codes, city names, "X -> Y"
     // strings) lived in 'Departure City'.
     depIATA: norm(M.val(mrow, 'Departure Airport')),
-    arrIATA: norm(M.val(mrow, 'Arrival Airport (IATA)')),
+    // 'Arrival Airport (IATA)' renamed to 'Arriving Airport' (2026-09-01) — had
+    // 0 data on it, confirmed safe; this is now the clear "destination" field
+    // agents fill in when Departure Airport holds only the origin (e.g. 'YYZ').
+    arrIATA: norm(M.val(mrow, 'Arriving Airport')),
     depTrip: norm(M.val(mrow, 'Departure Trip')) || norm(M.val(mrow, 'Departure Airport')),
     retTrip: norm(M.val(mrow, 'Return Trip/City')),
   };
@@ -419,21 +422,16 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: sample real data in the two destination-ish columns before merging (remove after use).
-  if (norm(body.__sampleArrivalCols)) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const rows = master.rows || [];
-    const withArr = rows.filter(r => norm(M.val(r, 'Arrival Airport (IATA)'))).slice(0, 15)
-      .map(r => ({ rowId: r.id, dep: M.val(r, 'Departure Airport'), arr: M.val(r, 'Arrival Airport (IATA)') }));
-    const withRet = rows.filter(r => norm(M.val(r, 'Return Trip/City'))).slice(0, 15)
-      .map(r => ({ rowId: r.id, dep: M.val(r, 'Departure Airport'), ret: M.val(r, 'Return Trip/City') }));
-    return res.status(200).json({
-      ok: true,
-      arrivalAirportPopulatedCount: rows.filter(r => norm(M.val(r, 'Arrival Airport (IATA)'))).length,
-      returnTripPopulatedCount: rows.filter(r => norm(M.val(r, 'Return Trip/City'))).length,
-      sampleArrivalAirport: withArr, sampleReturnTrip: withRet,
-    });
+  // TEMP: one-shot rename of 'Arrival Airport (IATA)' -> 'Arriving Airport'
+  // (column has 0 data on it, confirmed 2026-09-01 — safe, no merge needed).
+  // Remove after use.
+  if (norm(body.__renameArrivalCol) === 'kcg-rename-2026') {
+    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    const col = (master.columns || []).find(c => c.title.trim().toLowerCase() === 'arrival airport (iata)');
+    if (!col) return res.status(200).json({ ok: false, error: 'column not found' });
+    const r = await api(`/sheets/${MASTER}/columns/${col.id}`, { method: 'PUT', body: JSON.stringify({ title: 'Arriving Airport' }) });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ ok: r.ok, raw: j });
   }
 
   // TEMP: check specific rowIds' existence + position on the master sheet (remove after use).
