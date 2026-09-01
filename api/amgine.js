@@ -183,12 +183,17 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     dob: toDOB(M.val(mrow, 'Date of Birth')), email: norm(M.val(mrow, 'Email')) || norm(M.val(mrow, 'Email Address')),
     phone: norm(M.val(mrow, 'Phone Number')), ktn: norm(M.val(mrow, 'Known Traveller Number')),
     redress: norm(M.val(mrow, 'Redress Number')), country: norm(M.val(mrow, 'Pass Country of Issue')),
-    groupId: norm(M.val(mrow, 'Group ID')), depDate: M.val(mrow, 'Departure Date'),
+    groupId: norm(M.val(mrow, 'Group ID')),
+    // Agents have been typing the actual date into 'Departure Time'/'Return
+    // Time' instead of 'Departure Date'/'Return Date' (found 2026-09-01,
+    // Vera) — fall back to the Time columns so Intent still builds either way.
+    depDate: M.val(mrow, 'Departure Date') || M.val(mrow, 'Departure Time'),
+    retDate: M.val(mrow, 'Return Date') || M.val(mrow, 'Return Time'),
     // 'Departure City' and 'Departure Airport (IATA)' merged into one column,
     // 'Departure Airport' (2026-08-27) — the old (IATA) column was always
     // empty in practice; all real data (IATA codes, city names, "X -> Y"
     // strings) lived in 'Departure City'.
-    retDate: M.val(mrow, 'Return Date'), depIATA: norm(M.val(mrow, 'Departure Airport')),
+    depIATA: norm(M.val(mrow, 'Departure Airport')),
     arrIATA: norm(M.val(mrow, 'Arrival Airport (IATA)')),
     depTrip: norm(M.val(mrow, 'Departure Trip')) || norm(M.val(mrow, 'Departure Airport')),
     retTrip: norm(M.val(mrow, 'Return Trip/City')),
