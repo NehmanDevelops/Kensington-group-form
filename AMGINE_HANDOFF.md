@@ -1,15 +1,17 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-08-27 — Duplicate-branch root cause found + fixed, two real production branches repaired, PE Emails custom field shipped (§19-§23). See §24 for what's still open._
+_Last updated: 2026-09-01 — Departure Airport/City columns merged, Intent-building for the Agent-Experience timeout bug confirmed working end-to-end, root cause found for Vera's "intent not going through" report (§25-§27). See §28 for what's still open._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
 **🔐 Credentials:** Every secret (Smartsheet API token, all `AMGINE_*` values) lives ONLY in Vercel's environment variables (marked Sensitive — write-only, can't be viewed again once set). They are deliberately **not** written anywhere in this repo, including this file. To run any of the manual `node -e "fetch(...)"` one-off scripts referenced below from a fresh machine, you need the Smartsheet token pasted to you directly (ask Nehman) — never commit it to a file.
 
-> **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup → **PCC validate/create → queue fix → email connector fix**, all automatic, §13-§15) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (auto-attaches GDS BookingProfile + PE Emails custom field, §22) → statuses flow back.
-> **Open with Amgine:** why booking (`CreatePNR`) intermittently shows `PSGR SECURITY DATA REQUIRED` retries (§24); whether "PCC Target for Authentication" always correctly shows the shared VQ9G-AUTH entry (expected, not a bug — confirmed §14); white-labeling JENi — spec not yet received (§24).
+> **Current pipeline:** group row → **"Create Amgine Branch" checkbox** (Smartsheet webhook → `/api/create-branch` runs CreateBranch → CreatePolicyRule → CreatePolicyGroup → **PCC validate/create → queue fix → email connector fix**, all automatic, §13-§15) → travellers in Traveller MasterSheet → **Ready to Book** → instant webhook booking (auto-attaches GDS BookingProfile + PE Emails custom field, §22, + real Intent flight legs when Departure Airport/Date/Return Date are filled, §26) → statuses flow back.
+> **Open with Amgine:** why booking (`CreatePNR`) intermittently shows `PSGR SECURITY DATA REQUIRED` retries (§28); whether "PCC Target for Authentication" always correctly shows the shared VQ9G-AUTH entry (expected, not a bug — confirmed §14); white-labeling JENi — spec not yet received (§28).
 > **Branch address is FIXED and confirmed Toronto/ON/CA** on every branch created since 2026-08-24 (§15.4 closed) — do not re-flag this.
 > **Duplicate-branch bug is FIXED** as of 2026-08-26 (§19) — any new duplicate would be a NEW bug, not a recurrence of the old one.
+> **Traveller MasterSheet column rename**: `Departure City` is now called **`Departure Airport`** (§25) — the old `Departure Airport (IATA)` column no longer exists. Update any external references/reports accordingly.
+> **The "AI timer" / Agent-Experience timeout bug (Raymond, 2026-08-28)** is solved by filling in real data, NOT a code change — see §26/§27 before assuming this needs a build.
 
 ---
 
@@ -505,13 +507,87 @@ Also found a typo: `VQ9GNTAOCT26PHX` had `Email Country = "usd"` (should be `"us
 
 ---
 
-## 24. OPEN ITEMS (as of 2026-08-27)
+## 24. (superseded — see §28 for the current open-items list)
 
-1. **White-labeling JENi** — Kensington + Amgine had a training call 2026-08-26 about white-labeling. Real per-branch fields exist in Amgine's schema already (`EnableWhiteLabel`, `WhiteLabelMode`, `WhiteLabelTravelFormUrl`, `WhiteLabelWelcomeMessage`) plus a dedicated **"White Label Config"** page in the branch admin sidebar. **Not yet spec'd**: whether `WhiteLabelTravelFormUrl` needs to be a page *we* host (a real, small build — a Kensington-branded landing page on Vercel) or something Amgine hosts and just skins with our branding. Also unclear whether it goes on the generic template branch (`1687`) so all future branches inherit it automatically, or needs setting per-branch. **Waiting on Raymond's answer before any code is written.**
+Kept for history: as of 2026-08-27 the open items were the same white-labeling/PE-field/notification/PSGR/Colin's-question/Wolseley items now listed in §28, plus the duplicate-branch-timing question (resolved — see §27.3) and the Email-Country data gap (§23, still deliberately not retro-fixed).
+
+---
+
+## 25. TRAVELLER MASTERSHEET COLUMN CLEANUP — DEPARTURE AIRPORT MERGE (2026-09-01)
+
+### 25.1 What was found
+The Traveller MasterSheet had **three separate departure-related columns**, only one of which was actually used:
+- `Departure City` — 288 real values across the sheet (IATA codes, city names, and `"X -> Y"` round-trip strings) — this is what the code actually read from (`depTrip` fallback) and what agents had been typing into.
+- `Departure Airport (IATA)` — **completely empty**, 0 rows, across the whole sheet.
+- `Departure Airport` — a second, separately-added column, also **completely empty**. (A `Return Airport` column exists too, also empty — not touched, flagged in §28.)
+
+### 25.2 What was done
+1. Deleted `Departure Airport (IATA)` (empty, no data lost).
+2. Deleted the other unused empty `Departure Airport` (empty, no data lost).
+3. Renamed `Departure City` → **`Departure Airport`** (kept all 288 existing values).
+4. Updated `api/amgine.js` (commit `97a68ec`) so both `depIATA` and the `depTrip` fallback read from the single merged `Departure Airport` column instead of two separate ones.
+
+**Verified live**: booked a test traveller with `Departure Airport = "YYZ -> LAX"` → correctly parsed to `origin: YYZ, dest: LAX` (itinerary `288973`).
+
+### 25.3 Column reference update
+Anywhere that used to say `Departure City` or `Departure Airport (IATA)` — including in Smartsheet reports, filters, or automations outside this repo — now needs to reference **`Departure Airport`** instead. The column ID itself (`4882088347340676`) did NOT change, only the title — so anything referencing it by ID (not title) is unaffected.
+
+---
+
+## 26. AGENT-EXPERIENCE "AI TIMER" / EDIT-MODE TIMEOUT — SOLVED WITHOUT A CODE CHANGE (2026-08-28/09-01)
+
+### 26.1 The symptom (Vera, 2026-08-28)
+Loading several bookings in quickly, by about the 3rd one Vera could no longer get into **Edit mode** in Agent Experience. Also asked Raymond to re-enable/unlock itineraries `287645`/`287646`.
+
+### 26.2 Raymond's diagnosis and suggested fix
+Traced it to **empty `Intent.Nodes`** — when a booking has no flight intent at all, something on Amgine's side (an "AI timer") eventually times out and locks the itinerary out of Edit mode. His suggested fix: when there's no real intent, send a **hardcoded placeholder** flight node so the system "has something":
+```json
+"Intent": { "Nodes": [{ "Flight": { "From": "YYZ", "To": "JFK", "DepartureDate": "2027-02-10T00:00:00" } }] }
+```
+
+### 26.3 Kensington's actual decision — use real data instead of a placeholder
+Rather than send fake placeholder data, the call was made to instead **always send real Intent data** by ensuring three existing traveller-row fields are filled in before booking:
+1. **Departure Airport** (the merged column from §25 — supports a single code or an `"X -> Y"` round-trip string)
+2. **Departure Date**
+3. **Return Date**
+
+**This required zero code changes** — `sendOne()` in `api/amgine.js` already builds real `Intent.Nodes` from exactly these three fields (has since the Intent-only feature was built):
+```js
+const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
+const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
+if (origin && dest && toISODate(t.depDate)) intentNodes.push({ Flight: { From: origin, To: dest, DepartureDate: toISODate(t.depDate), stops: ['NonStop'] } });
+if (origin && dest && toISODate(t.retDate)) intentNodes.push({ Flight: { From: dest, To: origin, DepartureDate: toISODate(t.retDate), stops: ['NonStop'] } });
+```
+**Verified live end-to-end** (itinerary `288974`): filled `Departure Airport = "YYZ -> JFK"`, `Departure Date`, `Return Date` on a test row → response came back `flightLegs: 2` — confirming BOTH the outbound and return legs built correctly as real `Intent.Nodes`, matching Raymond's example shape exactly but with genuine trip data instead of a placeholder.
+
+**Why this is better than Raymond's suggestion**: it solves the same timeout problem while sending Amgine an accurate itinerary instead of fake YYZ→JFK data on every booking that happens to lack intent.
+
+---
+
+## 27. ROOT CAUSE OF "INTENT NOT GOING THROUGH" (Vera, 2026-09-01)
+
+### 27.1 The report
+After being told about §26's fix, Vera tried it and reported back "intent not going through."
+
+### 27.2 What was actually found
+Checked her most recently-modified real traveller rows directly (e.g. Marcel Maiolo / `VQ9GMONSEP26YVR`, Virgil & Amie Nelson / `VQ9GMONFEB27CUN`). **`Departure Airport` was filled in correctly** (`YYZ -> YVR`, `DFW`) — but **`Departure Date` and `Return Date` were both completely blank** on every one of them.
+
+Since `intentNodes.push()` requires `origin && dest && toISODate(depDate)` to be truthy, a blank date means `toISODate('')` returns nothing usable (confirmed in code — no regex matches an empty string, and `Date.parse('')` is `NaN`), so **zero Intent nodes get built** even with a perfectly good airport value. This is not a bug — it's the three-fields requirement from §26.3 not being fully met; only 1 of 3 fields was filled in.
+
+### 27.3 What to tell Vera / the team
+**All 3 fields need to be filled in, not just Departure Airport** — Departure Date and Return Date are required too, or Intent stays empty and the original Agent-Experience timeout risk (§26) comes right back. This is a data-entry habit to build, not something for us to fix in code — the code has been correctly requiring real dates all along (by design — blank dates were the intentional signal for "let the traveller build their own trip in JENi" before this timeout issue came up).
+
+---
+
+## 28. OPEN ITEMS (as of 2026-09-01)
+
+1. **White-labeling JENi** — training call happened 2026-08-26. Real per-branch fields exist in Amgine's schema already (`EnableWhiteLabel`, `WhiteLabelMode`, `WhiteLabelTravelFormUrl`, `WhiteLabelWelcomeMessage`) plus a dedicated **"White Label Config"** page in the branch admin sidebar. **Not yet spec'd**: whether `WhiteLabelTravelFormUrl` needs to be a page *we* host (a real, small build — a Kensington-branded landing page on Vercel) or something Amgine hosts and just skins with our branding. Also unclear whether it goes on the generic template branch (`1687`) so all future branches inherit it automatically, or needs setting per-branch. **Waiting on Raymond's answer before any code is written.**
 2. **PE Emails field** — confirmed received correctly by Amgine (§21.3); NOT yet confirmed to actually populate the real Sabre PNR. Needs Raymond or a completed-booking check.
 3. **PNR-creation notification to inbox** — still not reaching Kensington's inbox; Raymond hasn't resolved it, not actionable on our side (§22).
 4. **`PSGR SECURITY DATA REQUIRED PLEASE UPDATE AND RETRY`** — still unexplained (carried over from §18, no new information).
 5. **Colin Braganza's question F** (self-serve branch editing in Amgine's UI) — still unanswered, purely Amgine's side.
 6. **`SY90WOLSEP26LAX` (Wolseley)** — still flagged from §16, never explicitly reconfirmed.
-7. **Whether the 2026-08-26 19:33 UTC `VQ9GNTAOCT26PHX` duplicate (§20.2) predates the §19 guard fix or slipped through a different path** — worth a quick Vercel-logs check if a similar incident happens again; if it does, the guard isn't fully closing the gap and needs another look.
-8. **Email Country blank on ~23 real groups** (§23) — deliberately not being retroactively fixed per Nehman's call; flagged here only so it isn't rediscovered as "new" later.
+7. **Email Country blank on ~23 real groups** (§23) — deliberately not being retroactively fixed per Nehman's call; flagged here only so it isn't rediscovered as "new" later.
+8. **Whether Vera's team is now actually filling in all 3 fields (§27.3)** — the fix requires a data-entry habit change, not just a one-time conversation; worth spot-checking new rows in a few days to confirm it stuck.
+9. **Empty, unused `Return Airport` column on the Traveller MasterSheet** (§25.1) — not touched during the §25 cleanup since it wasn't explicitly in scope; may be worth folding into `Return Trip/City` the same way if it's confirmed to be dead the same way the departure duplicates were.
+10. **Whether the 2026-08-26 19:33 UTC `VQ9GNTAOCT26PHX` duplicate (§20.2) predates the §19 guard fix or slipped through a different path** — no recurrence since, treat as resolved unless it happens again.
