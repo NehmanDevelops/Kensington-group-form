@@ -422,26 +422,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: add + fire a test row with split Departure Airport / Arriving
-  // Airport fields, to verify the rename+code change works (remove after use).
-  if (norm(body.__testSplitAirports)) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const cells = [];
-    const put = (title, value) => { if (M.id(title) && value !== undefined) cells.push({ columnId: M.id(title), value }); };
-    put('Group ID', norm(body.__groupId) || 'VQ9GMONFEB27CUN');
-    put('First Name', 'Nehman');
-    put('Last Name', 'SplitAirportTest');
-    put('Email', 'nehmansplittest@example.com');
-    put('Departure Airport', 'YYZ');
-    put('Arriving Airport', 'LAX');
-    put('Departure Date', '2027-03-01');
-    put('Return Date', '2027-03-08');
-    const r = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
-    const j = await r.json().catch(() => ({}));
-    const newRowId = j.result && j.result[0] && j.result[0].id;
-    return res.status(200).json({ ok: r.ok, rowId: newRowId });
-  }
 
   // TEMP: check specific rowIds' existence + position on the master sheet (remove after use).
   if (norm(body.__checkRowIds)) {
