@@ -295,9 +295,13 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   if (replyTo) emailSettings.ReplyTo = replyTo;
   const hasEmailSettings = Object.keys(emailSettings).length > 0;
 
-  // IntentOnly mode: the traveller fills in their own trip via JENi's "Modify
-  // Intent" screen, so flight legs are OPTIONAL. We prepopulate any legs we do
-  // have (from airports/dates on the row), but an empty Intent is fine now.
+  // IntentOnly turned OFF (Raymond, 2026-09-01): now that every booking sends
+  // real Intent.Nodes (Departure Airport/Date/Return Date or Time fallback —
+  // see AMGINE_HANDOFF.md §26/§29), IntentOnly:true was still causing the
+  // Agent-Experience timeout on some itineraries even with real intent
+  // present. Setting it false makes Amgine actually use the Intent we send
+  // (fetches content for it, still editable in Edit Mode) instead of
+  // continuing to defer to the traveller building their own trip in JENi.
   const payload = {
     ExternalId: { Id: String(rowId), ThreadId: t.groupId || String(rowId) },
     TmcGuid: process.env.AMGINE_TMC_GUID, From: t.email || process.env.AMGINE_USERNAME, To: process.env.AMGINE_USERNAME,
@@ -336,7 +340,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       // isn't showing up correctly on a real PNR.
       ...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: `PE\\${t.email}\\` }] } : {}),
       ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
-    Intent: { Nodes: intentNodes }, IntentOnly: true, ...flow,
+    Intent: { Nodes: intentNodes }, IntentOnly: false, ...flow,
   };
 
   let amgRes, amgJson;
