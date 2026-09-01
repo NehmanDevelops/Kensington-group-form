@@ -184,9 +184,13 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     phone: norm(M.val(mrow, 'Phone Number')), ktn: norm(M.val(mrow, 'Known Traveller Number')),
     redress: norm(M.val(mrow, 'Redress Number')), country: norm(M.val(mrow, 'Pass Country of Issue')),
     groupId: norm(M.val(mrow, 'Group ID')), depDate: M.val(mrow, 'Departure Date'),
-    retDate: M.val(mrow, 'Return Date'), depIATA: norm(M.val(mrow, 'Departure Airport (IATA)')),
+    // 'Departure City' and 'Departure Airport (IATA)' merged into one column,
+    // 'Departure Airport' (2026-08-27) — the old (IATA) column was always
+    // empty in practice; all real data (IATA codes, city names, "X -> Y"
+    // strings) lived in 'Departure City'.
+    retDate: M.val(mrow, 'Return Date'), depIATA: norm(M.val(mrow, 'Departure Airport')),
     arrIATA: norm(M.val(mrow, 'Arrival Airport (IATA)')),
-    depTrip: norm(M.val(mrow, 'Departure Trip')) || norm(M.val(mrow, 'Departure City')),
+    depTrip: norm(M.val(mrow, 'Departure Trip')) || norm(M.val(mrow, 'Departure Airport')),
     retTrip: norm(M.val(mrow, 'Return Trip/City')),
   };
   const who = `${t.first} ${t.last}`.trim();
