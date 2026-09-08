@@ -422,6 +422,75 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: backfill specific CVENT rows into the Traveller MasterSheet (Vera's
+  // ask — Charla/James Carter, rows 194/195, never made it to master).
+  // Writes by CURRENT LIVE column title, immune to any stale hardcoded ids.
+  // Remove after use.
+  if (norm(body.__backfillToMaster)) {
+    const CVENT = '1658234917048196';
+    const cvent = await (await api(`/sheets/${CVENT}`)).json();
+    const CI = indexSheet(cvent);
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const ids = String(body.__backfillToMaster).split(',').map(s => s.trim());
+
+    const splitDatePref = (v) => {
+      const m = norm(v).match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+      return m ? { date: m[1].trim(), pref: m[2].trim() } : { date: norm(v), pref: '' };
+    };
+    const firstId = (titles) => { for (const t of titles) { const id = M.id(t); if (id) return id; } return null; };
+    const put = (cells, titles, value) => { if (value === undefined || value === null || value === '') return; const id = firstId(titles); if (id) cells.push({ columnId: id, value }); };
+
+    const results = [];
+    for (const rid of ids) {
+      const r = (cvent.rows || []).find(x => String(x.id) === rid);
+      if (!r) { results.push({ rowId: rid, ok: false, error: 'not found on CVENT sheet' }); continue; }
+      const v = (t) => CI.val(r, t);
+      const email = norm(v('Email Address'));
+      // Skip if this person is already on master (safety: never duplicate).
+      const already = (master.rows || []).some(mr => norm(M.val(mr, 'Email')).toLowerCase() === email.toLowerCase()
+        && norm(M.val(mr, 'First Name')).toLowerCase() === norm(v('First Name')).toLowerCase());
+      if (already) { results.push({ rowId: rid, ok: false, error: 'already on master, skipped' }); continue; }
+
+      const dep = splitDatePref(v('Departure Time'));
+      const ret = splitDatePref(v('Return Time'));
+      const cells = [];
+      put(cells, ['Group ID'], v('Group ID'));
+      put(cells, ['First Name'], v('First Name'));
+      put(cells, ['Middle Name'], v('Middle Name'));
+      put(cells, ['Last Name'], v('Last Name'));
+      put(cells, ['Date of Birth'], v('Date of Birth'));
+      put(cells, ['Gender'], v('Gender'));
+      put(cells, ['Email'], email);
+      put(cells, ['Alternate Email', 'CC Email Address'], v('CC Email Address'));
+      put(cells, ['Company Name', 'Company'], v('Company'));
+      put(cells, ['Title'], v('Title'));
+      put(cells, ['Phone Number', 'Mobile Phone'], v('Mobile Phone'));
+      put(cells, ['Nationality', 'Passport Nationality'], v('Passport Nationality'));
+      put(cells, ['Passport Number'], v('Guest Passport Number'));
+      put(cells, ['Passport Expiry Date', 'Passport Expiration Date'], v('Guest Passport Expiration'));
+      put(cells, ['Host/Requester Name', 'Request Name'], v('Request Name'));
+      put(cells, ['Request Date'], v('Request Date'));
+      put(cells, ['Departure Date'], dep.date);
+      put(cells, ['Departure Time'], dep.pref);
+      put(cells, ['Departure City', 'Departure Airport'], v('Departure Trip'));
+      put(cells, ['Return Date'], ret.date);
+      put(cells, ['Return Time'], ret.pref);
+      put(cells, ['Return Trip/City'], v('Return Trip'));
+      put(cells, ['Ticket Type'], v('Ticket Type'));
+      put(cells, ['Seat Preference', 'Seating'], v('Seating'));
+      put(cells, ['Airline Preference 1'], v('Airline Preference 1'));
+      put(cells, ['Rewards Number', 'Frequent Flyer Number 1'], v('Rewards Number 1'));
+      put(cells, ['Confidence Score'], v('Confidence Score'));
+
+      if (!cells.length) { results.push({ rowId: rid, ok: false, error: 'no cells resolved' }); continue; }
+      const wr = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+      const wj = await wr.json().catch(() => ({}));
+      results.push({ rowId: rid, ok: wr.ok, cellsWritten: cells.length, raw: wr.ok ? undefined : wj });
+    }
+    return res.status(200).json({ ok: true, results });
+  }
+
   // TEMP: dump ALL CVENT-sheet field values for specific rowIds (remove after use, no writes).
   if (norm(body.__dumpCventRow)) {
     const CVENT = '1658234917048196';
