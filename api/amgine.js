@@ -422,6 +422,21 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: find a row by email on a given sheet, report exact rowNumber/total (remove after use, no writes).
+  if (norm(body.__findByEmail) && body.__sheetId) {
+    const sheetId = norm(body.__sheetId);
+    const sheet = await (await api(`/sheets/${sheetId}`)).json();
+    const IDX = indexSheet(sheet);
+    const emailTitle = IDX.id('Email Address') ? 'Email Address' : 'Email';
+    const target = (sheet.rows || []).find(r => norm(IDX.val(r, emailTitle)).toLowerCase() === norm(body.__findByEmail).toLowerCase());
+    return res.status(200).json({
+      ok: true, sheetId, totalRows: (sheet.rows || []).length,
+      found: !!target, rowNumber: target ? target.rowNumber : null, rowId: target ? target.id : null,
+      first: target ? IDX.val(target, 'First Name') : null, last: target ? IDX.val(target, 'Last Name') : null,
+      groupId: target ? IDX.val(target, 'Group ID') : null,
+    });
+  }
+
 
 
 
