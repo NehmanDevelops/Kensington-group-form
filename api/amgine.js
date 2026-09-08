@@ -422,6 +422,39 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: full audit of parser MASTER_COLUMN_MAP ids vs live master sheet
+  // columns (remove after use, no writes).
+  if (norm(body.__auditMasterMap)) {
+    const sheet = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    const byId = {};
+    for (const c of sheet.columns || []) byId[c.id] = c.title;
+    const MAP = {
+      first_name: 5726513277472644, middle_name: 3474713463787396, last_name: 7978313091157892,
+      date_of_birth: 659963696680836, gender: 5163563324051332, nationality: 2911763510366084,
+      email_address: 7415363137736580, cc_email_address: 7407871674584964, mobile_phone: 1785863603523460,
+      work_phone: 1778372140371844, home_phone: 6281971767742340, company: 6289463230893956,
+      title: 5003239744638852, passport_number: 4037663417208708, passport_expiration_date: 8541263044579204,
+      passport_nationality: 6129139651481476, guest_email: 5566189698060164, guest_mobile_phone: 3314389884374916,
+      guest_name: 800007628558212, guest_dob: 5303607255928708, event_code: 7817989511745412,
+      event_title: 2188489977532292, event_date: 6692089604902788, event_time: 4440289791217540,
+      group_id: 5029597388509060, request_name: 8943889418588036, request_date: 42243280113540,
+      known_traveller_number: 652472233529220, redress_number: 3756188440498052, departure_time: 6797642721169284,
+      departure_time_pref: 2117685625524100, departure_trip: 4882088347340676, return_time: 5671742814326660,
+      return_time_pref: 5554005685342084, return_trip: 3419943000641412, ticket_type: 7923542628011908,
+      seating: 2630288533655428, food_preferences: 2856993047220100, special_requests: 7360592674590596,
+      reservation_status: 1731093140377476, airline_preference_1: 6234692767747972, frequent_flyer_number_1: 3982892954062724,
+      airline_preference_2: 8486492581433220, frequent_flyer_number_2: 323718256824196, airline_preference_3: 4827317884194692,
+      frequent_flyer_number_3: 2575518070509444, confidence_score: 7642067651301252,
+    };
+    const missing = [];
+    const ok = [];
+    for (const [field, id] of Object.entries(MAP)) {
+      if (byId[id]) ok.push({ field, id, liveTitle: byId[id] });
+      else missing.push({ field, id });
+    }
+    return res.status(200).json({ ok: true, totalMappedFields: Object.keys(MAP).length, missingCount: missing.length, missing, okSample: ok.slice(0, 5) });
+  }
+
 
 
 
