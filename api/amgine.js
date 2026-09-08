@@ -469,11 +469,15 @@ export default async function handler(req, res) {
       const email = norm(v('Email Address'));
       const fn = norm(v('First Name')).toLowerCase();
       const ln = norm(v('Last Name')).toLowerCase();
+      const gid = norm(v('Group ID')).toLowerCase();
+      // Same person can legitimately appear on master multiple times for
+      // DIFFERENT group trips — must match Group ID too, not just identity.
       const already = (master.rows || []).some(mr =>
         norm(M.val(mr, 'Email')).toLowerCase() === email.toLowerCase()
         && norm(M.val(mr, 'First Name')).toLowerCase() === fn
-        && norm(M.val(mr, 'Last Name')).toLowerCase() === ln);
-      if (already) { results.push({ rowId: rid, ok: false, error: 'already on master, skipped' }); continue; }
+        && norm(M.val(mr, 'Last Name')).toLowerCase() === ln
+        && norm(M.val(mr, 'Group ID')).toLowerCase() === gid);
+      if (already) { results.push({ rowId: rid, ok: false, error: 'already on master for this group, skipped' }); continue; }
 
       const dep = splitDatePref(v('Departure Time'));
       const ret = splitDatePref(v('Return Time'));
