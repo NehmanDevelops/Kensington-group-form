@@ -95,30 +95,6 @@ export default async function handler(req, res) {
 
   const d = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMPORARY — one-time backfill of the 10 known agent emails into the new
-  // Email column (added 2026-09-08). Remove this block after running once.
-  if (d.action === 'backfillKnownEmails') {
-    const KNOWN_EMAILS = FALLBACK_AGENT_EMAILS;
-    try {
-      const roster = await getRoster();
-      if (!roster) return res.status(502).json({ error: 'could not read roster' });
-      const updates = roster
-        .filter(a => KNOWN_EMAILS[a.name] && a.email !== KNOWN_EMAILS[a.name])
-        .map(a => ({ id: a.rowId, cells: [{ columnId: ROSTER_EMAIL_COL, value: KNOWN_EMAILS[a.name] }] }));
-      if (updates.length === 0) return res.status(200).json({ updated: 0, message: 'nothing to backfill' });
-      const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${ROSTER_SHEET_ID}/rows`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-      const data = await r.json();
-      if (!r.ok) return res.status(502).json({ error: data.message || 'write failed', detail: data });
-      return res.status(200).json({ updated: updates.length });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
-
   // ── Admin: add an agent to the roster ─────────────────────────────────
   if (d.action === 'addAgent') {
     const name = String(d.name || '').trim();
