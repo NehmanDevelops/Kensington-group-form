@@ -422,6 +422,23 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: dump ALL CVENT-sheet field values for specific rowIds (remove after use, no writes).
+  if (norm(body.__dumpCventRow)) {
+    const CVENT = '1658234917048196';
+    const cvent = await (await api(`/sheets/${CVENT}`)).json();
+    const CI = indexSheet(cvent);
+    const ids = String(body.__dumpCventRow).split(',').map(s => s.trim());
+    const titles = (cvent.columns || []).map(c => c.title);
+    const rows = ids.map(id => {
+      const r = (cvent.rows || []).find(x => String(x.id) === id);
+      if (!r) return { rowId: id, found: false };
+      const vals = {};
+      for (const t of titles) { const v = CI.val(r, t); if (v !== '' && v != null) vals[t] = v; }
+      return { rowId: id, rowNumber: r.rowNumber, values: vals };
+    });
+    return res.status(200).json({ ok: true, rows });
+  }
+
   // TEMP: read-only dump of CVENT sheet rows by rowNumber range, plus whether
   // each email exists on the master sheet (remove after use, no writes).
   if (norm(body.__checkCventRows)) {
