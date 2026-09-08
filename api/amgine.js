@@ -434,6 +434,17 @@ export default async function handler(req, res) {
     const M = indexSheet(master);
     const ids = String(body.__backfillToMaster).split(',').map(s => s.trim());
 
+    const MONTHS = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+    const toISODateStrict = (v) => {
+      const s = norm(v);
+      if (!s) return s;
+      let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); if (m) return s;
+      m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/); // 05-Jul-1974
+      if (m) { const mo = MONTHS[m[2].toLowerCase()]; if (mo) return `${m[3]}-${mo}-${m[1].padStart(2, '0')}`; }
+      m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // MM/DD/YYYY
+      if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+      return s; // leave as-is; Smartsheet will reject only this cell's column if still bad (caught below)
+    };
     const splitDatePref = (v) => {
       const m = norm(v).match(/^(.*?)\s*\(([^)]+)\)\s*$/);
       return m ? { date: m[1].trim(), pref: m[2].trim() } : { date: norm(v), pref: '' };
@@ -459,7 +470,7 @@ export default async function handler(req, res) {
       put(cells, ['First Name'], v('First Name'));
       put(cells, ['Middle Name'], v('Middle Name'));
       put(cells, ['Last Name'], v('Last Name'));
-      put(cells, ['Date of Birth'], v('Date of Birth'));
+      put(cells, ['Date of Birth'], toISODateStrict(v('Date of Birth')));
       put(cells, ['Gender'], v('Gender'));
       put(cells, ['Email'], email);
       put(cells, ['Alternate Email', 'CC Email Address'], v('CC Email Address'));
@@ -468,13 +479,13 @@ export default async function handler(req, res) {
       put(cells, ['Phone Number', 'Mobile Phone'], v('Mobile Phone'));
       put(cells, ['Nationality', 'Passport Nationality'], v('Passport Nationality'));
       put(cells, ['Passport Number'], v('Guest Passport Number'));
-      put(cells, ['Passport Expiry Date', 'Passport Expiration Date'], v('Guest Passport Expiration'));
+      put(cells, ['Passport Expiry Date', 'Passport Expiration Date'], toISODateStrict(v('Guest Passport Expiration')));
       put(cells, ['Host/Requester Name', 'Request Name'], v('Request Name'));
-      put(cells, ['Request Date'], v('Request Date'));
-      put(cells, ['Departure Date'], dep.date);
+      put(cells, ['Request Date'], toISODateStrict(v('Request Date')));
+      put(cells, ['Departure Date'], toISODateStrict(dep.date));
       put(cells, ['Departure Time'], dep.pref);
       put(cells, ['Departure City', 'Departure Airport'], v('Departure Trip'));
-      put(cells, ['Return Date'], ret.date);
+      put(cells, ['Return Date'], toISODateStrict(ret.date));
       put(cells, ['Return Time'], ret.pref);
       put(cells, ['Return Trip/City'], v('Return Trip'));
       put(cells, ['Ticket Type'], v('Ticket Type'));
