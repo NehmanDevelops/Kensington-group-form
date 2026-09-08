@@ -422,17 +422,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: delete a test row by email from a given sheet (remove after use).
-  if (norm(body.__deleteByEmail) && body.__sheetId) {
-    const sheetId = norm(body.__sheetId);
-    const sheet = await (await api(`/sheets/${sheetId}`)).json();
-    const IDX = indexSheet(sheet);
-    const emailCol = IDX.id('Email') || IDX.id('Email Address');
-    const target = (sheet.rows || []).find(r => norm(IDX.val(r, emailCol ? (IDX.id('Email') ? 'Email' : 'Email Address') : 'Email')).toLowerCase() === norm(body.__deleteByEmail).toLowerCase());
-    if (!target) return res.status(200).json({ ok: false, error: 'not found' });
-    const dr = await api(`/sheets/${sheetId}/rows?ids=${target.id}`, { method: 'DELETE' });
-    return res.status(200).json({ ok: dr.ok, deletedRowId: target.id });
-  }
 
 
 
