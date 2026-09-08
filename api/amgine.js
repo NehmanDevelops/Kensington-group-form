@@ -422,6 +422,16 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: find a person anywhere on the master sheet by name (remove after use, no writes).
+  if (norm(body.__findOnMaster)) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const [wantFirst, wantLast] = String(body.__findOnMaster).split('|').map(s => norm(s).toLowerCase());
+    const hits = (master.rows || []).filter(r => norm(M.val(r, 'First Name')).toLowerCase() === wantFirst && norm(M.val(r, 'Last Name')).toLowerCase() === wantLast)
+      .map(r => ({ rowId: r.id, rowNumber: r.rowNumber, email: M.val(r, 'Email'), groupId: M.val(r, 'Group ID') }));
+    return res.status(200).json({ ok: true, count: hits.length, hits });
+  }
+
   // TEMP: backfill specific CVENT rows into the Traveller MasterSheet (remove
   // after use). Existence check is STRICT: email + first + last name, to avoid
   // the false-positive from shared-email family members seen earlier.
