@@ -73,12 +73,21 @@ export default async function handler(req, res) {
       if (gid) agentGroupIds.add(String(gid).trim());
     }
 
-    // 3. Find unsynced Manager rows (have GROUP ID, not yet in Agent sheet)
+    // 3. Find unsynced Manager rows (have GROUP ID, not yet in Agent sheet, and
+    //    never synced before). Checking only "not currently in Agent sheet" was
+    //    wrong: if a row was already synced once (Auto-Synced = true on the
+    //    Manager sheet) and then deliberately archived/deleted off the Agent
+    //    sheet, its GROUP ID drops out of agentGroupIds — so the next run
+    //    treated it as "never synced" and recreated it there. Old archived rows
+    //    kept coming back. Fix: only sync rows that have NOT been auto-synced
+    //    before; a previously-synced row that's now missing from Agent was
+    //    removed on purpose and must stay removed.
     const toSync = [];
     for (const row of mgrSheet.rows) {
       const gid = cellVal(row, MGR.groupId);
       if (!gid || String(gid).trim() === '') continue;
       if (agentGroupIds.has(String(gid).trim())) continue; // Already exists in Agent
+      if (cellVal(row, MGR.autoSynced) === true) continue; // Already synced once — don't resurrect
       toSync.push(row);
     }
 
