@@ -422,6 +422,20 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: confirm the actual name/identity of the sheet MASTER points to, and
+  // search for diagnostictest@example.com to settle whether the write really
+  // landed (remove after use, no writes).
+  if (norm(body.__whatIsMaster)) {
+    const sheet = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    const full = await (await api(`/sheets/${MASTER}`)).json();
+    const FI = indexSheet(full);
+    const diag = (full.rows || []).find(r => norm(FI.val(r, 'Email')).toLowerCase() === 'diagnostictest@example.com');
+    return res.status(200).json({
+      ok: true, sheetId: MASTER, sheetName: sheet.name, totalRows: (full.rows || []).length,
+      diagRowFound: !!diag, diagRow: diag ? { rowId: diag.id, first: FI.val(diag, 'First Name'), last: FI.val(diag, 'Last Name') } : null,
+    });
+  }
+
   // TEMP: backfill specific CVENT rows into the Traveller MasterSheet (Vera's
   // ask — Charla/James Carter, rows 194/195, never made it to master).
   // Writes by CURRENT LIVE column title, immune to any stale hardcoded ids.
