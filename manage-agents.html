@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — Manage Agents</title>
+<style>
+  :root{
+    --purple:#3A2F3C; --cream:#FDF9EC; --taupe:#767260; --green:#1A3E32;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--cream);
+    font-family:Georgia,'Times New Roman',serif; color:var(--purple);
+    display:flex; align-items:flex-start; justify-content:center; padding:40px 16px;
+  }
+  .card{
+    width:100%; max-width:560px; background:#fff; border:1px solid #e7e1d2;
+    border-radius:14px; box-shadow:0 8px 30px rgba(58,47,60,.08); overflow:hidden;
+  }
+  .head{ background:var(--taupe); padding:26px 28px 22px; text-align:center; }
+  .head img{ height:34px; margin-bottom:10px; }
+  .head .brand{ color:var(--cream); letter-spacing:3px; font-size:13px; text-transform:uppercase; }
+  .body{ padding:28px; }
+  h1{ font-size:22px; margin:0 0 4px; color:var(--purple); }
+  .sub{ font-size:14px; color:var(--taupe); margin:0 0 22px; }
+  .back-link{ display:inline-block; margin-bottom:18px; font-size:13px; color:var(--taupe); text-decoration:none; }
+  .back-link:hover{ text-decoration:underline; }
+  label{ display:block; font-size:13px; font-weight:bold; margin:16px 0 6px; color:var(--purple); }
+  input{
+    width:100%; padding:12px 14px; border:1px solid #d8d2c4; border-radius:8px;
+    font-size:15px; font-family:inherit; background:var(--cream); color:var(--purple);
+  }
+  input:focus{ outline:none; border-color:var(--green); background:#fff; }
+  button{
+    padding:12px 18px; border:0; border-radius:8px;
+    background:var(--green); color:var(--cream); font-size:14px; font-family:inherit;
+    letter-spacing:.5px; cursor:pointer; text-transform:uppercase;
+  }
+  button:disabled{ opacity:.55; cursor:default; }
+  #addForm button{ width:100%; margin-top:22px; padding:14px; font-size:16px; }
+  .msg{ margin-top:14px; font-size:14px; text-align:center; display:none; }
+  .msg.ok{ display:block; color:var(--green); }
+  .msg.err{ display:block; color:#9b3b34; }
+  table{ width:100%; border-collapse:collapse; margin-top:8px; }
+  th, td{ text-align:left; padding:10px 8px; border-bottom:1px solid #eee7d8; font-size:14px; }
+  th{ color:var(--taupe); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  td.email{ color:var(--taupe); font-size:13px; }
+  .remove-btn{
+    background:#fff; color:#9b3b34; border:1px solid #9b3b34; padding:6px 12px;
+    font-size:12px; text-transform:none; letter-spacing:0;
+  }
+  .remove-btn:hover{ background:#9b3b34; color:#fff; }
+  .empty{ color:var(--taupe); font-size:14px; text-align:center; padding:20px 0; }
+  hr{ border:none; border-top:1px solid #eee7d8; margin:26px 0; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <img src="kensington-logo-cream.png" alt="Kensington Corporate" onerror="this.style.display='none'">
+      <div class="brand">Kensington Corporate</div>
+    </div>
+    <div class="body">
+      <a href="agentform.html" class="back-link">&larr; Back to Agent Entry</a>
+      <h1>Manage Agents</h1>
+      <p class="sub">Add or remove agents from the dropdown on the Agent Entry form. Changes take effect immediately — no need to refresh anything else.</p>
+
+      <div id="listWrap">
+        <div class="empty" id="loading">Loading agents…</div>
+        <table id="agentTable" style="display:none;">
+          <thead>
+            <tr><th>Name</th><th>Email</th><th></th></tr>
+          </thead>
+          <tbody id="agentTableBody"></tbody>
+        </table>
+      </div>
+
+      <hr />
+
+      <h1 style="font-size:18px;">Add an Agent</h1>
+      <form id="addForm" autocomplete="off">
+        <label for="name">Full Name</label>
+        <input id="name" name="name" required placeholder="e.g. Kate Anderson" />
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required placeholder="e.g. kate.anderson@kensingtoncorporate.com" />
+        <button type="submit" id="addBtn">Add Agent</button>
+      </form>
+      <div class="msg" id="msg"></div>
+    </div>
+  </div>
+
+<script>
+  const listWrap = document.getElementById('listWrap');
+  const loading = document.getElementById('loading');
+  const table = document.getElementById('agentTable');
+  const tbody = document.getElementById('agentTableBody');
+  const addForm = document.getElementById('addForm');
+  const addBtn = document.getElementById('addBtn');
+  const msg = document.getElementById('msg');
+
+  function showMsg(text, ok) {
+    msg.className = 'msg ' + (ok ? 'ok' : 'err');
+    msg.textContent = text;
+  }
+
+  async function loadAgents() {
+    loading.textContent = 'Loading agents…';
+    loading.style.display = 'block';
+    table.style.display = 'none';
+    try {
+      const r = await fetch('/api/agentform?agents=1');
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Could not load agents.');
+      const agents = (data.agents || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+      if (agents.length === 0) {
+        loading.textContent = 'No agents on the roster yet.';
+        return;
+      }
+      tbody.innerHTML = '';
+      agents.forEach(a => {
+        const tr = document.createElement('tr');
+        const tdName = document.createElement('td');
+        tdName.textContent = a.name;
+        const tdEmail = document.createElement('td');
+        tdEmail.className = 'email';
+        tdEmail.textContent = a.email || '(no email on file)';
+        const tdBtn = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.className = 'remove-btn';
+        btn.type = 'button';
+        btn.textContent = 'Remove';
+        btn.addEventListener('click', () => removeAgent(a.rowId, a.name, btn));
+        tdBtn.appendChild(btn);
+        tr.appendChild(tdName); tr.appendChild(tdEmail); tr.appendChild(tdBtn);
+        tbody.appendChild(tr);
+      });
+      loading.style.display = 'none';
+      table.style.display = 'table';
+    } catch (err) {
+      loading.textContent = err.message || 'Could not load agents.';
+    }
+  }
+
+  async function removeAgent(rowId, name, btn) {
+    if (!confirm(`Remove "${name}" from the agent roster?\n\nThis also removes them from the Numbers By Advisor report.`)) return;
+    btn.disabled = true; btn.textContent = 'Removing…';
+    try {
+      const r = await fetch('/api/agentform', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'removeAgent', rowId }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Could not remove agent.');
+      showMsg(`Removed "${name}".`, true);
+      loadAgents();
+    } catch (err) {
+      showMsg(err.message || 'Could not remove agent.', false);
+      btn.disabled = false; btn.textContent = 'Remove';
+    }
+  }
+
+  addForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    addBtn.disabled = true; addBtn.textContent = 'Adding…';
+    try {
+      const r = await fetch('/api/agentform', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'addAgent', name, email }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Could not add agent.');
+      showMsg(`Added "${name}".`, true);
+      addForm.reset();
+      loadAgents();
+    } catch (err) {
+      showMsg(err.message || 'Could not add agent.', false);
+    } finally {
+      addBtn.disabled = false; addBtn.textContent = 'Add Agent';
+    }
+  });
+
+  loadAgents();
+</script>
+</body>
+</html>

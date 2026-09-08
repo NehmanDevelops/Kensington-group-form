@@ -45,6 +45,13 @@
   .success h2{ color:var(--green); margin:8px 0; }
   .success p{ color:var(--taupe); font-size:14px; }
   .success button{ background:var(--taupe); max-width:200px; margin:18px auto 0; }
+  .admin-link-btn{
+    display:block; text-align:center; width:100%; margin:0 0 22px; padding:10px 14px;
+    border:1px solid var(--taupe); border-radius:8px; background:var(--cream);
+    color:var(--taupe); font-size:12px; font-weight:bold; letter-spacing:1px;
+    text-transform:uppercase; text-decoration:none; box-sizing:border-box;
+  }
+  .admin-link-btn:hover{ background:var(--taupe); color:var(--cream); }
 </style>
 </head>
 <body>
@@ -57,6 +64,7 @@
       <div id="form-wrap">
         <h1>Agent Entry</h1>
         <p class="sub">Add a traveller to the Group Master.</p>
+        <a href="manage-agents.html" class="admin-link-btn">FOR VERA, ADD/REMOVE AGENTS</a>
         <form id="agentForm" autocomplete="off">
           <label for="groupId">Group ID <span class="req">*</span></label>
           <input id="groupId" name="groupId" required placeholder="e.g. 1OEGLOASEP26" list="groupIdList" autocomplete="off" />
@@ -65,16 +73,6 @@
           <label for="agentAssigned">Agent <span class="req">*</span></label>
           <select id="agentAssigned" name="agentAssigned" required>
             <option value="" disabled selected>Select agent…</option>
-            <option value="Ivana Petrovic">Ivana Petrovic</option>
-            <option value="Lori Bartella">Lori Bartella</option>
-            <option value="Cheryl Scheckel">Cheryl Scheckel</option>
-            <option value="Jennifer Cardwell">Jennifer Cardwell</option>
-            <option value="John Driscoll">John Driscoll</option>
-            <option value="Liam Mckeown">Liam Mckeown</option>
-            <option value="Melissa Sawicki">Melissa Sawicki</option>
-            <option value="Rami Itani">Rami Itani</option>
-            <option value="Grace Northrop">Grace Northrop</option>
-            <option value="Vera Perisic">Vera Perisic</option>
           </select>
 
           <label for="firstName">First Name <span class="req">*</span></label>
@@ -116,6 +114,28 @@
       });
     })
     .catch(() => {}); // autocomplete is a nice-to-have; form still works without it
+
+  // Agent dropdown is populated live from the roster (Advisor Summary sheet)
+  // so adding/removing an agent via manage-agents.html takes effect immediately,
+  // no redeploy needed.
+  fetch('/api/agentform?agents=1')
+    .then(r => r.json())
+    .then(data => {
+      const select = document.getElementById('agentAssigned');
+      (data.agents || [])
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.name;
+          opt.textContent = a.name;
+          select.appendChild(opt);
+        });
+    })
+    .catch(() => {
+      msg.className = 'msg err';
+      msg.textContent = 'Could not load the agent list — please refresh the page.';
+    });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
