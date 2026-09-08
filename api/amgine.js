@@ -422,6 +422,16 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: search master sheet columns for any live replacement candidates for
+  // the dead reservation_status / guest_mobile_phone mappings (remove after use).
+  if (norm(body.__searchMasterCols)) {
+    const sheet = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    const words = ['reservation', 'status', 'guest', 'mobile', 'phone'];
+    const matches = (sheet.columns || []).filter(c => words.some(w => c.title.toLowerCase().includes(w)))
+      .map(c => ({ id: c.id, title: c.title }));
+    return res.status(200).json({ ok: true, matches });
+  }
+
 
 
   // TEMP: add a dummy test traveller row to a test group (remove after call — do not leave live).
