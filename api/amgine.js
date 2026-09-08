@@ -422,6 +422,28 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: read-only dump of CVENT sheet rows by rowNumber range, plus whether
+  // each email exists on the master sheet (remove after use, no writes).
+  if (norm(body.__checkCventRows)) {
+    const CVENT = '1658234917048196';
+    const lo = Number(body.__lo) || 192, hi = Number(body.__hi) || 203;
+    const cvent = await (await api(`/sheets/${CVENT}`)).json();
+    const CI = indexSheet(cvent);
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const MI = indexSheet(master);
+    const masterEmails = new Set((master.rows || []).map(r => norm(MI.val(r, 'Email')).toLowerCase()).filter(Boolean));
+    const rows = (cvent.rows || []).filter(r => r.rowNumber >= lo && r.rowNumber <= hi).map(r => {
+      const email = norm(CI.val(r, 'Email Address'));
+      return {
+        rowNumber: r.rowNumber, rowId: r.id,
+        first: CI.val(r, 'First Name'), last: CI.val(r, 'Last Name'), email,
+        groupId: CI.val(r, 'Group ID'), fullName: CI.val(r, 'Full Name'),
+        inMaster: email ? masterEmails.has(email.toLowerCase()) : null,
+      };
+    });
+    return res.status(200).json({ ok: true, count: rows.length, rows });
+  }
+
 
 
 
