@@ -422,6 +422,29 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: dump full CVENT row values for given rowIds + check master presence (remove after use, no writes).
+  if (norm(body.__diagCvent)) {
+    const CVENT = '1658234917048196';
+    const cvent = await (await api(`/sheets/${CVENT}`)).json();
+    const CI = indexSheet(cvent);
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const MI = indexSheet(master);
+    const masterEmails = new Set((master.rows || []).map(r => norm(MI.val(r, 'Email')).toLowerCase()).filter(Boolean));
+    const ids = String(body.__diagCvent).split(',').map(s => s.trim());
+    const titles = (cvent.columns || []).map(c => c.title);
+    const rows = ids.map(id => {
+      const r = (cvent.rows || []).find(x => String(x.id) === id) || (cvent.rows || [])[Number(id) - 1];
+      const rr = (cvent.rows || []).find(x => x.rowNumber === Number(id));
+      const row = r || rr;
+      if (!row) return { id, found: false };
+      const vals = {};
+      for (const t of titles) { const v = CI.val(row, t); if (v !== '' && v != null) vals[t] = v; }
+      const email = norm(vals['Email Address']);
+      return { rowId: row.id, rowNumber: row.rowNumber, inMaster: email ? masterEmails.has(email.toLowerCase()) : null, values: vals };
+    });
+    return res.status(200).json({ ok: true, masterTotalRows: (master.rows || []).length, rows });
+  }
+
 
 
 
