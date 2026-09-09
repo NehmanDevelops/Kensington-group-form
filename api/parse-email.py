@@ -3,6 +3,7 @@ import json
 import re
 import html
 import os
+import time
 from urllib.request import Request, urlopen
 
 # ===========================================================================
@@ -1099,6 +1100,34 @@ def _live_column_ids(token, sheet_id):
         return None
 
 
+def _urlopen_with_retry(req, attempts=3, delay=1.0):
+    """Retries a Smartsheet write up to `attempts` times with a short delay
+    between tries. Added 2026-09-09: confirmed live that Smartsheet's API
+    occasionally returns a transient error on a perfectly valid write, which
+    succeeds immediately on retry (same class of flakiness found the same day
+    in the HubSpot sync project). The master-sheet write used to be a single
+    attempt with NO retry -- one transient blip meant that registration was
+    silently and PERMANENTLY dropped from the master sheet, with nobody
+    finding out until someone happened to notice and manually force-repost it
+    (which is what was happening: Vera reporting CVENT registrations "not
+    coming through to master" turned out to be exactly this -- the CVENT
+    sheet write succeeded, the master write hit a transient failure once, and
+    nothing ever retried it).
+    IMPORTANT: this retry is entirely INTERNAL to this one incoming request --
+    it does not change the fact that this endpoint always returns 200 to
+    Power Automate, so it can never trigger PA's own retry-and-duplicate
+    behavior. That's a separate concern this doesn't touch."""
+    last_err = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return urlopen(req)
+        except Exception as e:
+            last_err = e
+            if attempt < attempts:
+                time.sleep(delay)
+    raise last_err
+
+
 def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     cells = []
     for field, col_id in column_map.items():
@@ -1120,9 +1149,10 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     # existing row down by one, which looked like the whole sheet "moving" every
     # time a registration came in. Bottom-append leaves existing rows in place.
     payload = json.dumps([{'toBottom': True, 'cells': cells}]).encode()
-    # Single attempt only. Do NOT retry here, and do NOT raise to the caller:
-    # the parser must always return 200 to Power Automate, otherwise PA's HTTP
-    # connector auto-retries and we get duplicate rows in both sheets.
+    # Retries internally up to 3x on a transient Smartsheet error (see
+    # _urlopen_with_retry) -- but still never raises to the caller and never
+    # causes this endpoint to return non-200, so Power Automate's own retry
+    # (which WOULD cause duplicate rows) is still never triggered.
     req = Request(
         f'https://api.smartsheet.com/2.0/sheets/{sheet_id}/rows',
         data=payload,
@@ -1133,7 +1163,7 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
         method='POST',
     )
     try:
-        resp = urlopen(req)
+        resp = _urlopen_with_retry(req)
         return f'ok ({resp.status})'
     except Exception as e:
         detail = ''
@@ -1328,7 +1358,7 @@ def _update_row(token, sheet_id, row_id, column_map, parsed, extra_cells=None):
         method='PUT',
     )
     try:
-        resp = urlopen(req)
+        resp = _urlopen_with_retry(req)
         return f'updated ({resp.status})'
     except Exception as e:
         detail = ''
