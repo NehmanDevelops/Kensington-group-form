@@ -561,6 +561,31 @@ def normalize_date_field(value):
     return value
 
 
+def extract_date_only(value):
+    """Return (matched_date_substring, leftover_text) if `value` contains a
+    recognizable date, else (None, value). Same patterns as normalize_date_field,
+    but reports whether a date was actually found (not just echoing input back)."""
+    if not value:
+        return None, value
+    match = re.match(r'(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})', value)
+    if match:
+        leftover = (value[:match.start()] + value[match.end():]).strip()
+        return match.group(1), leftover
+    month_pattern = re.search(
+        r'(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|'
+        r'Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},?\s+\d{4}',
+        value, re.IGNORECASE
+    )
+    if month_pattern:
+        leftover = (value[:month_pattern.start()] + value[month_pattern.end():]).strip()
+        return month_pattern.group(0), leftover
+    short_month = re.match(r'\d{1,2}[\-\s][A-Za-z]{3}[\-\s]\d{2,4}', value)
+    if short_month:
+        leftover = value[short_month.end():].strip()
+        return short_month.group(0), leftover
+    return None, value
+
+
 def normalize_phone(value):
     if not value:
         return value
@@ -698,6 +723,24 @@ def parse_email(html_email_body, email_subject=''):
                 output[field] = extract_field(text, field, exclude_prefixes=GUEST_EXCLUDE)
             else:
                 output[field] = extract_field(text, field)
+
+    # ── CVENT date-mislabeled-as-time fix (Vera, 2026-09-01) ─────────────────
+    # CVENT's own email template sometimes labels a field "Departure Time" /
+    # "Return Time" but puts a full DATE in it (not just a time-of-day word like
+    # "Morning"). Since we match by label text, that value lands in
+    # departure_time_pref / return_time_pref — which maps to the master sheet's
+    # Departure Time / Return Time column, leaving Departure Date / Return Date
+    # blank. If departure_time (the real date field) is empty but its _pref
+    # sibling actually contains a parseable date, promote that date into the
+    # date field and leave only the leftover text (e.g. "Morning") in _pref.
+    def _promote_date_from_pref(date_key, pref_key):
+        if not output.get(date_key) and output.get(pref_key):
+            found_date, leftover = extract_date_only(output[pref_key])
+            if found_date:
+                output[date_key] = found_date
+                output[pref_key] = leftover
+    _promote_date_from_pref('departure_time', 'departure_time_pref')
+    _promote_date_from_pref('return_time', 'return_time_pref')
 
     for field in ['departure_time', 'return_time', 'event_date', 'date_of_birth',
                   'passport_expiration_date', 'request_date']:
@@ -915,7 +958,13 @@ MASTER_COLUMN_MAP = {
     'passport_expiration_date': 8541263044579204,
     'passport_nationality':     6129139651481476,
     'guest_email':              5566189698060164,
-    'guest_mobile_phone':       3314389884374916,
+    # NOTE: 'guest_mobile_phone' (was 3314389884374916) intentionally omitted —
+    # confirmed 2026-09-08 that column no longer exists on the master sheet at
+    # all (no renamed replacement either). This caused a real incident: a batch
+    # of 12 CVENT registrations that all had this field populated silently
+    # failed to write to master entirely, because a transient failure in the
+    # live-column safety-net fell back to sending cells unfiltered, and
+    # Smartsheet rejects the WHOLE row on any single INVALID_COLUMN_ID.
     'guest_name':               800007628558212,    # "Guest Name" (Vera, 2026-07-08)
     'guest_dob':                5303607255928708,   # "Guest DOB" (Vera, 2026-07-08)
     'event_code':               7817989511745412,
@@ -941,7 +990,9 @@ MASTER_COLUMN_MAP = {
     'seating':                  2630288533655428,   # "Seat Preference" (old "Seating" col 605193233534852 was deleted)
     'food_preferences':         2856993047220100,
     'special_requests':         7360592674590596,
-    'reservation_status':       1731093140377476,
+    # NOTE: 'reservation_status' (was 1731093140377476) intentionally omitted —
+    # same incident as guest_mobile_phone above: column no longer exists on the
+    # master sheet, and every affected row also had this field populated.
     'airline_preference_1':     6234692767747972,
     'frequent_flyer_number_1':  3982892954062724,
     'airline_preference_2':     8486492581433220,
@@ -1071,6 +1122,19 @@ def _consolidate_master_cells(cells):
 _LIVE_COLS_CACHE = {}
 
 
+# Historically-confirmed-dead master column ids (via audits 2026-07-16 and
+# 2026-09-08). Used ONLY as a fail-SAFE fallback when the live-columns lookup
+# itself fails after retries — see _live_column_ids. Never grows silently:
+# add to this only after actually confirming a column is gone.
+_KNOWN_DEAD_MASTER_IDS = {
+    3314389884374916,   # guest_mobile_phone (also removed from MASTER_COLUMN_MAP directly)
+    1731093140377476,   # reservation_status (also removed from MASTER_COLUMN_MAP directly)
+    2188489977532292,   # event_title
+    6692089604902788,   # event_date
+    4440289791217540,   # event_time
+}
+
+
 def _live_column_ids(token, sheet_id):
     """Column ids that actually exist on the sheet right now (cached per run).
 
@@ -1078,8 +1142,15 @@ def _live_column_ids(token, sheet_id):
     the ENTIRE row (INVALID_COLUMN_ID 1036). This bit us 2026-07-08: 16 dead
     master ids meant every CVENT traveller silently never reached the master.
     Filtering cells to live ids makes writes self-healing — a deleted column
-    costs that one field, never the whole row. Returns None on lookup failure
-    (caller then writes unfiltered, same as before)."""
+    costs that one field, never the whole row.
+
+    Retries a few times before giving up (a transient hiccup here used to mean
+    "send everything unfiltered", which caused a real incident 2026-09-08: a
+    batch of CVENT rows all had real data in two already-dead fields, and a
+    momentary lookup failure let those ids through unfiltered, rejecting all
+    12 rows outright). Returns a real live-id set on success. On total failure
+    after retries, returns None — caller must treat that as "fail safe"
+    (exclude _KNOWN_DEAD_MASTER_IDS), never "send unfiltered"."""
     key = str(sheet_id)
     if key in _LIVE_COLS_CACHE:
         return _LIVE_COLS_CACHE[key]
@@ -1087,17 +1158,21 @@ def _live_column_ids(token, sheet_id):
         f'https://api.smartsheet.com/2.0/sheets/{sheet_id}?pageSize=1',
         headers={'Authorization': f'Bearer {token}'},
     )
-    try:
-        data = json.loads(urlopen(req).read().decode())
-        # Exclude column-formula columns too: writing to one rejects the whole
-        # row just like a dead id (e.g. the CVENT sheet's Group ID column while
-        # it still carried the =[Event Code]@row formula).
-        ids = {c['id'] for c in data.get('columns', []) if not c.get('formula')}
-        _LIVE_COLS_CACHE[key] = ids
-        return ids
-    except Exception:
-        _LIVE_COLS_CACHE[key] = None
-        return None
+    for attempt in range(3):
+        try:
+            data = json.loads(urlopen(req).read().decode())
+            # Exclude column-formula columns too: writing to one rejects the whole
+            # row just like a dead id (e.g. the CVENT sheet's Group ID column while
+            # it still carried the =[Event Code]@row formula).
+            ids = {c['id'] for c in data.get('columns', []) if not c.get('formula')}
+            _LIVE_COLS_CACHE[key] = ids
+            return ids
+        except Exception:
+            if attempt < 2:
+                time.sleep(0.4 * (attempt + 1))
+                continue
+            _LIVE_COLS_CACHE[key] = None
+            return None
 
 
 def _urlopen_with_retry(req, attempts=3, delay=1.0):
@@ -1143,6 +1218,12 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
     live = _live_column_ids(token, sheet_id)
     if live is not None:
         cells = [c for c in cells if c['columnId'] in live]
+    else:
+        # Live-columns lookup totally failed (even after retries) — fail SAFE,
+        # not open. Drop only cells we already know are historically dead
+        # rather than risk a full-row INVALID_COLUMN_ID rejection (2026-09-08
+        # incident: 12 rows silently lost this way).
+        cells = [c for c in cells if c['columnId'] not in _KNOWN_DEAD_MASTER_IDS]
     if not cells:
         return 'skipped — no data'
     # Append new rows at the BOTTOM, not the top. Inserting at top shifts every
@@ -1345,6 +1426,8 @@ def _update_row(token, sheet_id, row_id, column_map, parsed, extra_cells=None):
     live = _live_column_ids(token, sheet_id)
     if live is not None:
         cells = [c for c in cells if c['columnId'] in live]
+    else:
+        cells = [c for c in cells if c['columnId'] not in _KNOWN_DEAD_MASTER_IDS]
     if not cells:
         return 'skipped — no data'
     payload = json.dumps([{'id': row_id, 'cells': cells}]).encode()

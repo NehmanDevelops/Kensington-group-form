@@ -194,7 +194,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     // empty in practice; all real data (IATA codes, city names, "X -> Y"
     // strings) lived in 'Departure City'.
     depIATA: norm(M.val(mrow, 'Departure Airport')),
-    arrIATA: norm(M.val(mrow, 'Arrival Airport (IATA)')),
+    // 'Arrival Airport (IATA)' renamed to 'Arriving Airport' (2026-09-01) — had
+    // 0 data on it, confirmed safe; this is now the clear "destination" field
+    // agents fill in when Departure Airport holds only the origin (e.g. 'YYZ').
+    arrIATA: norm(M.val(mrow, 'Arriving Airport')),
     depTrip: norm(M.val(mrow, 'Departure Trip')) || norm(M.val(mrow, 'Departure Airport')),
     retTrip: norm(M.val(mrow, 'Return Trip/City')),
   };
@@ -418,6 +421,11 @@ export default async function handler(req, res) {
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+
+
+
+
 
   // TEMP: add a dummy test traveller row to a test group (remove after call — do not leave live).
   if (body.__addTestTraveller && body.__groupId) {

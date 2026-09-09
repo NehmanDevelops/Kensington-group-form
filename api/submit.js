@@ -132,14 +132,21 @@ export default async function handler(req, res) {
       completed:     7249103084097412,   // "Completed"
       startDate:     4893411139424132,   // "Travel Start Date"
       endDate:       2641611325738884,   // "Travel End Date"
+      passengers:    2440692533333892,   // "Approx # of Pax" — matches MGR.passengers in sync-groups.js
     };
 
+    // ── Approx passenger count was never mirrored to the master ─────────────
+    // INTAKE.approximatePassengers was captured but never mapped into
+    // masterCells, so the "Approx # of Pax" field the form collects never
+    // made it onto the LIVE GROUP MASTERSHEET (or, from there, onto the Agent
+    // sheet via sync-groups.js, which reads it from the master).
     const masterCells = [
       { columnId: MASTER.companyName,  value: cellMap[INTAKE.companyName]      || '' },
       { columnId: MASTER.eventName,    value: cellMap[INTAKE.eventName]        || '' },
       { columnId: MASTER.contactName,  value: cellMap[INTAKE.eventManagerName] || '' },
       { columnId: MASTER.contactEmail, value: cellMap[INTAKE.eventManagerEmail]|| '' },
       { columnId: MASTER.contactPhone, value: cellMap[INTAKE.eventManagerPhone]|| '' },
+      { columnId: MASTER.passengers,   value: cellMap[INTAKE.approximatePassengers] || '' },
       { columnId: MASTER.status,       value: 'New' },
       { columnId: MASTER.completed,    value: false },
       { columnId: 6289100570398596,    value: true },  // Auto-Synced — prevents sync loop
