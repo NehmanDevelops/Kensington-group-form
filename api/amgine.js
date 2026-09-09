@@ -422,6 +422,23 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: dump full row data for given rowIds on a given sheet (remove after use, no writes).
+  if (norm(body.__dumpRows) && body.__sheetId) {
+    const sheetId = norm(body.__sheetId);
+    const sheet = await (await api(`/sheets/${sheetId}`)).json();
+    const IDX = indexSheet(sheet);
+    const ids = String(body.__dumpRows).split(',').map(s => s.trim());
+    const titles = (sheet.columns || []).map(c => c.title);
+    const rows = ids.map(id => {
+      const r = (sheet.rows || []).find(x => String(x.id) === id);
+      if (!r) return { rowId: id, found: false };
+      const vals = {};
+      for (const t of titles) { const v = IDX.val(r, t); if (v !== '' && v != null) vals[t] = v; }
+      return { rowId: r.id, rowNumber: r.rowNumber, values: vals };
+    });
+    return res.status(200).json({ ok: true, rows });
+  }
+
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
