@@ -1006,7 +1006,16 @@ MASTER_COLUMN_MAP = {
 # Original date columns + their KCG Agent copy equivalents (so the mirror
 # write normalizes dates too).
 DATE_COLUMNS = {659963696680836, 8541263044579204, 2067338580234116,
-                5361101532598148, 153814463451012, 7472163857928068}
+                5361101532598148, 153814463451012, 7472163857928068,
+                # Departure Date / Return Date (master) + their KCG Agent copy
+                # equivalents — missing here meant CVENT's MM/DD/YYYY dates
+                # were never reformatted to the ISO Smartsheet's strict DATE
+                # columns require, silently rejecting the ENTIRE row on any
+                # submission with a real departure/return date (found 2026-09-09,
+                # Javier/Evelyn Camacho — likely the single biggest cause of
+                # "CVENT sheet yes, master sheet no" reports to date).
+                6797642721169284, 5671742814326660,
+                8879538741481348, 4587045346643844}
 
 # "Copy of Traveller Profile MasterSheet" in the KCG Agent workspace. Copying
 # the sheet gave it new sheet + column IDs, so this maps every original master
