@@ -440,7 +440,15 @@ export default async function handler(req, res) {
       const vals = {};
       for (const t of titles) { const v = CI.val(row, t); if (v !== '' && v != null) vals[t] = v; }
       const email = norm(vals['Email Address']);
-      return { rowId: row.id, rowNumber: row.rowNumber, inMaster: email ? masterEmails.has(email.toLowerCase()) : null, values: vals };
+      const fn = norm(vals['First Name']).toLowerCase();
+      const ln = norm(vals['Last Name']).toLowerCase();
+      const gid = norm(vals['Group ID']).toLowerCase();
+      const strictHit = (master.rows || []).find(mr =>
+        norm(MI.val(mr, 'Email')).toLowerCase() === email.toLowerCase()
+        && norm(MI.val(mr, 'First Name')).toLowerCase() === fn
+        && norm(MI.val(mr, 'Last Name')).toLowerCase() === ln
+        && norm(MI.val(mr, 'Group ID')).toLowerCase() === gid);
+      return { rowId: row.id, rowNumber: row.rowNumber, inMasterStrict: !!strictHit, values: vals };
     });
     return res.status(200).json({ ok: true, masterTotalRows: (master.rows || []).length, rows });
   }
