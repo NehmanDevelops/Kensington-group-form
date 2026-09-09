@@ -422,6 +422,13 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: delete a row by rowId on a given sheet (remove after use).
+  if (norm(body.__deleteRowId) && body.__sheetId) {
+    const sheetId = norm(body.__sheetId);
+    const dr = await api(`/sheets/${sheetId}/rows?ids=${norm(body.__deleteRowId)}`, { method: 'DELETE' });
+    return res.status(200).json({ ok: dr.ok, deletedRowId: body.__deleteRowId });
+  }
+
   // TEMP: search a sheet for rows matching a last name (remove after use, no writes).
   if (norm(body.__searchLastName) && body.__sheetId) {
     const sheetId = norm(body.__sheetId);
