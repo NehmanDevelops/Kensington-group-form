@@ -422,6 +422,18 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: search a sheet for rows matching a last name (remove after use, no writes).
+  if (norm(body.__searchLastName) && body.__sheetId) {
+    const sheetId = norm(body.__sheetId);
+    const sheet = await (await api(`/sheets/${sheetId}`)).json();
+    const IDX = indexSheet(sheet);
+    const lastTitle = IDX.id('Last Name') ? 'Last Name' : 'Last';
+    const emailTitle = IDX.id('Email Address') ? 'Email Address' : 'Email';
+    const hits = (sheet.rows || []).filter(r => norm(IDX.val(r, lastTitle)).toLowerCase().includes(norm(body.__searchLastName).toLowerCase()))
+      .map(r => ({ rowId: r.id, rowNumber: r.rowNumber, first: IDX.val(r, 'First Name'), last: IDX.val(r, lastTitle), email: IDX.val(r, emailTitle), groupId: IDX.val(r, 'Group ID') }));
+    return res.status(200).json({ ok: true, count: hits.length, hits });
+  }
+
   // TEMP: dump full row data for given rowIds on a given sheet (remove after use, no writes).
   if (norm(body.__dumpRows) && body.__sheetId) {
     const sheetId = norm(body.__sheetId);
