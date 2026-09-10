@@ -745,10 +745,11 @@
       }).catch(function () { /* logging is best-effort; the email below is the source of truth */ });
 
       // Manager-facing "who has submitted this form" tracker (☰ menu, password-gated).
-      fetch('/api/log-finance-submission', {
+      fetch('/api/finance-tracker', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'log',
           agentName: g('agentName'),
           requestType: typeSel.value,
           company: g('companyName'),

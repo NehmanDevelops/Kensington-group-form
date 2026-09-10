@@ -1,9 +1,16 @@
-// Password-gated read of the Finance Request submission log. Returns every
-// agent who has ever submitted the form, with their last-submitted time and
-// total submission count -- pulled from the same Redis hash log-finance-
-// submission.js writes to.
+// Finance Request submission tracker -- one function handling both the
+// (public, fire-and-forget) write and the (password-gated) read, combined
+// into a single file to stay under Vercel's 12-function cap on this project.
 //
-// POST { "password": "..." } -> { ok: true, submissions: [...] } or 401.
+// POST { action: "log", agentName, requestType, company }
+//   -> logs/updates this agent's most recent submission. No password needed
+//      (called automatically by the form itself on every submit).
+// POST { password: "..." }
+//   -> { ok: true, submissions: [...] } if correct, 401 otherwise.
+//
+// Storage: one Redis HASH ("finance_submissions") via the Vercel KV
+// (Upstash) integration, keyed by normalized agent name -- naturally dedupes
+// per agent and always holds their most recent submission.
 //
 // Env vars required: KV_REST_API_URL, KV_REST_API_TOKEN, FINANCE_TRACKER_PASSWORD
 
@@ -20,20 +27,37 @@ async function kv(...args) {
   return data.result;
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+async function handleLog(body, res) {
+  if (!KV_URL || !KV_TOKEN) return res.status(200).json({ ok: false, reason: 'KV not configured' });
+  try {
+    const agentName = String(body.agentName || '').trim();
+    if (!agentName) return res.status(200).json({ ok: false, reason: 'no agentName' });
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+    const key = agentName.toLowerCase();
+    const existingRaw = await kv('hget', 'finance_submissions', key);
+    const existing = existingRaw ? JSON.parse(existingRaw) : null;
+
+    const entry = {
+      agentName,
+      requestType: String(body.requestType || '').trim(),
+      company: String(body.company || '').trim(),
+      lastSubmittedAt: new Date().toISOString(),
+      submissionCount: (existing?.submissionCount || 0) + 1,
+    };
+
+    await kv('hset', 'finance_submissions', key, JSON.stringify(entry));
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    return res.status(200).json({ ok: false, reason: err.message });
+  }
+}
+
+async function handleRead(body, res) {
   const expected = process.env.FINANCE_TRACKER_PASSWORD;
   if (!expected) return res.status(500).json({ error: 'FINANCE_TRACKER_PASSWORD not configured' });
   if (String(body.password || '') !== expected) {
     return res.status(401).json({ error: 'Incorrect password' });
   }
-
   if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: 'KV not configured' });
 
   try {
@@ -49,4 +73,16 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+  if (body.action === 'log') return handleLog(body, res);
+  return handleRead(body, res);
 }
