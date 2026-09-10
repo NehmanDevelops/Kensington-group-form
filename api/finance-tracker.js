@@ -41,6 +41,8 @@ async function handleLog(body, res) {
       agentName,
       requestType: String(body.requestType || '').trim(),
       company: String(body.company || '').trim(),
+      recipient: String(body.recipient || '').trim(),
+      details: String(body.details || ''),
       lastSubmittedAt: new Date().toISOString(),
       submissionCount: (existing?.submissionCount || 0) + 1,
     };

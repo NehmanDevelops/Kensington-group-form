@@ -753,6 +753,8 @@
           agentName: g('agentName'),
           requestType: typeSel.value,
           company: g('companyName'),
+          recipient: recipient,
+          details: lines.join('\n'),
         }),
       }).catch(function () { /* best-effort, never blocks the real submission */ });
 
@@ -794,57 +796,135 @@
     document.getElementById('menuBtn').addEventListener('click', function () { overlay.classList.add('open'); });
     document.getElementById('panelClose').addEventListener('click', closePanel);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) closePanel(); });
-    document.getElementById('trackBtn').addEventListener('click', function () { showScreen(screenPassword); pwInput.focus(); });
+    var PW_STORAGE_KEY = 'financeTrackerPassword';
+    function savedPassword() {
+      try { return localStorage.getItem(PW_STORAGE_KEY) || ''; } catch (_) { return ''; }
+    }
+    function savePassword(pw) {
+      try { localStorage.setItem(PW_STORAGE_KEY, pw); } catch (_) { /* private browsing etc. — just won't persist */ }
+    }
+    function clearSavedPassword() {
+      try { localStorage.removeItem(PW_STORAGE_KEY); } catch (_) {}
+    }
+
+    document.getElementById('trackBtn').addEventListener('click', function () {
+      var remembered = savedPassword();
+      if (remembered) {
+        showScreen(screenResults);
+        document.getElementById('trackerList').innerHTML = '<p class="tracker-empty">Loading…</p>';
+        loadTracker(remembered, false);
+      } else {
+        showScreen(screenPassword);
+        pwInput.focus();
+      }
+    });
     document.getElementById('backFromPassword').addEventListener('click', function () { showScreen(screenMenu); });
     document.getElementById('backFromResults').addEventListener('click', function () { showScreen(screenMenu); });
 
-    function submitPassword() {
+    function submitPassword() { loadTracker(pwInput.value, true); }
+
+    // remember=true means "typed just now, save it on success"; false means
+    // "trying a remembered password silently" (falls back to the prompt on failure).
+    function loadTracker(password, remember) {
       pwError.style.display = 'none';
       var btn = document.getElementById('pwSubmit');
-      btn.textContent = 'Checking…';
-      btn.disabled = true;
+      if (remember) { btn.textContent = 'Checking…'; btn.disabled = true; }
       fetch('/api/finance-tracker', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pwInput.value }),
+        body: JSON.stringify({ password: password }),
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
         .then(function (res) {
-          btn.textContent = 'View tracker';
-          btn.disabled = false;
+          if (remember) { btn.textContent = 'View tracker'; btn.disabled = false; }
           if (!res.ok) {
-            pwError.textContent = res.data.error || 'Incorrect password.';
-            pwError.style.display = 'block';
+            if (remember) {
+              pwError.textContent = res.data.error || 'Incorrect password.';
+              pwError.style.display = 'block';
+            } else {
+              // Remembered password no longer works (e.g. it was changed) — clear it and ask again.
+              clearSavedPassword();
+              showScreen(screenPassword);
+              pwInput.focus();
+            }
             return;
           }
+          if (remember) savePassword(password);
           renderTracker(res.data.submissions || []);
           showScreen(screenResults);
         })
         .catch(function () {
-          btn.textContent = 'View tracker';
-          btn.disabled = false;
+          if (remember) { btn.textContent = 'View tracker'; btn.disabled = false; }
           pwError.textContent = 'Something went wrong — try again.';
           pwError.style.display = 'block';
+          if (!remember) showScreen(screenPassword);
         });
     }
     document.getElementById('pwSubmit').addEventListener('click', submitPassword);
     pwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitPassword(); });
 
+    // Opens a new tab and renders the full details of one submission — everything
+    // that went into the email body, formatted as a readable page.
+    function openSubmissionDetail(s) {
+      var when = new Date(s.lastSubmittedAt);
+      var whenStr = isNaN(when) ? s.lastSubmittedAt : when.toLocaleString();
+      var detailLines = (s.details || '').split('\n').map(function (line) {
+        var esc = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return esc || '&nbsp;';
+      }).join('<br>');
+      var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+        '<title>' + (s.agentName || 'Submission') + ' — ' + (s.requestType || '') + '</title>' +
+        '<style>' +
+        'body{font-family:Georgia,serif;background:#fdf9ec;color:#3a2f3c;margin:0;padding:48px 24px;}' +
+        '.card{max-width:680px;margin:0 auto;background:#fffdf8;border:1px solid #e4ddcc;box-shadow:0 12px 40px rgba(58,47,60,0.10);}' +
+        '.head{background:#1c1f24;color:#fdf9ec;padding:28px 36px;}' +
+        '.head .eyebrow{font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#b89968;margin:0 0 8px;}' +
+        '.head h1{font-size:22px;font-weight:400;margin:0;}' +
+        '.meta{padding:20px 36px;border-bottom:1px solid #e4ddcc;font-size:13px;color:#7d7a73;}' +
+        '.meta strong{color:#3a2f3c;}' +
+        '.body{padding:28px 36px;font-size:14px;line-height:1.8;white-space:pre-wrap;}' +
+        '</style></head><body>' +
+        '<div class="card">' +
+        '<div class="head"><p class="eyebrow">Finance Request — Submission Detail</p><h1>' + (s.agentName || 'Unknown') + '</h1></div>' +
+        '<div class="meta">' +
+        '<strong>Type:</strong> ' + (s.requestType || '—') + '<br>' +
+        '<strong>Client / Company:</strong> ' + (s.company || '—') + '<br>' +
+        '<strong>Sent to:</strong> ' + (s.recipient || '—') + '<br>' +
+        '<strong>Submitted:</strong> ' + whenStr + '<br>' +
+        '<strong>Total submissions by this agent:</strong> ' + (s.submissionCount || 1) +
+        '</div>' +
+        '<div class="body">' + (detailLines || '<em>No details captured.</em>') + '</div>' +
+        '</div></body></html>';
+      var win = window.open('', '_blank');
+      if (!win) { alert('Please allow pop-ups to open submission details in a new tab.'); return; }
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    }
+    window.__financeTrackerData = [];
+
     function renderTracker(list) {
+      window.__financeTrackerData = list;
       var container = document.getElementById('trackerList');
       if (list.length === 0) {
         container.innerHTML = '<p class="tracker-empty">No submissions logged yet.</p>';
         return;
       }
-      container.innerHTML = list.map(function (s) {
+      container.innerHTML = list.map(function (s, i) {
         var when = new Date(s.lastSubmittedAt);
         var whenStr = isNaN(when) ? s.lastSubmittedAt : when.toLocaleString();
         var times = s.submissionCount === 1 ? '1 submission' : (s.submissionCount + ' submissions');
-        return '<div class="tracker-row">' +
+        return '<div class="tracker-row" data-idx="' + i + '" style="cursor:pointer;" title="Click to view full submission details">' +
           '<div class="tracker-name">' + (s.agentName || 'Unknown') + '</div>' +
           '<div class="tracker-meta">Last: ' + whenStr + ' · ' + times + (s.requestType ? ' · ' + s.requestType : '') + '</div>' +
           '</div>';
       }).join('');
+      Array.prototype.forEach.call(container.querySelectorAll('.tracker-row'), function (row) {
+        row.addEventListener('click', function () {
+          var idx = parseInt(row.getAttribute('data-idx'), 10);
+          openSubmissionDetail(window.__financeTrackerData[idx]);
+        });
+      });
     }
   })();
 </script>
