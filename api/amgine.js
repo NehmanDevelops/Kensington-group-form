@@ -422,6 +422,36 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: scan whole CVENT sheet for rows missing from master (strict
+  // email+first+last+group match). Read-only, no writes. Remove after use.
+  if (norm(body.__scanMissing)) {
+    const CVENT = '1658234917048196';
+    const cvent = await (await api(`/sheets/${CVENT}`)).json();
+    const CI = indexSheet(cvent);
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const MI = indexSheet(master);
+    const masterKeys = new Set((master.rows || []).map(r =>
+      [norm(MI.val(r, 'Email')).toLowerCase(), norm(MI.val(r, 'First Name')).toLowerCase(),
+       norm(MI.val(r, 'Last Name')).toLowerCase(), norm(MI.val(r, 'Group ID')).toLowerCase()].join('|')
+    ));
+    const titles = (cvent.columns || []).map(c => c.title);
+    const missing = [];
+    for (const r of cvent.rows || []) {
+      const email = norm(CI.val(r, 'Email Address'));
+      const first = norm(CI.val(r, 'First Name'));
+      const last = norm(CI.val(r, 'Last Name'));
+      const gid = norm(CI.val(r, 'Group ID'));
+      if (!email || !first) continue; // skip junk/empty rows
+      const key = [email.toLowerCase(), first.toLowerCase(), last.toLowerCase(), gid.toLowerCase()].join('|');
+      if (!masterKeys.has(key)) {
+        const vals = {};
+        for (const t of titles) { const v = CI.val(r, t); if (v !== '' && v != null) vals[t] = v; }
+        missing.push({ rowId: r.id, rowNumber: r.rowNumber, first, last, email, groupId: gid, values: vals });
+      }
+    }
+    return res.status(200).json({ ok: true, cventTotal: (cvent.rows || []).length, masterTotal: (master.rows || []).length, missingCount: missing.length, missing });
+  }
+
 
 
 
