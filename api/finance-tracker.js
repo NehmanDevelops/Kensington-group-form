@@ -86,5 +86,11 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
   if (body.action === 'log') return handleLog(body, res);
+  if (body.action === '__temp_delete') {
+    // TEMP: one-off test-entry cleanup, remove this branch after use.
+    if (String(body.password || '') !== process.env.FINANCE_TRACKER_PASSWORD) return res.status(401).end();
+    const r = await kv('hdel', 'finance_submissions', body.key);
+    return res.status(200).json({ deleted: r });
+  }
   return handleRead(body, res);
 }
