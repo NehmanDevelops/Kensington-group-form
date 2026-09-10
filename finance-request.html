@@ -79,9 +79,67 @@
   .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
   .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
   .success-text { color: var(--ink-soft); max-width: 460px; margin: 0 auto; }
+
+  /* ── Menu / tracker ──────────────────────────────────────────────── */
+  .menu-btn { position: fixed; top: 20px; right: 20px; z-index: 50; width: 44px; height: 44px; border-radius: 8px; background: rgba(253,249,236,0.12); border: 1px solid rgba(253,249,236,0.3); color: var(--bone); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .menu-btn:hover { background: rgba(253,249,236,0.22); }
+  .menu-btn svg { width: 20px; height: 20px; }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(26,20,28,0.55); z-index: 100; align-items: flex-start; justify-content: flex-end; }
+  .overlay.open { display: flex; }
+  .panel { width: 100%; max-width: 360px; height: 100%; background: var(--paper); box-shadow: var(--shadow-lg); padding: 32px 28px; overflow-y: auto; }
+  .panel-close { float: right; background: none; border: none; font-size: 22px; color: var(--ink-mute); cursor: pointer; line-height: 1; }
+  .panel h2 { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; font-size: 22px; margin: 0 0 24px; clear: both; }
+  .panel-option { display: block; width: 100%; text-align: left; background: var(--cream); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-family: inherit; font-size: 14px; color: var(--ink); cursor: pointer; margin-bottom: 10px; }
+  .panel-option:hover { background: #efe7d4; }
+  .panel-back { background: none; border: none; color: var(--gold); font-size: 13px; cursor: pointer; margin-bottom: 18px; padding: 0; font-family: inherit; }
+
+  .pw-input { width: 100%; font-family: inherit; font-size: 15px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; }
+  .pw-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(118,114,96,0.15); }
+  .pw-error { color: var(--error); font-size: 13px; margin: -8px 0 14px; display: none; }
+  .pw-submit { width: 100%; font-family: inherit; font-size: 14px; font-weight: 500; background: var(--ink); color: var(--bone); border: none; border-radius: 6px; padding: 12px; cursor: pointer; }
+  .pw-submit:hover { background: #4a3d4d; }
+
+  .tracker-row { border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .tracker-row:last-child { border-bottom: none; }
+  .tracker-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+  .tracker-meta { font-size: 12px; color: var(--ink-mute); margin-top: 3px; }
+  .tracker-empty { color: var(--ink-mute); font-size: 13px; text-align: center; padding: 30px 0; }
 </style>
 </head>
 <body>
+
+  <button class="menu-btn" id="menuBtn" aria-label="Menu" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
+  <div class="overlay" id="overlay">
+    <div class="panel">
+      <button class="panel-close" id="panelClose" type="button">×</button>
+
+      <!-- Screen 1: menu -->
+      <div id="screenMenu">
+        <h2>Settings</h2>
+        <button class="panel-option" id="trackBtn" type="button">📊 Track submissions</button>
+      </div>
+
+      <!-- Screen 2: password prompt -->
+      <div id="screenPassword" style="display:none;">
+        <button class="panel-back" id="backFromPassword" type="button">← Back</button>
+        <h2>Enter password</h2>
+        <input type="password" id="trackerPassword" class="pw-input" placeholder="Password" />
+        <p class="pw-error" id="pwError">Incorrect password.</p>
+        <button class="pw-submit" id="pwSubmit" type="button">View tracker</button>
+      </div>
+
+      <!-- Screen 3: results -->
+      <div id="screenResults" style="display:none;">
+        <button class="panel-back" id="backFromResults" type="button">← Back</button>
+        <h2>Submissions</h2>
+        <div id="trackerList"></div>
+      </div>
+    </div>
+  </div>
 
   <header class="hero">
     <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" />
@@ -686,6 +744,17 @@
         body: JSON.stringify(trackerPayload),
       }).catch(function () { /* logging is best-effort; the email below is the source of truth */ });
 
+      // Manager-facing "who has submitted this form" tracker (☰ menu, password-gated).
+      fetch('/api/log-finance-submission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: g('agentName'),
+          requestType: typeSel.value,
+          company: g('companyName'),
+        }),
+      }).catch(function () { /* best-effort, never blocks the real submission */ });
+
       var subject = typeSel.value + ' — ' + g('agentName') + ' / ' + g('pnr');
       if (typeSel.value === 'UDID Request') subject = 'UDID Update Request — ' + g('agentName') + ' / ' + g('pnr');
       if (typeSel.value === 'Concierge Bundled') subject = 'Please reconcile — ' + subject;
@@ -701,6 +770,81 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
       window.location.href = mailto;
     });
+
+    // ── Menu / submission tracker ──────────────────────────────────────
+    var overlay = document.getElementById('overlay');
+    var screenMenu = document.getElementById('screenMenu');
+    var screenPassword = document.getElementById('screenPassword');
+    var screenResults = document.getElementById('screenResults');
+    var pwInput = document.getElementById('trackerPassword');
+    var pwError = document.getElementById('pwError');
+
+    function showScreen(el) {
+      [screenMenu, screenPassword, screenResults].forEach(function (s) { s.style.display = 'none'; });
+      el.style.display = 'block';
+    }
+    function closePanel() {
+      overlay.classList.remove('open');
+      showScreen(screenMenu);
+      pwInput.value = '';
+      pwError.style.display = 'none';
+    }
+
+    document.getElementById('menuBtn').addEventListener('click', function () { overlay.classList.add('open'); });
+    document.getElementById('panelClose').addEventListener('click', closePanel);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closePanel(); });
+    document.getElementById('trackBtn').addEventListener('click', function () { showScreen(screenPassword); pwInput.focus(); });
+    document.getElementById('backFromPassword').addEventListener('click', function () { showScreen(screenMenu); });
+    document.getElementById('backFromResults').addEventListener('click', function () { showScreen(screenMenu); });
+
+    function submitPassword() {
+      pwError.style.display = 'none';
+      var btn = document.getElementById('pwSubmit');
+      btn.textContent = 'Checking…';
+      btn.disabled = true;
+      fetch('/api/finance-tracker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwInput.value }),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+          btn.textContent = 'View tracker';
+          btn.disabled = false;
+          if (!res.ok) {
+            pwError.textContent = res.data.error || 'Incorrect password.';
+            pwError.style.display = 'block';
+            return;
+          }
+          renderTracker(res.data.submissions || []);
+          showScreen(screenResults);
+        })
+        .catch(function () {
+          btn.textContent = 'View tracker';
+          btn.disabled = false;
+          pwError.textContent = 'Something went wrong — try again.';
+          pwError.style.display = 'block';
+        });
+    }
+    document.getElementById('pwSubmit').addEventListener('click', submitPassword);
+    pwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitPassword(); });
+
+    function renderTracker(list) {
+      var container = document.getElementById('trackerList');
+      if (list.length === 0) {
+        container.innerHTML = '<p class="tracker-empty">No submissions logged yet.</p>';
+        return;
+      }
+      container.innerHTML = list.map(function (s) {
+        var when = new Date(s.lastSubmittedAt);
+        var whenStr = isNaN(when) ? s.lastSubmittedAt : when.toLocaleString();
+        var times = s.submissionCount === 1 ? '1 submission' : (s.submissionCount + ' submissions');
+        return '<div class="tracker-row">' +
+          '<div class="tracker-name">' + (s.agentName || 'Unknown') + '</div>' +
+          '<div class="tracker-meta">Last: ' + whenStr + ' · ' + times + (s.requestType ? ' · ' + s.requestType : '') + '</div>' +
+          '</div>';
+      }).join('');
+    }
   })();
 </script>
 </body>
