@@ -427,18 +427,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP DEBUG (2026-09-15): call Raymond's white-label GetRequest endpoint to see the
-  // real full response shape before wiring it into the webhook handler. Remove after.
-  if (body.__testGetRequest && body.workspaceGuid && body.itineraryId) {
-    let auth = await getAmgineToken('basic');
-    if (!auth.ok) auth = await getAmgineToken('post');
-    if (!auth.ok) return res.status(200).json({ ok: false, error: 'Amgine token failed', detail: auth.detail });
-    const r = await fetch(`https://app.amgine.ai/publicapi/api/AgentApp/requests/${body.workspaceGuid}/${body.itineraryId}`, {
-      headers: { Authorization: `Bearer ${auth.token}` },
-    });
-    const j = await r.json().catch(() => null);
-    return res.status(200).json({ ok: r.ok, status: r.status, data: j });
-  }
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
@@ -515,6 +503,49 @@ export default async function handler(req, res) {
       if (extId) row = rows.find(r => String(r.id) === extId);
       if (!row && itinId) row = rows.find(r => norm(M.val(r, 'Amgine Itinerary ID')) === itinId);
       if (!row) {
+        // No matching row = this itinerary didn't originate from our own SEND
+        // flow — most likely a White Label submission that went straight to
+        // Amgine. Per Raymond (2026-09-15): on a "Ready" state with no match,
+        // pull the full submitted request via his GetRequest endpoint and add
+        // it to Smartsheet as a new traveller row instead of just dropping it.
+        if (norm(body.ItineraryState) === 'Ready' && itinId && norm(body.WorkspaceGuid)) {
+          try {
+            let auth = await getAmgineToken('basic');
+            if (!auth.ok) auth = await getAmgineToken('post');
+            if (auth.ok) {
+              const r = await fetch(`https://app.amgine.ai/publicapi/api/AgentApp/requests/${body.WorkspaceGuid}/${itinId}`, {
+                headers: { Authorization: `Bearer ${auth.token}` },
+              });
+              const wl = await r.json().catch(() => null);
+              const user = wl?.itineraryIntent?.userNodes?.[0]?.user;
+              const elements = wl?.itineraryIntent?.userNodes?.[0]?.elements || [];
+              const depLeg = elements[0]?.flightElement;
+              const retLeg = elements[1]?.flightElement;
+              const depAirport = depLeg ? `${depLeg.from?.airportCode || ''} -> ${depLeg.to?.airportCode || ''}` : '';
+              const cells = [];
+              if (M.id('Group ID') && wl?.servicedEntityBranchName) cells.push({ columnId: M.id('Group ID'), value: wl.servicedEntityBranchName });
+              if (M.id('First Name') && user?.firstName) cells.push({ columnId: M.id('First Name'), value: user.firstName });
+              if (M.id('Last Name') && user?.lastName) cells.push({ columnId: M.id('Last Name'), value: user.lastName });
+              if (M.id('Email') && (wl?.travellerEmailAddress || user?.emailAddress)) cells.push({ columnId: M.id('Email'), value: wl.travellerEmailAddress || user.emailAddress });
+              if (M.id('Phone Number') && user?.phoneNumber) cells.push({ columnId: M.id('Phone Number'), value: user.phoneNumber });
+              if (M.id('Departure Airport') && depAirport.trim() !== '->') cells.push({ columnId: M.id('Departure Airport'), value: depAirport });
+              if (M.id('Departure Date') && depLeg?.departureDate) cells.push({ columnId: M.id('Departure Date'), value: depLeg.departureDate.slice(0, 10) });
+              if (M.id('Return Date') && retLeg?.departureDate) cells.push({ columnId: M.id('Return Date'), value: retLeg.departureDate.slice(0, 10) });
+              if (M.id('Amgine Itinerary ID')) cells.push({ columnId: M.id('Amgine Itinerary ID'), value: itinId });
+              if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: amgineStatus(body) });
+              const link = amgineLink(body);
+              if (link && M.id('Amgine Link')) cells.push({ columnId: M.id('Amgine Link'), value: link });
+              if (M.id('Source')) cells.push({ columnId: M.id('Source'), value: 'White Label' });
+              if (cells.length) {
+                const created = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+                const cj = await created.json().catch(() => ({}));
+                return res.status(200).json({ ok: true, matched: false, whiteLabelIngested: true, itinId, newRowId: cj?.result?.[0]?.id });
+              }
+            }
+          } catch (wlErr) {
+            console.log('White-label GetRequest ingestion failed:', wlErr.message);
+          }
+        }
         console.log('Amgine webhook: no matching row', JSON.stringify({ extId, itinId, state: body.ItineraryState }));
         return res.status(200).json({ ok: true, matched: false, note: 'no matching traveller row' });
       }
