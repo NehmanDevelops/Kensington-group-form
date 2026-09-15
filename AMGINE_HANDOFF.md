@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-01 — Departure Airport/City columns merged, real Intent-building shipped, IntentOnly set to false per Raymond after the timeout recurred even with real Intent data, stuck Processing/Suspense itineraries traced to a healthy branch (likely Amgine-side) (§25-§33). See §32 for what's still open — §31.4 (whether IntentOnly:false actually fixes the timeout) is the most important unresolved item._
+_Last updated: 2026-09-15 — Known Traveler Number fixed to read the real Global Entry Number column (covers TSA PreCheck/Global Entry/Nexus), White Label submissions now auto-ingest into Smartsheet via Raymond's GetRequest endpoint (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from the prior update._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -669,3 +669,66 @@ With branch config confirmed clean, a itinerary stuck indefinitely on "Processin
 
 ### 33.4 What we can't check — email delivery to real clients
 Vera separately asked us to confirm whether emails actually went out for the 11 real "Agent Approved" quotes. **We have no way to check this** — there's no API access to Amgine's email-delivery logs from our side. The only way to confirm is the **"Request History"** tab in Agent Experience, checked manually per itinerary, by someone with Agent Experience access (same limitation as §22's PNR-notification issue). The actual list of 11 itinerary IDs wasn't available to check individually (referenced in a table that didn't come through) — if this recurs, get the itinerary IDs directly so branch/queue health can at least be spot-checked per one (though that still won't confirm email delivery itself).
+
+---
+
+## 34. GOT A NEW COLUMN: KNOWN TRAVELER NUMBER FIXED (2026-09-15)
+
+Task-list item ("format for known traveller/nexus to go into Amgine") turned out to be a one-line fix, no Raymond needed. `api/amgine.js` has sent a `KnownTravelerNumber` field in every booking payload for months — but it was reading a column called **`Known Traveller Number`**, which never existed on the Traveller MasterSheet. Confirmed with Vera the real column is **`Global Entry Number`**.
+
+**Fix (commit `fc31ecc`)**:
+```js
+ktn: norm(M.val(mrow, 'Global Entry Number')) || norm(M.val(mrow, 'Known Traveller Number')),
+```
+**One column now covers TSA PreCheck, Global Entry, AND Nexus** — all three are DHS Trusted Traveler Programs and share the same `KnownTravelerNumber` usage in GDS/Secure Flight, so no separate Nexus field is needed. Verified live: booked with a Global Entry number filled in, no errors (itinerary `294919`).
+
+---
+
+## 35. WHITE LABEL — SUBMISSIONS NOW AUTO-INGESTED INTO SMARTSHEET (Raymond, 2026-09-15)
+
+### 35.1 The problem this closes
+Raymond finally sent the long-requested "API Docs for Whitelabel" — via a screen-recorded video (`GetRequest.mp4`), not written docs. It showed a new endpoint (`GetRequest`) that returns the full data of any trip submitted directly through the white-label form — something that, until now, landed in Amgine with **no path back into our Smartsheet at all**, since white-label bookings never go through our own `/api/amgine` SEND flow.
+
+### 35.2 The endpoint (extracted from the video + confirmed by a real call)
+```
+GET https://app.amgine.ai/publicapi/api/AgentApp/requests/{workspaceGuid}/{itineraryId}
+Authorization: Bearer <token>   ← same OAuth token/creds we already use everywhere (getAmgineToken())
+```
+Real example: `.../requests/6bc04e42-c3bb-4061-a635-c105db14c8dd/294573`. No new credentials, no new env vars.
+
+### 35.3 What the response contains (confirmed via a real call, not just the video)
+A large payload (~130KB, full GDS pricing/fare detail) — the useful subset:
+- `servicedEntityBranchName` — the branch/Group ID (e.g. `VQ9GMONFEB27CUN`)
+- `travellerEmailAddress`
+- `itineraryIntent.userNodes[0].user.{firstName,lastName,emailAddress,phoneNumber,dateOfBirth}`
+- `itineraryIntent.userNodes[0].elements[].flightElement.{from.airportCode, to.airportCode, departureDate}` — one element per flight leg, same shape as our own `Intent.Nodes`
+- `itinerary.id`, `itinerary.itineraryState`
+
+### 35.4 How it's wired in (commit `2606845`, `api/amgine.js`)
+Inside the existing webhook handler (`if (body.ItineraryState)`), when **no matching Smartsheet row is found** (the existing fallback for "this itinerary isn't one we sent") **and** `body.ItineraryState === 'Ready'` **and** `body.WorkspaceGuid` is present (both already arrive on every real Amgine webhook — confirmed, no guesswork), it now:
+1. Calls `GetRequest` with the webhook's own `WorkspaceGuid` + `ItineraryId`
+2. Builds a new traveller row from the response and **creates it in the Traveller MasterSheet** (`POST .../rows`, `toBottom: true`)
+3. Tags it `Source = White Label` so these are easy to filter/identify apart from our own pipeline's rows
+
+Fields written: Group ID, First/Last Name, Email, Phone, Departure Airport (`"FROM -> TO"` format, same as our merged column from §25), Departure Date, Return Date, Amgine Itinerary ID, Amgine Status, Amgine Link.
+
+### 35.5 Verified live end-to-end
+Simulated a "Ready" webhook using the real example itinerary (`294573`) with no matching row on purpose — confirmed a new row was created with every field correct:
+
+| Field | Value |
+|---|---|
+| Group ID | `VQ9GMONFEB27CUN` |
+| Name | Vera Perisic |
+| Email | vera.perisic@kensingtoncorporate.com |
+| Departure Airport | `YYZ -> CDG` |
+| Departure Date | 2027-02-07 |
+| Return Date | 2027-02-25 |
+| Status | Ready — agent to action |
+| Source | White Label |
+
+Test row deleted after (it was a duplicate of real data already tracked elsewhere — the test only proved the mechanism, no new data was actually created).
+
+### 35.6 What's NOT yet handled
+- **Only the "Ready" state triggers ingestion**, per Raymond's exact instruction. If a white-label itinerary's *first* webhook hit us in some other state, it would still fall through to "no matching row" and be silently dropped — not yet confirmed whether "Ready" is always the first state a fresh white-label submission produces.
+- **Multi-traveller submissions**: the code only reads `userNodes[0]` — a white-label request with more than one traveller would only capture the first. Not yet confirmed whether white-label ever produces multi-traveller requests.
+- **Duplicate-row risk**: if the SAME white-label itinerary somehow gets its "Ready" webhook fired more than once (e.g. a retry), it would create a **second** duplicate row — there's no idempotency guard here yet, unlike the onboarding guard built in §19. Worth adding if this turns out to be a real occurrence.
