@@ -427,6 +427,19 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP DEBUG (2026-09-15): call Raymond's white-label GetRequest endpoint to see the
+  // real full response shape before wiring it into the webhook handler. Remove after.
+  if (body.__testGetRequest && body.workspaceGuid && body.itineraryId) {
+    let auth = await getAmgineToken('basic');
+    if (!auth.ok) auth = await getAmgineToken('post');
+    if (!auth.ok) return res.status(200).json({ ok: false, error: 'Amgine token failed', detail: auth.detail });
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/AgentApp/requests/${body.workspaceGuid}/${body.itineraryId}`, {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    });
+    const j = await r.json().catch(() => null);
+    return res.status(200).json({ ok: r.ok, status: r.status, data: j });
+  }
+
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
