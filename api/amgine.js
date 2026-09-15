@@ -181,7 +181,12 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     first: norm(M.val(mrow, 'First Name')), middle: norm(M.val(mrow, 'Middle Name')),
     last: norm(M.val(mrow, 'Last Name')), gender: toGender(M.val(mrow, 'Gender')),
     dob: toDOB(M.val(mrow, 'Date of Birth')), email: norm(M.val(mrow, 'Email')) || norm(M.val(mrow, 'Email Address')),
-    phone: norm(M.val(mrow, 'Phone Number')), ktn: norm(M.val(mrow, 'Known Traveller Number')),
+    // 'Known Traveller Number' column never existed on the sheet — the real
+    // column is 'Global Entry Number' (2026-09-15, Vera). Global Entry, TSA
+    // PreCheck, and NEXUS are all DHS Trusted Traveler Programs and share the
+    // same KnownTravelerNumber usage in GDS/Secure Flight, so one column
+    // covers all of them — no separate Nexus field needed.
+    phone: norm(M.val(mrow, 'Phone Number')), ktn: norm(M.val(mrow, 'Global Entry Number')) || norm(M.val(mrow, 'Known Traveller Number')),
     redress: norm(M.val(mrow, 'Redress Number')), country: norm(M.val(mrow, 'Pass Country of Issue')),
     groupId: norm(M.val(mrow, 'Group ID')),
     // Agents have been typing the actual date into 'Departure Time'/'Return
