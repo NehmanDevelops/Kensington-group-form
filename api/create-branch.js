@@ -769,6 +769,19 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, columns: (sheet.columns || []).map(c => ({ index: c.index, title: c.title, id: c.id, hidden: !!c.hidden })) });
   }
 
+  // TEMP: one-shot — move "White Label Status" (id 6348238833356676) to sit right
+  // after "White Label URL" (index 37) instead of at the far end of the sheet
+  // (remove after use).
+  if (norm(body.__moveWlStatusCol) === 'kcg-move-wl-status-2026') {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUPS}/columns/6348238833356676`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index: 38 }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ ok: r.ok, raw: j });
+  }
+
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.
