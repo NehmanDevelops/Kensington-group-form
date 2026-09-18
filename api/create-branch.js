@@ -715,6 +715,51 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: create a test group row with a known Branch GUID, unchecked white
+  // label box (remove after use).
+  if (norm(body.__createWlTestRow)) {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
+      ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
+    });
+    const sheet = await (await ss(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const idByTitle = {};
+    for (const c of sheet.columns || []) idByTitle[c.title.trim().toLowerCase()] = c.id;
+    const cells = [];
+    if (idByTitle['group id']) cells.push({ columnId: idByTitle['group id'], value: norm(body.__groupId) });
+    if (idByTitle['amgine branch guid']) cells.push({ columnId: idByTitle['amgine branch guid'], value: norm(body.__branchGuid) });
+    if (idByTitle['amgine onboarded']) cells.push({ columnId: idByTitle['amgine onboarded'], value: true });
+    const r = await ss(`/sheets/${GROUPS}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+    const j = await r.json().catch(() => ({}));
+    const rowId = j.result && j.result[0] && j.result[0].id;
+    return res.status(200).json({ ok: r.ok, rowId });
+  }
+
+  // TEMP: tick the "Enable White Label" checkbox on a specific row — a real
+  // Smartsheet change, exercising the actual registered webhook (remove after use).
+  if (norm(body.__tickWhiteLabel) && body.__rowId) {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
+      ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
+    });
+    const sheet = await (await ss(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const col = (sheet.columns || []).find(c => c.title.trim().toLowerCase() === 'enable white label');
+    if (!col) return res.status(200).json({ ok: false, error: 'Enable White Label column not found' });
+    const r = await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: col.id, value: true }] }]) });
+    return res.status(200).json({ ok: r.ok, ticked: true });
+  }
+
+  // TEMP: check a row's White Label Status / other fields (remove after use, no writes).
+  if (norm(body.__checkWlRow)) {
+    const sheet = await (await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUPS}`, { headers: { Authorization: `Bearer ${process.env.SMARTSHEET_API_TOKEN}` } })).json();
+    const idByTitle = {};
+    for (const c of sheet.columns || []) idByTitle[c.title.trim().toLowerCase()] = c.id;
+    const row = (sheet.rows || []).find(r => String(r.id) === norm(body.__checkWlRow));
+    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
+    const val = (t) => { const c = (row.cells || []).find(x => x.columnId === idByTitle[t]); return c ? (c.value ?? c.displayValue ?? '') : ''; };
+    return res.status(200).json({ ok: true, status: val('white label status'), enableWhiteLabel: val('enable white label'), branchGuid: val('amgine branch guid'), whiteLabelUrl: val('white label url') });
+  }
+
   // TEMP: one-shot — add the "White Label Status" column to LIVE GROUP
   // MASTERSHEET if missing (remove after use).
   if (norm(body.__setupWhiteLabelStatusCol) === 'kcg-wl-status-2026') {
