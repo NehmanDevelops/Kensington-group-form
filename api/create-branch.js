@@ -647,7 +647,7 @@ export default async function handler(req, res) {
     const keys = Object.keys(j);
     const itemCount = Array.isArray(j.items) ? j.items.length : null;
     const sample = Array.isArray(j.items) ? j.items.slice(0, 3).map(x => ({ id: x.id, guid: x.guid, name: x.name })) : null;
-    return res.status(200).json({ ok: true, topLevelKeys: keys, itemCount, sample });
+    return res.status(200).json({ ok: true, topLevelKeys: keys, itemCount, sample, paging: j.paging });
   }
 
   // ── Smartsheet webhook change event ─────────────────────────────────────
