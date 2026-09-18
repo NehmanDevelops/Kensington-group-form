@@ -27,6 +27,7 @@ const SRC_SE  = Number(process.env.AMGINE_SOURCE_SE || 918);
 
 // Titles (lower-cased) that flag a row for onboarding. First match wins.
 const TRIGGER_TITLES = ['create amgine branch', 'onboard to amgine', 'create branch'];
+const WHITE_LABEL_TRIGGER_TITLE = 'enable white label'; // existing checkbox column, §36.2
 
 const CREATE_BRANCH_URL = 'https://app.amgine.ai/publicapi/api/ClientOnboard/bulkUploadServicedEntityBranch?returnSuccess=true';
 const policyUrl      = (guid) => `https://app.amgine.ai/publicapi/api/servicedEntity/0/Policy?servicedEntityBranchGuid=${guid}`;
@@ -99,6 +100,39 @@ async function fixBranchQueues(amg, branchId, successQueueId, failQueueId) {
   const putRes = await amg(branchUrl(branchId), body, 'PUT');
   const j = await putRes.json().catch(() => ({}));
   return { ok: putRes.ok, data: j };
+}
+
+// Resolve a branch's numeric internal id from its GUID (2026-09-18) — needed
+// because branchUrl()/GET-PUT only accepts the numeric id, but Smartsheet only
+// ever stores the GUID. GET /ServicedEntityBranch?tmcId=X is paginated (20/page,
+// confirmed 7 pages ≈140 branches); walks pages until found or exhausted.
+const listBranchesUrl = (page) => `https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}&page=${page}`;
+async function resolveBranchIdByGuid(amg, guid) {
+  const wanted = norm(guid).toLowerCase();
+  let page = 1, totalPageCount = 1;
+  do {
+    const r = await amg(listBranchesUrl(page), null, 'GET');
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return null;
+    const hit = (j.items || []).find(it => norm(it.guid).toLowerCase() === wanted);
+    if (hit) return hit.id;
+    totalPageCount = (j.paging || {}).totalPageCount || 1;
+    page++;
+  } while (page <= totalPageCount);
+  return null;
+}
+
+// Toggle "Enable White Label" on a branch (2026-09-18, per Raymond call
+// 2026-09-17). Same GET-full-record-then-PUT pattern as fixBranchQueues —
+// Amgine's branch endpoint takes the WHOLE record, not a partial patch.
+async function setEnableWhiteLabel(amg, branchId, enabled) {
+  const getRes = await amg(branchUrl(branchId), null, 'GET');
+  const branch = await getRes.json().catch(() => null);
+  if (!getRes.ok || !branch) return { ok: false, error: 'could not read branch back' };
+  const body = { ...branch, enableWhiteLabel: enabled };
+  const putRes = await amg(branchUrl(branchId), body, 'PUT');
+  const j = await putRes.json().catch(() => ({}));
+  return { ok: putRes.ok, whiteLabelTravelFormUrl: branch.whiteLabelTravelFormUrl, data: j };
 }
 
 // Appends a numeric branch id to a connector's branchIds and saves it back.
@@ -511,22 +545,24 @@ async function handleGroupWebhook(events, res) {
   };
 
   const triggerCol = TRIGGER_TITLES.map(colId).find(Boolean);
-  if (!triggerCol) return res.status(200).json({ ok: true, processed: 0, note: 'no trigger column on the group sheet' });
+  const whiteLabelTriggerCol = colId(WHITE_LABEL_TRIGGER_TITLE);
+  if (!triggerCol && !whiteLabelTriggerCol) return res.status(200).json({ ok: true, processed: 0, note: 'no trigger column on the group sheet' });
 
-  // Only do work when the trigger column changed or a row was created — mirrors
-  // amgine.js. (Any other edit just returns fast.)
-  const relevant = events.some(e => e.columnId === triggerCol || (e.objectType === 'row' && e.eventType === 'created'));
+  // Only do work when a watched trigger column changed or a row was created —
+  // mirrors amgine.js. Any other edit just returns fast.
+  const relevant = events.some(e =>
+    e.columnId === triggerCol || e.columnId === whiteLabelTriggerCol
+    || (e.objectType === 'row' && e.eventType === 'created'));
   if (!relevant) return res.status(200).json({ ok: true, processed: 0, note: 'no trigger change' });
 
   // Eligible = trigger ticked AND not already onboarded (Branch GUID empty).
   // The Branch-GUID guard is the idempotency lock: a duplicate/re-fired webhook,
   // or leaving the box checked, never creates a second branch.
-  const isChecked = (row) => {
-    const c = (row.cells || []).find(x => x.columnId === triggerCol);
+  const isCheckedCol = (row, col) => {
+    const c = (row.cells || []).find(x => x.columnId === col);
     return !!(c && (c.value === true || c.value === 'true'));
   };
-  const eligible = (sheet.rows || []).filter(r => isChecked(r) && !norm(val(r, 'amgine branch guid')));
-  if (!eligible.length) return res.status(200).json({ ok: true, processed: 0, note: 'no eligible rows (already onboarded or unchecked)' });
+  const eligible = triggerCol ? (sheet.rows || []).filter(r => isCheckedCol(r, triggerCol) && !norm(val(r, 'amgine branch guid'))) : [];
 
   const token = await getToken();
   if (!token) return res.status(200).json({ ok: false, error: 'Amgine token failed' });
@@ -616,7 +652,49 @@ async function handleGroupWebhook(events, res) {
       ...(missing.length ? { missingColumns: missing } : {}), ...(r.notes ? { notes: r.notes } : {}) });
   }
 
-  return res.status(200).json({ ok: true, processed: results.length, results });
+  // ── White Label enable pass (2026-09-18, §36) ────────────────────────────
+  // Eligible = "Enable White Label" ticked, has an onboarded branch (GUID
+  // present), AND not already processed (guard: "White Label Status" empty —
+  // same "own result column as idempotency lock" pattern as Branch GUID above).
+  // Ticking it OFF, or leaving it checked after success, never re-runs this.
+  const wlEligible = whiteLabelTriggerCol
+    ? (sheet.rows || []).filter(r => isCheckedCol(r, whiteLabelTriggerCol)
+        && norm(val(r, 'amgine branch guid')) && !norm(val(r, 'white label status')))
+    : [];
+  const wlResults = [];
+  for (const row of wlEligible) {
+    const guid = norm(val(row, 'amgine branch guid'));
+    const groupId = norm(val(row, 'group id'));
+    let outcome;
+    try {
+      const branchId = await resolveBranchIdByGuid(amg, guid);
+      if (!branchId) {
+        outcome = { ok: false, error: `could not resolve numeric branch id for guid ${guid}` };
+      } else {
+        const enableRes = await setEnableWhiteLabel(amg, branchId, true);
+        outcome = enableRes.ok
+          ? { ok: true, whiteLabelUrl: enableRes.whiteLabelTravelFormUrl || `https://app.amgine.ai/travel-form/${guid}` }
+          : { ok: false, error: enableRes.error || 'PUT failed' };
+      }
+    } catch (err) {
+      outcome = { ok: false, error: err.message };
+    }
+    const statusColId = colId('white label status');
+    if (statusColId) {
+      const msg = outcome.ok ? `✓ White Label Enabled — ${outcome.whiteLabelUrl}` : `✗ ${outcome.error}`;
+      try {
+        await ssRetry(`https://api.smartsheet.com/2.0/sheets/${GROUPS}/rows`, {
+          method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ id: row.id, cells: [{ columnId: statusColId, value: msg.slice(0, 4000) }] }]),
+        });
+      } catch (err) {
+        console.error(`White Label status write-back failed for row ${row.id} (group ${groupId}):`, err.message);
+      }
+    }
+    wlResults.push({ rowId: row.id, groupId, ...outcome });
+  }
+
+  return res.status(200).json({ ok: true, processed: results.length, results, whiteLabelProcessed: wlResults.length, whiteLabelResults: wlResults });
 }
 
 export default async function handler(req, res) {
@@ -637,17 +715,19 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: inspect full shape of the working list endpoint (pagination? count?)
-  // (remove after use, no writes).
-  if (norm(body.__inspectListShape)) {
-    const token = await getToken();
-    if (!token) return res.status(200).json({ ok: false, error: 'token failed' });
-    const r = await fetch(`https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`, { headers: { Authorization: `Bearer ${token}` } });
+  // TEMP: one-shot — add the "White Label Status" column to LIVE GROUP
+  // MASTERSHEET if missing (remove after use).
+  if (norm(body.__setupWhiteLabelStatusCol) === 'kcg-wl-status-2026') {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
+      ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
+    });
+    const sheet = await (await ss(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const existing = (sheet.columns || []).find(c => c.title.trim().toLowerCase() === 'white label status');
+    if (existing) return res.status(200).json({ ok: true, alreadyExists: true, colId: existing.id });
+    const r = await ss(`/sheets/${GROUPS}/columns`, { method: 'POST', body: JSON.stringify([{ title: 'White Label Status', type: 'TEXT_NUMBER', index: (sheet.columns || []).length }]) });
     const j = await r.json().catch(() => ({}));
-    const keys = Object.keys(j);
-    const itemCount = Array.isArray(j.items) ? j.items.length : null;
-    const sample = Array.isArray(j.items) ? j.items.slice(0, 3).map(x => ({ id: x.id, guid: x.guid, name: x.name })) : null;
-    return res.status(200).json({ ok: true, topLevelKeys: keys, itemCount, sample, paging: j.paging });
+    return res.status(200).json({ ok: r.ok, raw: j });
   }
 
   // ── Smartsheet webhook change event ─────────────────────────────────────
