@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-18 — Raymond answered the White Label blocking questions (§36.3): enabling happens in Amgine's TMT directly (not our Smartsheet checkbox), the generated URL appears there once enabled, and we're responsible for emailing it to travelers ourselves — Amgine never sends it. Next step: pick a test branch, enable it in TMT, confirm the URL, then build fetch-and-write-to-sheet. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
+_Last updated: 2026-09-18 — Shipped the White Label URL column (§36.5): deterministic from the branch's own GUID, auto-written on future onboarding + backfilled for all 12 existing branches. Caveat: the URL exists whether or not white-labeling is actually enabled for that branch in TMT — do NOT treat a populated column as proof it's live for a client. Raymond's earlier blocking questions (§36.3) are answered: enabling happens in Amgine's TMT directly, and we're responsible for emailing the link to travelers ourselves. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -755,9 +755,19 @@ Added a new column, **"Enable White Label"** (`CHECKBOX` type), to the **LIVE GR
 
 **Revised plan now that this is unblocked:**
 - Enabling a branch is a **manual TMT action** (by us, in Amgine's UI) — not something our Smartsheet checkbox needs to trigger via API, unless we later decide to automate that too.
-- What DOES still need building: a way to **fetch the "White Label Generated URL" back from Amgine** (via the branch's config, likely the same branch-GET mechanism already used for queue/connector checks in §33) and **surface it in Smartsheet** — so once a branch is enabled in TMT, the URL lands somewhere Vera/agents can grab it to paste into a traveler email. Column doesn't exist yet.
-- **Immediate next step:** pick a real test branch, enable it in TMT ourselves, confirm the generated URL appears, then build the fetch-and-write-to-sheet piece against that real example. Raymond's email also literally asked *"Which branch are you testing against?"* — worth telling him once we've picked one.
 - The three lower-priority §35.6 confirmation questions (Ready-always-first-state, multi-traveller, webhook redelivery) remain unasked — still fine to defer.
+
+### 36.5 SHIPPED: White Label URL column (2026-09-18, commit `5b0561c`)
+While investigating, discovered the actual field on Amgine's `ServicedEntityBranch` record: **`whiteLabelTravelFormUrl`** — and it's **deterministic from the branch's own GUID**: `https://app.amgine.ai/travel-form/{branchGuid}`. Confirmed by reading two real branches (`VQ9GMONFEB27CUN` guid `3a71d5a4-...` and a fresh test branch guid `a509aa62-...`) — the URL field matched the pattern exactly both times, no extra API call needed since we already store every branch's GUID.
+
+**⚠️ Important caveat:** this URL resolves/exists regardless of whether `enableWhiteLabel` is true for that branch (confirmed both test branches had `enableWhiteLabel: false` yet a populated URL). **Having the URL written is NOT the same as white-labeling being live** — until someone flips "Enable White Label" on for that branch in TMT, the link likely won't actually function for a traveler. Don't tell Vera/a client a branch's white-label form is ready just because this column has a value.
+
+**What shipped:**
+- New column **"White Label URL"** on LIVE GROUP MASTERSHEET (constructed 2026-09-18, id `3699638651359108`).
+- `onboard()` in `api/create-branch.js` now computes and writes this URL for every **future** branch onboarding (both the checkbox-webhook path and the direct-POST path) — no code change needed elsewhere.
+- **Backfilled all 12 already-onboarded branches** from their existing stored GUID, via a one-shot admin (run once, then removed — same pattern as every other one-shot column/backfill in this file).
+
+**Still open:** once a branch is actually enabled in TMT for real, worth doing one live check that a traveler visiting the URL actually sees a working form — that's the real confirmation this feature is fully correct, not just that the URL pattern matches.
 
 ### 36.4 Also still outstanding from §35.6 (lower priority, not blocking, but should still be asked eventually)
 The three GetRequest confirmation questions (Ready-always-first-state, multi-traveller support, webhook redelivery/retries) were deliberately left out of the 2026-09-15 email to keep it focused — worth a follow-up once §36.3 is resolved.
