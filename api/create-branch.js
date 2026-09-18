@@ -715,6 +715,15 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: re-probe a branch's real enableWhiteLabel state on Amgine's side (remove after use, no writes).
+  if (norm(body.__reprobeBranch)) {
+    const token = await getToken();
+    if (!token) return res.status(200).json({ ok: false, error: 'token failed' });
+    const r = await fetch(branchUrl(norm(body.__reprobeBranch)), { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ ok: r.ok, enableWhiteLabel: j.enableWhiteLabel, whiteLabelTravelFormUrl: j.whiteLabelTravelFormUrl });
+  }
+
   // TEMP: create a test group row with a known Branch GUID, unchecked white
   // label box (remove after use).
   if (norm(body.__createWlTestRow)) {
