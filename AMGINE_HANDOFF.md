@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-18 — "Enable White Label" checkbox column added to LIVE GROUP MASTERSHEET (§36) — NOT yet wired to any code, blocked on Raymond confirming how the client-facing form URL works. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
+_Last updated: 2026-09-18 — Raymond answered the White Label blocking questions (§36.3): enabling happens in Amgine's TMT directly (not our Smartsheet checkbox), the generated URL appears there once enabled, and we're responsible for emailing it to travelers ourselves — Amgine never sends it. Next step: pick a test branch, enable it in TMT, confirm the URL, then build fetch-and-write-to-sheet. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -745,12 +745,19 @@ Added a new column, **"Enable White Label"** (`CHECKBOX` type), to the **LIVE GR
 
 **⚠️ Column exists, but nothing is wired to it yet.** No code currently reads this checkbox or calls Amgine when it's ticked. The intended behavior (once confirmed) is to call the branch-update mechanism already used for queues/connectors (`fixBranchQueues`-style GET-then-PUT) and set `EnableWhiteLabel: true` on that branch — but this has NOT been built, pending Raymond's answers below.
 
-### 36.3 What's blocking the actual wiring — sent to Raymond 2026-09-15
-Email sent (subject: "White Label follow-up — need a couple things before we finish wiring it up"):
-1. **Once "Enable White Label" is turned on for a branch, does the client get a URL to fill out a form?** If so — does Amgine generate that URL dynamically (meaning we'd need to write it back onto the Smartsheet row after enabling), or is it a static link that already exists?
-2. **Where does someone actually submit a white-label request in the first place?** The actual form/entry point clients use has never been confirmed on our side — everything built so far (§35) only *retrieves* already-submitted white-label data, nothing about *how* a client gets to the submission form itself.
+### 36.3 What's blocking the actual wiring — sent to Raymond 2026-09-15, ANSWERED 2026-09-17
 
-**Not yet answered as of this writing.** Do not build the "when checked, call Amgine" logic until at least question 1 is answered — if a URL needs to be captured and written back, that changes the shape of the code (needs a second write-back step, same pattern as Branch GUID after `CreateBranch`).
+**Raymond's answer (both questions resolved):**
+1. **Enabling happens in Amgine's own TMT (Travel Management Tool), not via our Smartsheet checkbox.** URL: `https://app.amgine.ai/tmc-management/tmcs/{tmcId}/seb-list/{sebId}/seb-white-label-config` — a per-branch "White Label Config" page with an **"Enable White Label"** toggle. We (Kensington) have direct access to this UI ourselves.
+2. **Once enabled there, Amgine auto-generates the URL** — shown as **"White Label Generated URL"** on that same config page (e.g. `http://localhost/travel-form/cfbbf7b9-2f6d-4eeb-8ab0-a6cc024a431d`). Dynamic, per-branch, generated automatically the moment it's enabled — not something we construct.
+3. **Amgine never sends this link to travelers.** Raymond, verbatim: *"We do not send the link to travelers. You would create an email that you send to the travelers that include the link."* — fetching/distributing it is entirely on us.
+4. **Raymond also flagged:** as of 2026-09-17, checking our real branches, **none currently have white label enabled** — confirming our Smartsheet checkbox column (§36.2) has done nothing on Amgine's side so far, exactly as documented. Nothing will show a generated URL until a branch is actually enabled in TMT itself.
+
+**Revised plan now that this is unblocked:**
+- Enabling a branch is a **manual TMT action** (by us, in Amgine's UI) — not something our Smartsheet checkbox needs to trigger via API, unless we later decide to automate that too.
+- What DOES still need building: a way to **fetch the "White Label Generated URL" back from Amgine** (via the branch's config, likely the same branch-GET mechanism already used for queue/connector checks in §33) and **surface it in Smartsheet** — so once a branch is enabled in TMT, the URL lands somewhere Vera/agents can grab it to paste into a traveler email. Column doesn't exist yet.
+- **Immediate next step:** pick a real test branch, enable it in TMT ourselves, confirm the generated URL appears, then build the fetch-and-write-to-sheet piece against that real example. Raymond's email also literally asked *"Which branch are you testing against?"* — worth telling him once we've picked one.
+- The three lower-priority §35.6 confirmation questions (Ready-always-first-state, multi-traveller, webhook redelivery) remain unasked — still fine to defer.
 
 ### 36.4 Also still outstanding from §35.6 (lower priority, not blocking, but should still be asked eventually)
 The three GetRequest confirmation questions (Ready-always-first-state, multi-traveller support, webhook redelivery/retries) were deliberately left out of the 2026-09-15 email to keep it focused — worth a follow-up once §36.3 is resolved.
