@@ -431,8 +431,17 @@ async function onboard(amg, inp) {
     }
   }
 
-  return { ok: true, finalName, branchGuid, branchId, policyGuid, policyGroupGuid, policyLink, resolvedPccIds,
-    resolvedQueueIds, ...(onboardNotes.length ? { notes: onboardNotes } : {}) };
+  // White-label travel-form URL (Raymond, 2026-09-17): deterministic from the
+  // branch's own GUID — https://app.amgine.ai/travel-form/{branchGuid} — no
+  // extra API call needed. Confirmed live on two separate branches. NOTE: the
+  // URL exists/resolves regardless of whether "Enable White Label" has been
+  // flipped on for that branch in Amgine's TMT — until it is, this link won't
+  // actually work for a traveler. Writing it now saves a manual step once a
+  // branch does get enabled; it is NOT itself proof white-labeling is live.
+  const whiteLabelUrl = `https://app.amgine.ai/travel-form/${branchGuid}`;
+
+  return { ok: true, finalName, branchGuid, branchId, policyGuid, policyGroupGuid, policyLink, whiteLabelUrl,
+    resolvedPccIds, resolvedQueueIds, ...(onboardNotes.length ? { notes: onboardNotes } : {}) };
 }
 
 // Build the group-row cells to write after onboarding. `colId(title)` returns a
@@ -446,6 +455,8 @@ function buildWriteCells(colId, inp, r) {
     if (colId('amgine policy guid')) cells.push({ columnId: colId('amgine policy guid'), value: r.policyGroupGuid });
     if (colId('amgine policy link')) cells.push({ columnId: colId('amgine policy link'), value: r.policyLink });
     if (colId('amgine onboarded')) cells.push({ columnId: colId('amgine onboarded'), value: true });
+    if (colId('white label url')) cells.push({ columnId: colId('white label url'), value: r.whiteLabelUrl });
+    else missing.push('White Label URL');
     // Sabre linkage: PCC + COMPANY profile ID + GROUP profile ID drive the
     // per-booking Corporate BookingProfiles in amgine.js. PCC + a profile = opt
     // the group into profiled travellers, so tick that flag too.
@@ -626,14 +637,44 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: probe a branch by GUID (or numeric id) to discover white-label
-  // field names on the ServicedEntityBranch record (remove after use, no writes).
-  if (norm(body.__probeBranch)) {
-    const token = await getToken();
-    if (!token) return res.status(200).json({ ok: false, error: 'token failed' });
-    const r = await fetch(branchUrl(norm(body.__probeBranch)), { headers: { Authorization: `Bearer ${token}` } });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ ok: r.ok, status: r.status, raw: j });
+  // TEMP: one-shot — add the "White Label URL" column to LIVE GROUP
+  // MASTERSHEET if missing, then backfill it (constructed from the GUID
+  // already on each row, no API calls) for every already-onboarded branch.
+  // Remove after use.
+  if (norm(body.__setupWhiteLabelUrl) === 'kcg-wl-url-2026') {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
+      ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
+    });
+    const sheet = await (await ss(`/sheets/${GROUPS}`)).json();
+    const idByTitle = {};
+    for (const c of sheet.columns || []) idByTitle[c.title.trim().toLowerCase()] = c.id;
+    let colId = idByTitle['white label url'];
+    let columnCreated = false;
+    if (!colId) {
+      const r = await ss(`/sheets/${GROUPS}/columns`, { method: 'POST', body: JSON.stringify([{ title: 'White Label URL', type: 'TEXT_NUMBER', index: (sheet.columns || []).length }]) });
+      const j = await r.json().catch(() => ({}));
+      colId = j.result && j.result[0] && j.result[0].id;
+      columnCreated = !!colId;
+    }
+    if (!colId) return res.status(200).json({ ok: false, error: 'could not create/find White Label URL column' });
+    const guidColId = idByTitle['amgine branch guid'];
+    const rowsToUpdate = (sheet.rows || [])
+      .map(r => {
+        const guidCell = (r.cells || []).find(c => c.columnId === guidColId);
+        const guid = guidCell ? norm(guidCell.value) : '';
+        const existing = (r.cells || []).find(c => c.columnId === colId);
+        if (!guid || (existing && norm(existing.value))) return null; // no guid, or already has a URL
+        return { id: r.id, cells: [{ columnId: colId, value: `https://app.amgine.ai/travel-form/${guid}` }] };
+      })
+      .filter(Boolean);
+    let updated = 0;
+    for (let i = 0; i < rowsToUpdate.length; i += 100) {
+      const chunk = rowsToUpdate.slice(i, i + 100);
+      const r = await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify(chunk) });
+      if (r.ok) updated += chunk.length;
+    }
+    return res.status(200).json({ ok: true, columnCreated, colId, candidateRows: rowsToUpdate.length, updated });
   }
 
   // ── Smartsheet webhook change event ─────────────────────────────────────
