@@ -637,45 +637,6 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: one-shot — add the "White Label URL" column to LIVE GROUP
-  // MASTERSHEET if missing, then backfill it (constructed from the GUID
-  // already on each row, no API calls) for every already-onboarded branch.
-  // Remove after use.
-  if (norm(body.__setupWhiteLabelUrl) === 'kcg-wl-url-2026') {
-    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
-    const ss = (path, opts = {}) => fetch(`https://api.smartsheet.com/2.0${path}`, {
-      ...opts, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
-    });
-    const sheet = await (await ss(`/sheets/${GROUPS}`)).json();
-    const idByTitle = {};
-    for (const c of sheet.columns || []) idByTitle[c.title.trim().toLowerCase()] = c.id;
-    let colId = idByTitle['white label url'];
-    let columnCreated = false;
-    if (!colId) {
-      const r = await ss(`/sheets/${GROUPS}/columns`, { method: 'POST', body: JSON.stringify([{ title: 'White Label URL', type: 'TEXT_NUMBER', index: (sheet.columns || []).length }]) });
-      const j = await r.json().catch(() => ({}));
-      colId = j.result && j.result[0] && j.result[0].id;
-      columnCreated = !!colId;
-    }
-    if (!colId) return res.status(200).json({ ok: false, error: 'could not create/find White Label URL column' });
-    const guidColId = idByTitle['amgine branch guid'];
-    const rowsToUpdate = (sheet.rows || [])
-      .map(r => {
-        const guidCell = (r.cells || []).find(c => c.columnId === guidColId);
-        const guid = guidCell ? norm(guidCell.value) : '';
-        const existing = (r.cells || []).find(c => c.columnId === colId);
-        if (!guid || (existing && norm(existing.value))) return null; // no guid, or already has a URL
-        return { id: r.id, cells: [{ columnId: colId, value: `https://app.amgine.ai/travel-form/${guid}` }] };
-      })
-      .filter(Boolean);
-    let updated = 0;
-    for (let i = 0; i < rowsToUpdate.length; i += 100) {
-      const chunk = rowsToUpdate.slice(i, i + 100);
-      const r = await ss(`/sheets/${GROUPS}/rows`, { method: 'PUT', body: JSON.stringify(chunk) });
-      if (r.ok) updated += chunk.length;
-    }
-    return res.status(200).json({ ok: true, columnCreated, colId, candidateRows: rowsToUpdate.length, updated });
-  }
 
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
