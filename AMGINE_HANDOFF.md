@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-18 — Shipped the White Label URL column (§36.5): deterministic from the branch's own GUID, auto-written on future onboarding + backfilled for all 12 existing branches. Caveat: the URL exists whether or not white-labeling is actually enabled for that branch in TMT — do NOT treat a populated column as proof it's live for a client. Raymond's earlier blocking questions (§36.3) are answered: enabling happens in Amgine's TMT directly, and we're responsible for emailing the link to travelers ourselves. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
+_Last updated: 2026-09-18 — Shipped auto-enable White Label from Smartsheet (§36.6): ticking "Enable White Label" now calls Amgine's API directly (GUID→numeric-id resolve + GET-full-PUT) and flips `enableWhiteLabel: true` for real — verified end-to-end via the actual webhook AND by re-probing Amgine's own record afterward, not just trusting our sheet. Also shipped the White Label URL column (§36.5): deterministic from the branch's own GUID, auto-written on future onboarding + backfilled for all 12 existing branches. Raymond's earlier blocking questions (§36.3) are answered: enabling can now happen automatically from our checkbox, and we're still responsible for emailing the link to travelers ourselves. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -768,6 +768,23 @@ While investigating, discovered the actual field on Amgine's `ServicedEntityBran
 - **Backfilled all 12 already-onboarded branches** from their existing stored GUID, via a one-shot admin (run once, then removed — same pattern as every other one-shot column/backfill in this file).
 
 **Still open:** once a branch is actually enabled in TMT for real, worth doing one live check that a traveler visiting the URL actually sees a working form — that's the real confirmation this feature is fully correct, not just that the URL pattern matches.
+
+### 36.6 SHIPPED: Auto-enable White Label from Smartsheet (2026-09-18, commit `2b3d012`)
+Revisited the "manual TMT action" conclusion from §36.3 — built real automation instead: ticking the existing **"Enable White Label"** checkbox on a group row now calls Amgine's API directly and flips `enableWhiteLabel: true` on that branch, no manual TMT click needed.
+
+**Mechanism:**
+- `resolveBranchIdByGuid(amg, guid)` — Smartsheet only ever stores a branch's GUID, but Amgine's branch GET/PUT endpoint (`ServicedEntityBranch/{id}`) requires the **numeric internal id**. Resolves it by walking the paginated branch-list endpoint (`GET /ServicedEntityBranch?tmcId={tmcId}`, 20/page, ~140 branches ≈ 7 pages) until the GUID matches.
+- `setEnableWhiteLabel(amg, branchId, true)` — same GET-full-record-then-PUT pattern as `fixBranchQueues`: Amgine's PUT requires the whole record, not a partial patch.
+- `handleGroupWebhook` now runs a second pass after the existing branch-onboarding pass: rows with "Enable White Label" checked + an onboarded branch GUID + no "White Label Status" yet (idempotency guard — same pattern as the "Branch GUID empty" guard on onboarding) get processed once. Result written back to a new **"White Label Status"** column (`6348238833356676`), e.g. `"✓ White Label Enabled — https://app.amgine.ai/travel-form/{guid}"` or `"✗ {error}"`.
+- Widened the webhook's `relevant`/`eligible` gating so a change to *either* trigger column (branch-creation or white-label) is recognized independently — previously only the branch-creation column was checked, which would have silently ignored the white-label checkbox entirely.
+
+**Verified end-to-end for real (not just simulated):**
+1. Created a fresh test branch (`WLAUTOTEST01`, guid `3ec2ab67-c713-4eec-ad75-d0b7d5bdf5ac`, numeric id `2437`) — confirmed `enableWhiteLabel: false` on Amgine's side beforehand.
+2. Created a matching group row on the real sheet and ticked "Enable White Label" as a genuine Smartsheet cell edit (not a direct call to our own backend).
+3. The already-registered Smartsheet webhook fired automatically; "White Label Status" populated with `"✓ White Label Enabled — https://app.amgine.ai/travel-form/3ec2ab67-c713-4eec-ad75-d0b7d5bdf5ac"`.
+4. **Re-probed branch `2437` directly against Amgine's API afterward** (not trusting our own sheet's claim) — confirmed `enableWhiteLabel: true` genuinely set on Amgine's own record. This closes the caveat from §36.5 for this specific branch.
+
+**Still open:** haven't yet loaded the travel-form URL itself in a browser to see a real working form (vs. the earlier config-error screenshot for a disabled branch) — worth doing once convenient. Test artifacts (`WLAUTOTEST01`/`WLURLTEST01` branches, test group row `3333481871966084`) have not been cleaned up from Amgine/Smartsheet yet — low priority, flag if they should be removed.
 
 ### 36.4 Also still outstanding from §35.6 (lower priority, not blocking, but should still be asked eventually)
 The three GetRequest confirmation questions (Ready-always-first-state, multi-traveller support, webhook redelivery/retries) were deliberately left out of the 2026-09-15 email to keep it focused — worth a follow-up once §36.3 is resolved.
