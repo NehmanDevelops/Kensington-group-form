@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-15 — Known Traveler Number fixed to read the real Global Entry Number column (covers TSA PreCheck/Global Entry/Nexus), White Label submissions now auto-ingest into Smartsheet via Raymond's GetRequest endpoint (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from the prior update._
+_Last updated: 2026-09-18 — "Enable White Label" checkbox column added to LIVE GROUP MASTERSHEET (§36) — NOT yet wired to any code, blocked on Raymond confirming how the client-facing form URL works. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -732,3 +732,25 @@ Test row deleted after (it was a duplicate of real data already tracked elsewher
 - **Only the "Ready" state triggers ingestion**, per Raymond's exact instruction. If a white-label itinerary's *first* webhook hit us in some other state, it would still fall through to "no matching row" and be silently dropped — not yet confirmed whether "Ready" is always the first state a fresh white-label submission produces.
 - **Multi-traveller submissions**: the code only reads `userNodes[0]` — a white-label request with more than one traveller would only capture the first. Not yet confirmed whether white-label ever produces multi-traveller requests.
 - **Duplicate-row risk**: if the SAME white-label itinerary somehow gets its "Ready" webhook fired more than once (e.g. a retry), it would create a **second** duplicate row — there's no idempotency guard here yet, unlike the onboarding guard built in §19. Worth adding if this turns out to be a real occurrence.
+
+---
+
+## 36. WHITE LABEL — "ENABLE WHITE LABEL" CHECKBOX ADDED (2026-09-15/18)
+
+### 36.1 Context from the live call with Raymond
+On the call, Raymond said white-labeling will be turned on **per branch**, via a checkbox — and that it'll be built into the generic template so it's easier to apply across branches going forward (exact mechanics not yet confirmed — see §36.3).
+
+### 36.2 What was done
+Added a new column, **"Enable White Label"** (`CHECKBOX` type), to the **LIVE GROUP MASTERSHEET**, positioned immediately after the existing **"Create Amgine Branch"** column (index 36, column id `1305038372507524`). Placed there deliberately — this is a branch-level setting, same category as PCC/queue/connector, not a per-traveller thing, so it belongs on the group row next to the other branch-onboarding controls.
+
+**⚠️ Column exists, but nothing is wired to it yet.** No code currently reads this checkbox or calls Amgine when it's ticked. The intended behavior (once confirmed) is to call the branch-update mechanism already used for queues/connectors (`fixBranchQueues`-style GET-then-PUT) and set `EnableWhiteLabel: true` on that branch — but this has NOT been built, pending Raymond's answers below.
+
+### 36.3 What's blocking the actual wiring — sent to Raymond 2026-09-15
+Email sent (subject: "White Label follow-up — need a couple things before we finish wiring it up"):
+1. **Once "Enable White Label" is turned on for a branch, does the client get a URL to fill out a form?** If so — does Amgine generate that URL dynamically (meaning we'd need to write it back onto the Smartsheet row after enabling), or is it a static link that already exists?
+2. **Where does someone actually submit a white-label request in the first place?** The actual form/entry point clients use has never been confirmed on our side — everything built so far (§35) only *retrieves* already-submitted white-label data, nothing about *how* a client gets to the submission form itself.
+
+**Not yet answered as of this writing.** Do not build the "when checked, call Amgine" logic until at least question 1 is answered — if a URL needs to be captured and written back, that changes the shape of the code (needs a second write-back step, same pattern as Branch GUID after `CreateBranch`).
+
+### 36.4 Also still outstanding from §35.6 (lower priority, not blocking, but should still be asked eventually)
+The three GetRequest confirmation questions (Ready-always-first-state, multi-traveller support, webhook redelivery/retries) were deliberately left out of the 2026-09-15 email to keep it focused — worth a follow-up once §36.3 is resolved.
