@@ -637,6 +637,27 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: probe list-branch endpoint candidates for a GUID->numeric-id
+  // resolver (remove after use, no writes).
+  if (norm(body.__probeListEndpoint)) {
+    const token = await getToken();
+    if (!token) return res.status(200).json({ ok: false, error: 'token failed' });
+    const candidates = [
+      `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/ServicedEntityBranch`,
+      `https://app.amgine.ai/publicapi/api/ServicedEntityBranch?tmcId=${TMC_ID}`,
+      `https://app.amgine.ai/publicapi/api/ServicedEntityBranch/ByTmc/${TMC_ID}`,
+      `https://app.amgine.ai/publicapi/api/tmc/${TMC_ID}/ServicedEntityBranch/list`,
+    ];
+    const results = [];
+    for (const url of candidates) {
+      try {
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const text = await r.text();
+        results.push({ url, status: r.status, bodyPreview: text.slice(0, 300) });
+      } catch (e) { results.push({ url, error: e.message }); }
+    }
+    return res.status(200).json({ ok: true, results });
+  }
 
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
