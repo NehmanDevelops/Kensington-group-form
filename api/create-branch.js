@@ -626,6 +626,16 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: probe a branch by GUID (or numeric id) to discover white-label
+  // field names on the ServicedEntityBranch record (remove after use, no writes).
+  if (norm(body.__probeBranch)) {
+    const token = await getToken();
+    if (!token) return res.status(200).json({ ok: false, error: 'token failed' });
+    const r = await fetch(branchUrl(norm(body.__probeBranch)), { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ ok: r.ok, status: r.status, raw: j });
+  }
+
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.
