@@ -764,6 +764,11 @@ export default async function handler(req, res) {
     });
   }
 
+  if (norm(body.__pipelineListCols)) {
+    const sheet = await (await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUPS}?pageSize=1`, { headers: { Authorization: `Bearer ${process.env.SMARTSHEET_API_TOKEN}` } })).json();
+    return res.status(200).json({ ok: true, columns: (sheet.columns || []).map(c => ({ index: c.index, title: c.title, id: c.id, hidden: !!c.hidden })) });
+  }
+
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.
