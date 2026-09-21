@@ -430,6 +430,13 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: verify new client-credentials auth flow works post-migration (§37, remove after use).
+  if (norm(body.__checkTokenNew)) {
+    const basic = await getAmgineToken('basic');
+    const post = await getAmgineToken('post');
+    return res.status(200).json({ ok: true, basic: { ok: basic.ok, status: basic.status, detail: basic.detail }, post: { ok: post.ok, status: post.status, detail: post.detail } });
+  }
+
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
