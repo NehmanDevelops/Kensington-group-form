@@ -428,23 +428,6 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
 
-  // TEMP: incident diagnostic (2026-09-21) — check Amgine token fetch directly,
-  // both auth modes, read-only, no writes. Remove after use.
-  if (norm(body.__checkToken)) {
-    const basic = await getAmgineToken('basic');
-    const post = await getAmgineToken('post');
-    return res.status(200).json({
-      ok: true,
-      basic: { ok: basic.ok, status: basic.status, detail: basic.detail },
-      post: { ok: post.ok, status: post.status, detail: post.detail },
-      env: {
-        hasTokenUrl: !!process.env.AMGINE_TOKEN_URL, hasClientId: !!process.env.AMGINE_CLIENT_ID,
-        hasClientSecret: !!process.env.AMGINE_CLIENT_SECRET, grantType: process.env.AMGINE_GRANT_TYPE,
-        hasUsername: !!process.env.AMGINE_USERNAME, hasPassword: !!process.env.AMGINE_PASSWORD,
-      },
-    });
-  }
-
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
