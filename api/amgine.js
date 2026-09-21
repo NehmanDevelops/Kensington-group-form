@@ -130,14 +130,17 @@ function amgineLink(b) {
   return `${base}/agentapp/transaction/${ws}/${id}`;
 }
 
+// 2026-09-21: Amgine deprecated the old user-based-credential login (grant_type
+// password + username/password) in favor of a client-key-only flow
+// (grant_type=client_credentials, just client_id+client_secret+scope, no user
+// account at all — confirmed by Derek Hurren-Kelly). No more required
+// maintenance/password-lifespan on a user account = no more surprise breakage.
 async function getAmgineToken(mode) {
   const cid = process.env.AMGINE_CLIENT_ID;
   const secret = process.env.AMGINE_CLIENT_SECRET;
   const base = {
     grant_type: process.env.AMGINE_GRANT_TYPE,
     scope: process.env.AMGINE_SCOPE,
-    username: process.env.AMGINE_USERNAME,
-    password: process.env.AMGINE_PASSWORD,
   };
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
   let fields = { ...base };

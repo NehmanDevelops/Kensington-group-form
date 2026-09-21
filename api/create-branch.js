@@ -200,11 +200,14 @@ function deepFind(obj, key) {
   return undefined;
 }
 
+// 2026-09-21: Amgine deprecated the old user-based-credential login (grant_type
+// password + username/password) in favor of a client-key-only flow
+// (grant_type=client_credentials, just client_id+client_secret+scope, no user
+// account at all — confirmed by Derek Hurren-Kelly). See §37, AMGINE_HANDOFF.md.
 async function getToken() {
   const cid = process.env.AMGINE_CLIENT_ID, secret = process.env.AMGINE_CLIENT_SECRET;
   const fields = {
     grant_type: process.env.AMGINE_GRANT_TYPE, scope: process.env.AMGINE_SCOPE,
-    username: process.env.AMGINE_USERNAME, password: process.env.AMGINE_PASSWORD,
   };
   const attempt = async (basic) => {
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
