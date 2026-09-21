@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-18 — Shipped auto-enable White Label from Smartsheet (§36.6): ticking "Enable White Label" now calls Amgine's API directly (GUID→numeric-id resolve + GET-full-PUT) and flips `enableWhiteLabel: true` for real — verified end-to-end via the actual webhook AND by re-probing Amgine's own record afterward, not just trusting our sheet. Also shipped the White Label URL column (§36.5): deterministic from the branch's own GUID, auto-written on future onboarding + backfilled for all 12 existing branches. Raymond's earlier blocking questions (§36.3) are answered: enabling can now happen automatically from our checkbox, and we're still responsible for emailing the link to travelers ourselves. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still the most important unconfirmed item from before that._
+_Last updated: 2026-09-21 — **🔴 ACTIVE INCIDENT (§37): all bookings down.** Amgine login fails sitewide (`invalid_grant: Account is not fully set up`) — root cause confirmed: Amgine deprecated the old username/password login flow in favor of a client-key-only flow, and we haven't migrated yet. Waiting on Derek Hurren-Kelly (Amgine, covering for Raymond who's on 2-week leave) for the exact new-flow spec. **§37 has the full next-step checklist — do that as soon as he replies, this is the current top priority.** Shipped auto-enable White Label from Smartsheet (§36.6) and the White Label URL column (§36.5) on 2026-09-18, but both use the same now-broken old-style token call and haven't been re-verified since this incident started — don't assume they still work until re-tested post-fix. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still unconfirmed from before that.
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -788,3 +788,31 @@ Revisited the "manual TMT action" conclusion from §36.3 — built real automati
 
 ### 36.4 Also still outstanding from §35.6 (lower priority, not blocking, but should still be asked eventually)
 The three GetRequest confirmation questions (Ready-always-first-state, multi-traveller support, webhook redelivery/retries) were deliberately left out of the 2026-09-15 email to keep it focused — worth a follow-up once §36.3 is resolved.
+
+## 37. INCIDENT (2026-09-21): Amgine login broken sitewide — root cause found, fix pending Amgine's reply
+
+**Symptom:** every real booking send failed: `Booking failed: Amgine login failed`, every row stuck on "Sending...". Not a Smartsheet issue, not our booking-payload logic — the token/login call itself was failing before any booking code ran.
+
+**What we ruled out:**
+- Not our code — no commits touched anything auth-related before this started; `api/amgine.js`'s `getAmgineToken()` and `api/create-branch.js`'s `getToken()` are unchanged.
+- Not a full Amgine outage — Raymond confirmed via Postman that *his own* login/token works fine.
+- Not something recoverable on our end — confirmed no copy of the real `AMGINE_USERNAME`/`AMGINE_PASSWORD` exists anywhere reachable: not in this repo (code, git history, any branch), not in the pulled Vercel dev/production env files (they're `Sensitive` — write-only, unrecoverable once saved), not in the shared Postman workspace's `Production` environment (only `client_id`/`client_secret`/`grant_type`/`scope` are saved there — no username/password ever stored).
+
+**Root cause (confirmed by Derek Hurren-Kelly, Amgine, covering for Raymond who's on leave for 2 weeks):** Amgine has rolled out a **new auth flow that only uses the client key** (`client_id`+`client_secret`, `client_credentials`-style) — **no username/password at all**. Our integration is still on the **old flow**: both `getAmgineToken()` (`api/amgine.js`, used for bookings) and `getToken()` (`api/create-branch.js`, used for branch onboarding/white-label) currently send `grant_type=password` plus `username`/`password` alongside the client key. Amgine appears to be sunsetting/blocking the old user-based-credential flow, which is why this broke now with **no code change on our side** — and why `AMGINE_USERNAME`/`AMGINE_PASSWORD` return `invalid_grant: "Account is not fully set up"` no matter what.
+
+**Important:** branch-creation/white-label (§36.5/§36.6) were only verified working through 2026-09-18, *before* this broke. Don't assume that path is still fine — it uses the same old-style token call and hasn't been re-tested since.
+
+**Sent to Derek (2026-09-21):** confirmed we're still sending username/password + client key, asked for the exact spec of the new client-key-only flow (grant_type, required fields, whether the token endpoint URL changes).
+
+**⏳ NEXT STEP — do this once Derek replies:**
+1. Read Derek's reply for the exact new-flow shape (most likely `grant_type=client_credentials`, `client_id`+`client_secret` only, no `username`/`password`/`scope` — but confirm the real fields/endpoint from his answer, don't assume).
+2. Update **both** token functions to match:
+   - `getAmgineToken()` in `api/amgine.js` (~line 133)
+   - `getToken()` in `api/create-branch.js` (~line 203)
+   Both currently build a `fields` object with `grant_type/scope/username/password` and try a `client_secret_basic` header — replace with whatever Derek specifies (likely: drop `username`/`password` entirely, set `grant_type=client_credentials`).
+3. `node --check` both files, commit, push, wait for Vercel deploy.
+4. **Verify for real** — don't just trust an HTTP 200. Re-test both:
+   - A real booking send (`scan:true` or a single test row) → confirm `Amgine Itinerary ID` actually populates, not another "Booking failed" message.
+   - Branch creation / white-label enable (same pipeline test pattern as §36.6 — create a throwaway test row, tick the checkboxes, poll for results) → confirm it still works under the new auth too.
+5. Once both are confirmed working, update this section and the top-of-file summary line, and let Nehman know it's resolved.
+6. `AMGINE_USERNAME`/`AMGINE_PASSWORD` env vars in Vercel become dead/unused after this fix — fine to leave them (Sensitive, harmless) or delete once fully confirmed stable, no rush either way.
