@@ -1,6 +1,6 @@
 # 🧳 AMGINE INTEGRATION — MASTER HANDOFF
 
-_Last updated: 2026-09-21 — **🔴 ACTIVE INCIDENT (§37): all bookings down.** Amgine login fails sitewide (`invalid_grant: Account is not fully set up`) — root cause confirmed: Amgine deprecated the old username/password login flow in favor of a client-key-only flow, and we haven't migrated yet. Waiting on Derek Hurren-Kelly (Amgine, covering for Raymond who's on 2-week leave) for the exact new-flow spec. **§37 has the full next-step checklist — do that as soon as he replies, this is the current top priority.** Shipped auto-enable White Label from Smartsheet (§36.6) and the White Label URL column (§36.5) on 2026-09-18, but both use the same now-broken old-style token call and haven't been re-verified since this incident started — don't assume they still work until re-tested post-fix. Known Traveler Number fixed and White Label GetRequest ingestion shipped 2026-09-15 (§34-§35). §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) is still unconfirmed from before that.
+_Last updated: 2026-09-23 — **§37 RESOLVED:** the login-broken-sitewide incident is fixed — Amgine migrated to a client-credentials-only auth flow (~6 weeks ago; our account's old user-based login finally expired 2026-09-21), Derek Hurren-Kelly sent the new client_id/secret/grant_type/scope, both token functions updated and verified returning a real token. Booking/branch-creation auth should both be fine now, though only the token step (not a full real booking) has been re-verified since — worth a real end-to-end test before assuming 100%. **🟡 OPEN, likely on an upcoming call (§38): "PE Emails" custom field never syncs into the Sabre PNR.** Tried 3 formats (backslash, then slash, then raw-email per Colin/Amgine's own direction) — proved via 2 code-bypassing manual tests that this is Amgine's own guest-profile-to-PNR sync failing, not a format issue on our side. Current code sends the raw email (Colin's latest instruction) but that alone won't fix it — Amgine needs to look at their sync itself. §38 has full call-prep notes (evidence to bring, questions to ask, what not to re-litigate). Shipped auto-enable White Label from Smartsheet (§36.6) and the White Label URL column (§36.5) on 2026-09-18 — uses the same auth fixed in §37, not independently re-tested since. §31.4 (whether IntentOnly:false actually fixes the Agent-Experience timeout) still unconfirmed from before that.
 
 **To read this on your work laptop:** `git pull` in the repo, open this file + the latest `CHANGELOG-*.md`.
 
@@ -804,15 +804,49 @@ The three GetRequest confirmation questions (Ready-always-first-state, multi-tra
 
 **Sent to Derek (2026-09-21):** confirmed we're still sending username/password + client key, asked for the exact spec of the new client-key-only flow (grant_type, required fields, whether the token endpoint URL changes).
 
-**⏳ NEXT STEP — do this once Derek replies:**
-1. Read Derek's reply for the exact new-flow shape (most likely `grant_type=client_credentials`, `client_id`+`client_secret` only, no `username`/`password`/`scope` — but confirm the real fields/endpoint from his answer, don't assume).
-2. Update **both** token functions to match:
+**Derek's answer (2026-09-21):** sent a separate file (not email, to avoid secret exposure in the client thread) with:
+```
+OnBoarding.client_id:Kensington Client
+OnBoarding.client_secret:hoqkaNMQVH4M07QqnA4GxWRbsnSskYt4
+OnBoarding.grant_type:client_credentials
+OnBoarding.scope:IApi
+Remove user and password
+```
+
+**✅ RESOLVED (2026-09-21):**
+1. Removed `username`/`password` entirely from both token functions:
    - `getAmgineToken()` in `api/amgine.js` (~line 133)
    - `getToken()` in `api/create-branch.js` (~line 203)
-   Both currently build a `fields` object with `grant_type/scope/username/password` and try a `client_secret_basic` header — replace with whatever Derek specifies (likely: drop `username`/`password` entirely, set `grant_type=client_credentials`).
-3. `node --check` both files, commit, push, wait for Vercel deploy.
-4. **Verify for real** — don't just trust an HTTP 200. Re-test both:
-   - A real booking send (`scan:true` or a single test row) → confirm `Amgine Itinerary ID` actually populates, not another "Booking failed" message.
-   - Branch creation / white-label enable (same pipeline test pattern as §36.6 — create a throwaway test row, tick the checkboxes, poll for results) → confirm it still works under the new auth too.
-5. Once both are confirmed working, update this section and the top-of-file summary line, and let Nehman know it's resolved.
-6. `AMGINE_USERNAME`/`AMGINE_PASSWORD` env vars in Vercel become dead/unused after this fix — fine to leave them (Sensitive, harmless) or delete once fully confirmed stable, no rush either way.
+   Both now build `{ grant_type, scope }` only, plus `client_id`/`client_secret` (body or Basic header, same dual-attempt pattern as before).
+2. Updated Vercel env vars (Production + Preview) to the new values above: `AMGINE_CLIENT_ID`, `AMGINE_CLIENT_SECRET`, `AMGINE_GRANT_TYPE=client_credentials`, `AMGINE_SCOPE=IApi`. (Vercel CLI can't edit a `Sensitive` var in place — had to `env rm` then `env add` for each.)
+3. **Verified live**: `getAmgineToken()` returns a real access token (HTTP 200, both basic and post modes) — confirmed via a temp probe, since removed.
+4. `AMGINE_USERNAME`/`AMGINE_PASSWORD` env vars are now dead/unused — left in Vercel (harmless), not deleted.
+
+**⚠️ Still not re-verified:** a full real booking send end-to-end (only the token step was confirmed) and branch-creation/white-label under the new auth. Worth doing before assuming those are 100% solid, though the token-level fix should cover both since they share the same fix.
+
+**Why this happened at all (Derek's follow-up to Vera, 2026-09-21):** this was a planned Amgine-side migration rolled out **~6 weeks ago** (~mid-August), deprecating the original username+password flow in favor of client-key-only. The old flow required a **user account with a scheduled password lifespan** needing periodic maintenance — Derek was unsure if that maintenance had been scheduled for our account, which is consistent with why it suddenly expired now instead of at rollout time. Derek said he'd get Nehman the new-auth requirements (which he did, above) "to prevent this from happening going forward." **Vera's ask, still open:** who at Amgine is responsible for proactively communicating breaking changes like this before they hit production, especially with JENi coming — worth revisiting if this comes up on the call.
+
+---
+
+## 38. "PE Emails" custom field → Sabre PNR sync — escalated to Amgine, root cause is on THEIR side (2026-09-23)
+
+**Symptom (Vera, urgent, reported 2026-09-23):** passenger emails aren't appearing in the Sabre PNR. Everything else (DOB, name, etc.) syncs from the Amgine guest profile into the PNR fine — only email doesn't. Been open in her "working document" for weeks, marked Urgent.
+
+**Background:** there are two separate email-related fields in play:
+1. The plain traveler **`Email`** field we've always sent — feeds the Amgine guest profile (name/DOB/email display). This was never broken.
+2. A branch-level **custom field named "PE Emails"** (added by Raymond back on 2026-08-26 specifically so a value we send maps into the Sabre PNR's own "PE" / Passenger Email remark). This is the one that's never worked.
+
+**Three formats tried, in order, on `CustomFields: [{ Name: 'PE Emails', Data: ... }]` in `api/amgine.js`'s `sendOne()` (~line 342):**
+1. `PE\{email}\` (backslash) — original guess from 2026-08-26, based on Raymond's emailed example rendering its delimiter as "¥" (assumed a mangled backslash). Never confirmed. Root cause of weeks of silent failure.
+2. `PE/{email}/` (forward slash) — Colin Braganza (Amgine, covering while Raymond's on 2-week leave) confirmed this format directly on 2026-09-23 (commit `f20d057`).
+3. Raw email, **no prefix, no delimiter at all** — Colin's corrected answer after format #2 also failed: *"Please just put the email address only, no PE or \."* (commit `7709753`). **This is the current live version.**
+
+**🔑 Critical finding — this is NOT a formatting bug, it's Amgine's own sync:** for both format #2 and #3, Vera didn't just wait for our code to re-send a booking — she **typed the value directly into Amgine's own traveler intake form's PE Emails field**, completely bypassing our API/payload. Then checked the real Sabre PNR in the agent terminal. **Both times, the email was still not in the PNR** — the `EMAIL ADDRESS` remarks section showed unrelated emails (`BRIAN.CMIEL@MONSTERENERGY.COM`, `MONSTERSUPPORT@MONSTERENERGY.COM` — a different traveler/company entirely, left over from whatever real booking that branch last had). Since our code was never involved in either of these two tests, **the format we send has never been the actual problem** — Amgine's own PE-Emails-field-to-PNR sync doesn't work, period, regardless of what's typed into it, by their own UI or by us.
+
+**Current state:** format #3 (raw email) is live in our code, per Colin's direction, but **this fix on our end is necessary, not sufficient** — it won't matter until Amgine fixes their own sync. Told Colin this directly (2026-09-23) and asked him to look at the sync/backend, not the field format.
+
+**⏳ NEXT STEP — likely the subject of an upcoming Amgine call:**
+- Don't accept a 4th format suggestion as the next step — two live, code-bypassing tests already prove format isn't it. Redirect to: *"look at the guest-profile-to-PNR sync itself."*
+- Bring the 3 screenshots (PE Emails field correctly filled + Sabre terminal showing it's still not in the PNR) as evidence — this is hard proof, not a guess.
+- Ask Amgine: is there a log/audit trail showing where in their pipeline the value drops? Is this custom-field mapping Kensington-specific or a general Amgine feature (i.e. is anyone else hitting this)? What's the timeline, and is there a workaround meanwhile?
+- Vera's related open question from the §37 incident (proactive communication of breaking changes, esp. with JENi coming) may also come up on the same call — see end of §37.
