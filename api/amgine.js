@@ -432,46 +432,12 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: verify the PE Emails delimiter fix with a real test booking + tick
-  // Ready to Book on it in one call (remove after use, §37/PE-fix verification).
-  if (body.__tickReadyToBook && body.__rowId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    if (!M.id('Ready to Book')) return res.status(200).json({ ok: false, error: 'Ready to Book column not found' });
-    const r = await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: M.id('Ready to Book'), value: true }] }]) });
-    return res.status(200).json({ ok: r.ok });
-  }
-  if (body.__createTestGroup && body.__branchGuid) {
-    const groups = await (await api(`/sheets/${GROUPS}?pageSize=1`)).json();
-    const G = indexSheet(groups);
-    const cells = [];
-    if (G.id('GROUP ID')) cells.push({ columnId: G.id('GROUP ID'), value: String(body.__groupId) });
-    if (G.id('Amgine Branch GUID')) cells.push({ columnId: G.id('Amgine Branch GUID'), value: String(body.__branchGuid) });
-    if (G.id('Amgine Onboarded')) cells.push({ columnId: G.id('Amgine Onboarded'), value: true });
-    const r = await api(`/sheets/${GROUPS}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+  // TEMP: delete PE-Emails test artifacts (remove after use).
+  if (body.__deleteTestRow && body.__sheetId) {
+    const r = await api(`/sheets/${body.__sheetId}/rows?ids=${body.__deleteTestRow}`, { method: 'DELETE' });
     const j = await r.json().catch(() => ({}));
-    const newRowId = j.result && j.result[0] && j.result[0].id;
-    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
+    return res.status(200).json({ ok: r.ok, raw: r.ok ? undefined : j });
   }
-  if (norm(body.__checkGroupRow)) {
-    const groups = await (await api(`/sheets/${GROUPS}?pageSize=500&page=1`)).json();
-    const G = indexSheet(groups);
-    const allIds = (groups.rows || []).map(r => norm(G.val(r, 'GROUP ID')));
-    const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === norm(body.__checkGroupRow).toLowerCase());
-    if (!grow) return res.status(200).json({ ok: false, error: 'not found', totalRows: (groups.rows || []).length, totalRowCount: groups.totalRowCount, sampleIds: allIds.filter(Boolean).slice(-15) });
-    return res.status(200).json({ ok: true, branchGuid: G.val(grow, 'Amgine Branch GUID'), groupIdRaw: G.val(grow, 'GROUP ID') });
-  }
-  if (norm(body.__checkTravellerRow) && body.__rowId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
-    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
-    return res.status(200).json({
-      ok: true, status: M.val(row, 'Amgine Status'), itineraryId: M.val(row, 'Amgine Itinerary ID'),
-      link: M.val(row, 'Amgine Link'), note: M.val(row, 'Amgine Note'),
-    });
-  }
-
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
