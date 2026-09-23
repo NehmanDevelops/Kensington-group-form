@@ -440,6 +440,13 @@ export default async function handler(req, res) {
     const r = await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: M.id('Ready to Book'), value: true }] }]) });
     return res.status(200).json({ ok: r.ok });
   }
+  if (norm(body.__checkGroupRow)) {
+    const groups = await (await api(`/sheets/${GROUPS}`)).json();
+    const G = indexSheet(groups);
+    const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === norm(body.__checkGroupRow).toLowerCase());
+    if (!grow) return res.status(200).json({ ok: false, error: 'not found', totalRows: (groups.rows || []).length });
+    return res.status(200).json({ ok: true, branchGuid: G.val(grow, 'Amgine Branch GUID'), groupIdRaw: G.val(grow, 'GROUP ID') });
+  }
   if (norm(body.__checkTravellerRow) && body.__rowId) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
     const M = indexSheet(master);
