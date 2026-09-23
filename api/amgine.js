@@ -440,6 +440,18 @@ export default async function handler(req, res) {
     const r = await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: M.id('Ready to Book'), value: true }] }]) });
     return res.status(200).json({ ok: r.ok });
   }
+  if (body.__createTestGroup && body.__branchGuid) {
+    const groups = await (await api(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const G = indexSheet(groups);
+    const cells = [];
+    if (G.id('GROUP ID')) cells.push({ columnId: G.id('GROUP ID'), value: String(body.__groupId) });
+    if (G.id('Amgine Branch GUID')) cells.push({ columnId: G.id('Amgine Branch GUID'), value: String(body.__branchGuid) });
+    if (G.id('Amgine Onboarded')) cells.push({ columnId: G.id('Amgine Onboarded'), value: true });
+    const r = await api(`/sheets/${GROUPS}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+    const j = await r.json().catch(() => ({}));
+    const newRowId = j.result && j.result[0] && j.result[0].id;
+    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
+  }
   if (norm(body.__checkGroupRow)) {
     const groups = await (await api(`/sheets/${GROUPS}?pageSize=500&page=1`)).json();
     const G = indexSheet(groups);
