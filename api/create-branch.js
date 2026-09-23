@@ -718,6 +718,18 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: one-shot — reorder "Enable White Label" to sit after "Amgine Branch
+  // GUID" instead of right after "Create Amgine Branch" (remove after use).
+  if (norm(body.__reorderWlCols) === 'kcg-reorder-wl-2026') {
+    const TOKEN = process.env.SMARTSHEET_API_TOKEN;
+    const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${GROUPS}/columns/1305038372507524`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index: 39 }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ ok: r.ok, raw: j });
+  }
+
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.
