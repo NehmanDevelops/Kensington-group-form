@@ -431,6 +431,26 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: verify the PE Emails delimiter fix with a real test booking + tick
+  // Ready to Book on it in one call (remove after use, §37/PE-fix verification).
+  if (body.__tickReadyToBook && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    if (!M.id('Ready to Book')) return res.status(200).json({ ok: false, error: 'Ready to Book column not found' });
+    const r = await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: M.id('Ready to Book'), value: true }] }]) });
+    return res.status(200).json({ ok: r.ok });
+  }
+  if (norm(body.__checkTravellerRow) && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
+    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
+    return res.status(200).json({
+      ok: true, status: M.val(row, 'Amgine Status'), itineraryId: M.val(row, 'Amgine Itinerary ID'),
+      link: M.val(row, 'Amgine Link'), note: M.val(row, 'Amgine Note'),
+    });
+  }
+
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
