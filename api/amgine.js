@@ -432,13 +432,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: delete PE-Emails test artifacts (remove after use).
-  if (body.__deleteTestRow && body.__sheetId) {
-    const r = await api(`/sheets/${body.__sheetId}/rows?ids=${body.__deleteTestRow}`, { method: 'DELETE' });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ ok: r.ok, raw: r.ok ? undefined : j });
-  }
-
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
