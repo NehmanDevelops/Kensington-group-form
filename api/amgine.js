@@ -339,18 +339,19 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       // a traveler who resolves as an EXTERNAL match, instead of letting Amgine
       // fall back to the matched Sabre profile's own DOB/phone.
     ].filter((f) => f.Data != null) },
-      // ★ PE Emails custom field (Raymond, 2026-08-26; delimiter corrected
+      // ★ PE Emails custom field (Raymond, 2026-08-26; format corrected
       // 2026-09-23 per Colin Braganza/Amgine): the traveler's email we send
       // above wasn't landing in the Sabre PNR's own "PE" (Passenger Email)
       // field, so Ray added a branch-level Custom Field named "PE Emails" that
       // we populate ourselves — Amgine's backend maps this into the actual PNR.
-      // Original guess used "\" as the delimiter (Ray's emailed example
-      // rendered as "¥", assumed to be a mangled backslash) — this never got
-      // confirmed and PNR emails stayed broken for weeks. Colin (who owns this
-      // field on Amgine's side) confirmed the real format is "/" as the
-      // delimiter: "PE/{email}/". Multiple travelers would be tethered with
-      // "[|]" (not used here — we only ever send one traveler per request).
-      ...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: `PE/${t.email}/` }] } : {}),
+      // Went through two wrong guesses first: "PE\{email}\" (Ray's emailed
+      // example rendered the delimiter as "¥", assumed mangled backslash), then
+      // "PE/{email}/" (Colin's first answer) — a live test (Vera typed that
+      // exact format straight into Amgine's own intake form, bypassing our
+      // code) proved the email still never reached the PNR either way, so the
+      // wrapper itself was never the issue. Colin's final answer: just the raw
+      // email address, no "PE" prefix, no delimiter at all.
+      ...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: t.email }] } : {}),
       ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
     Intent: { Nodes: intentNodes }, IntentOnly: false, ...flow,
   };
