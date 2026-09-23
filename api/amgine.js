@@ -441,10 +441,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: r.ok });
   }
   if (norm(body.__checkGroupRow)) {
-    const groups = await (await api(`/sheets/${GROUPS}`)).json();
+    const groups = await (await api(`/sheets/${GROUPS}?pageSize=500&page=1`)).json();
     const G = indexSheet(groups);
+    const allIds = (groups.rows || []).map(r => norm(G.val(r, 'GROUP ID')));
     const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === norm(body.__checkGroupRow).toLowerCase());
-    if (!grow) return res.status(200).json({ ok: false, error: 'not found', totalRows: (groups.rows || []).length });
+    if (!grow) return res.status(200).json({ ok: false, error: 'not found', totalRows: (groups.rows || []).length, totalRowCount: groups.totalRowCount, sampleIds: allIds.filter(Boolean).slice(-15) });
     return res.status(200).json({ ok: true, branchGuid: G.val(grow, 'Amgine Branch GUID'), groupIdRaw: G.val(grow, 'GROUP ID') });
   }
   if (norm(body.__checkTravellerRow) && body.__rowId) {
