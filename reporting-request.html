@@ -176,9 +176,21 @@
             </select>
           </div>
           <div class="field">
+            <label class="field-label" for="newClient">New Client?<span class="required-mark">*</span></label>
+            <select id="newClient" name="newClient" class="field-input" required>
+              <option value="" disabled selected>Select…</option>
+              <option value="No">No – existing client</option>
+              <option value="Yes">Yes – new client</option>
+            </select>
+          </div>
+          <div class="field" id="travelDatesField">
             <label class="field-label" for="travelDates">Dates of Travel<span class="required-mark">*</span></label>
             <div class="field-sub">e.g. Sept 1 – Sept 15, 2026</div>
             <input type="text" id="travelDates" name="travelDates" class="field-input" required />
+          </div>
+          <div class="field" id="goLiveField" style="display:none;">
+            <label class="field-label" for="goLiveDate">Go-Live Date<span class="required-mark">*</span></label>
+            <input type="date" id="goLiveDate" name="goLiveDate" class="field-input" />
           </div>
           <div class="field">
             <label class="field-label" for="destination">Destination<span class="required-mark">*</span></label>
@@ -356,6 +368,16 @@
       });
     });
 
+    // New client: swap Dates of Travel for Go-Live Date.
+    document.getElementById('newClient').addEventListener('change', function () {
+      var isNew = this.value === 'Yes';
+      var tf = document.getElementById('travelDates'), gf = document.getElementById('goLiveDate');
+      document.getElementById('travelDatesField').style.display = isNew ? 'none' : '';
+      document.getElementById('goLiveField').style.display = isNew ? '' : 'none';
+      tf.required = !isNew; gf.required = isNew;
+      if (isNew) { tf.value = ''; tf.classList.remove('field-error'); } else { gf.value = ''; gf.classList.remove('field-error'); }
+    });
+
     // UDID list — repeatable rows (UDID # + client data), add/remove as needed.
     function addUdidRow() {
       var row = document.createElement('div');
@@ -438,7 +460,8 @@
         'Company Name: ' + (data.companyName || ''),
         'PCC: ' + (data.pcc || ''),
         'Currency: ' + (data.currency || ''),
-        'Dates of Travel: ' + (data.travelDates || ''),
+        'New Client: ' + (data.newClient || ''),
+        data.newClient === 'Yes' ? 'Go-Live Date: ' + (data.goLiveDate || '') : 'Dates of Travel: ' + (data.travelDates || ''),
         'Destination: ' + (data.destination || ''),
         '',
         '=== REPORTS REQUIRED ===', '',
