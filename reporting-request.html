@@ -156,6 +156,14 @@
 
         <div class="grid2">
           <div class="field">
+            <label class="field-label" for="requestType">Request Type<span class="required-mark">*</span></label>
+            <select id="requestType" name="requestType" class="field-input" required>
+              <option value="" disabled selected>Select…</option>
+              <option value="Group">Group</option>
+              <option value="CSM/CSIM">CSM/CSIM</option>
+            </select>
+          </div>
+          <div class="field">
             <label class="field-label" for="dkNumber">DK Number<span class="required-mark">*</span></label>
             <input type="text" id="dkNumber" name="dkNumber" class="field-input" required />
           </div>
@@ -453,9 +461,10 @@
         if (num || client) udidLines.push(pad(num || '-', 18) + '|  ' + (client || '-'));
       });
 
-      var subject = 'Corporate Reporting Request — ' + (data.companyName || '') + ' / DK ' + (data.dkNumber || '');
+      var subject = 'Corporate Reporting Request (' + (data.requestType || '') + ') — ' + (data.companyName || '') + ' / DK ' + (data.dkNumber || '');
       var body = [
         'CORPORATE REPORTING REQUEST', '',
+        'Request Type: ' + (data.requestType || ''),
         'DK Number: ' + (data.dkNumber || ''),
         'Company Name: ' + (data.companyName || ''),
         'PCC: ' + (data.pcc || ''),
