@@ -565,24 +565,32 @@
 
     // Logs this submission to the Excel tracker via the Power Automate flow
     // (Excel Online "Add a row into a table", table GoLiveSubmissions).
+    // Routed through our own /api/finance-tracker (action: proxy-flow) rather
+    // than calling the Power Automate URL directly -- a browser fetch() to
+    // that URL hits CORS (Power Automate's HTTP trigger doesn't send the
+    // headers a cross-origin request needs), so it silently never arrives.
+    // A same-origin server-to-server call has no such restriction.
     // Fire-and-forget -- never blocks or delays the real email below.
-    fetch('https://default51cb5df4df054e5bb20c17d576ab85.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/02/workflows/a67ccc58c7484dd1b04aa9649bd7e47f/triggers/manual/paths/invoke?api-version=1', {
+    fetch('/api/finance-tracker', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        mode: modeLabel,
-        submittedBy: g('submittedBy'),
-        accountName: g('accountName'),
-        contractedValue: g('contractedValue'),
-        accountLocation: g('accountLocation'),
-        bdmEmail: g('bdmEmail'),
-        csmEmail: g('csmEmail'),
-        implementationsLead: g('implementationsLead'),
-        csm: g('csm'),
-        csim: g('csim'),
-        goLiveDate: g('goLiveDate'),
-        cutoverDate: g('cutoverDate'),
-        launchType: g('launchType'),
+        action: 'proxy-flow',
+        body: {
+          mode: modeLabel,
+          submittedBy: g('submittedBy'),
+          accountName: g('accountName'),
+          contractedValue: g('contractedValue'),
+          accountLocation: g('accountLocation'),
+          bdmEmail: g('bdmEmail'),
+          csmEmail: g('csmEmail'),
+          implementationsLead: g('implementationsLead'),
+          csm: g('csm'),
+          csim: g('csim'),
+          goLiveDate: g('goLiveDate'),
+          cutoverDate: g('cutoverDate'),
+          launchType: g('launchType'),
+        },
       }),
     }).catch(function () { /* best-effort -- the email is still the source of truth */ });
 

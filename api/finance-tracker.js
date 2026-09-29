@@ -12,7 +12,30 @@
 // (Upstash) integration, keyed by normalized agent name -- naturally dedupes
 // per agent and always holds their most recent submission.
 //
+// POST { action: "proxy-flow", body: {...} } (added 2026-09-29, go-live-communication.html)
+//   -> server-side POST of `body` to the Go-Live Power Automate HTTP trigger.
+//      Exists because a browser calling that URL directly hits CORS -- Power
+//      Automate's HTTP trigger doesn't return the headers a cross-origin
+//      fetch() needs, so the request never lands. A same-origin server call
+//      has no such restriction. Reused this file (rather than a new one)
+//      because this project is already at Vercel's 12-function cap.
+//
 // Env vars required: KV_REST_API_URL, KV_REST_API_TOKEN, FINANCE_TRACKER_PASSWORD
+
+const GOLIVE_FLOW_URL = 'https://default51cb5df4df054e5bb20c17d576ab85.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/02/workflows/a67ccc58c7484dd1b04aa9649bd7e47f/triggers/manual/paths/invoke?api-version=1';
+
+async function handleProxyFlow(body, res) {
+  try {
+    const flowRes = await fetch(GOLIVE_FLOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body.body || {}),
+    });
+    return res.status(200).json({ ok: flowRes.ok, status: flowRes.status });
+  } catch (err) {
+    return res.status(200).json({ ok: false, reason: err.message });
+  }
+}
 
 const KV_URL = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
@@ -86,5 +109,6 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
   if (body.action === 'log') return handleLog(body, res);
+  if (body.action === 'proxy-flow') return handleProxyFlow(body, res);
   return handleRead(body, res);
 }
