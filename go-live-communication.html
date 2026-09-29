@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington Corporate — Go-Live Internal Communication</title>
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+
+  :root {
+    --ink: #3a2f3c; --ink-soft: #524a54; --ink-mute: #8b8678;
+    --bone: #fdf9ec; --paper: #fffdf8; --cream: #f3eedf;
+    --gold: #767260; --gold-deep: #1a3e32; --line: #e4ddcc; --error: #b03a3a;
+    --shadow-lg: 0 12px 40px rgba(58,47,60,0.10), 0 4px 12px rgba(58,47,60,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'SangBleu Republic', Georgia, -apple-system, serif; background: var(--bone); color: var(--ink); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+  .hero { position: relative; padding: 56px 24px 96px; text-align: center;
+    background: radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%), linear-gradient(135deg, #2a2230 0%, #3a2f3c 45%, #1a3e32 100%); overflow: hidden; }
+  .hero-logo { height: 56px; width: auto; display: block; margin: 0 auto 24px; }
+  .hero-eyebrow { font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase; color: #c9c3b2; margin-bottom: 14px; font-weight: 500; }
+  .hero-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; color: var(--bone); font-size: clamp(24px, 3vw, 38px); line-height: 1.2; }
+  .hero-title em { font-style: italic; color: #c9b78f; }
+  .hero-subtitle { color: rgba(245,241,232,0.72); font-size: 14px; max-width: 560px; margin: 16px auto 0; line-height: 1.7; }
+
+  .form-wrap { max-width: 780px; margin: -64px auto 80px; padding: 0 20px; position: relative; z-index: 2; }
+  .form-card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+
+  .section { padding: 36px 44px; border-bottom: 1px solid var(--line); }
+  .section:last-of-type { border-bottom: none; }
+  .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
+  .section-num { font-family: 'SangBleu Sunrise', Georgia, serif; font-style: italic; color: var(--gold); font-size: 18px; }
+  .section-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; color: var(--ink); font-size: 22px; }
+  .section-tag { margin-left: auto; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-mute); }
+
+  .field { margin-bottom: 22px; display: flex; flex-direction: column; }
+  .field:last-child { margin-bottom: 0; }
+  .grid2 .field, .grid3 .field { margin-bottom: 0; }
+  .field .field-input, .field .field-textarea { margin-top: auto; }
+  .field-input { min-height: 48px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 22px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; margin-bottom: 22px; }
+  @media (max-width: 640px) { .grid2, .grid3 { grid-template-columns: 1fr; } .section { padding: 28px 22px; } }
+
+  .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
+  .required-mark { color: var(--error); margin-left: 3px; }
+  .field-sub { font-size: 12px; color: var(--ink-mute); font-style: italic; margin: -4px 0 8px; line-height: 1.5; }
+
+  .field-input, .field-textarea, select.field-input { width: 100%; font-family: inherit; font-size: 15px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; transition: border-color .15s, box-shadow .15s; }
+  .field-textarea { min-height: 80px; resize: vertical; }
+  .field-input:focus, .field-textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(118,114,96,0.15); }
+  .field-input.field-error, .field-textarea.field-error { border-color: var(--error); box-shadow: 0 0 0 3px rgba(176,58,58,0.12); }
+
+  .notice { background: var(--cream); border-left: 3px solid var(--gold-deep); border-radius: 4px; padding: 14px 16px; font-size: 13px; color: var(--ink-soft); margin-bottom: 22px; line-height: 1.6; }
+  .notice strong { color: var(--gold-deep); }
+
+  .action-list { background: var(--cream); border-radius: 8px; padding: 18px 22px; }
+  .action-list-title { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 12px; font-weight: 500; }
+  .action-list ul { margin: 0; padding-left: 20px; }
+  .action-list li { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
+  .action-list li:last-child { margin-bottom: 0; }
+
+  .recipient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin-bottom: 22px; }
+  @media (max-width: 640px) { .recipient-grid { grid-template-columns: 1fr; } }
+  .checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-soft); }
+  .checkbox-row input { width: 17px; height: 17px; accent-color: var(--gold-deep); flex: none; }
+
+  .subgroup { border: 1px dashed var(--line); border-radius: 8px; padding: 18px 20px; margin-top: 8px; display: none; }
+  .subgroup.show { display: block; }
+  .subgroup-title { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+
+  .form-footer { padding: 32px 44px 40px; text-align: center; }
+  .submit-btn { font-family: 'SangBleu Republic', serif; font-size: 15px; font-weight: 500; background: var(--ink); color: var(--bone); border: none; border-radius: 6px; padding: 15px 48px; cursor: pointer; letter-spacing: 0.02em; transition: background .15s, transform .1s; }
+  .submit-btn:hover { background: #4a3d4d; }
+  .submit-btn:active { transform: translateY(1px); }
+  .submit-btn:disabled { opacity: 0.6; cursor: default; }
+  .footer-note { font-size: 12px; color: var(--ink-mute); margin-top: 16px; line-height: 1.6; }
+
+  .success { display: none; padding: 72px 44px; text-align: center; }
+  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
+  .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
+  .success-text { color: var(--ink-soft); max-width: 480px; margin: 0 auto; }
+  .success-restart { display: inline-block; margin-top: 22px; font-size: 13px; color: var(--gold-deep); text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" onerror="this.style.display='none'" />
+    <div class="hero-eyebrow">Implementations · Internal Communication</div>
+    <h1 class="hero-title">Go-Live <em>Internal Communication</em></h1>
+    <p class="hero-subtitle">Complete this form once an account is ready to go live. Submitting opens a pre-filled email from your own Outlook to the recipients you select below — review and send.</p>
+  </header>
+
+  <div class="form-wrap">
+    <form id="goLiveForm" class="form-card" novalidate>
+
+      <!-- ============ SECTION 1: ACCOUNT OVERVIEW ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">I.</span>
+          <h2 class="section-title">Account Overview</h2>
+          <span class="section-tag">Basics</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="accountName">Account Name<span class="required-mark">*</span></label>
+          <input type="text" id="accountName" name="accountName" class="field-input" data-req="1" required />
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="contractedValue">Contracted Value</label>
+            <input type="text" id="contractedValue" name="contractedValue" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="accountLocation">Account Location</label>
+            <input type="text" id="accountLocation" name="accountLocation" class="field-input" />
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 2: TEAM & KEY DATES ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">II.</span>
+          <h2 class="section-title">Team &amp; Key Dates</h2>
+          <span class="section-tag">Ownership</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="bdmClipDate">BDM / Clip Date</label>
+          <div class="field-sub">BD clip starts on go-live day. Exceptions can be made if a piece of business goes live before implementation is done — e.g. implementation for Envoy is slated for 8 weeks, but Entourage goes live 2 weeks into implementation. BDM can choose to be clipped when Entourage goes live, or Envoy — but not both.</div>
+          <input type="text" id="bdmClipDate" name="bdmClipDate" class="field-input" />
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="implementationsLead">Implementations Lead</label>
+            <input type="text" id="implementationsLead" name="implementationsLead" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="csm">CSM</label>
+            <input type="text" id="csm" name="csm" class="field-input" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="csim">CSIM</label>
+            <input type="text" id="csim" name="csim" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="csimHandoverDate">CSIM to CSM Handover Date</label>
+            <input type="date" id="csimHandoverDate" name="csimHandoverDate" class="field-input" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="leadAgent">Lead Agent (90 days)</label>
+          <input type="text" id="leadAgent" name="leadAgent" class="field-input" />
+        </div>
+      </section>
+
+      <!-- ============ SECTION 3: MAIN CONTACTS ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">III.</span>
+          <h2 class="section-title">Main Contacts</h2>
+          <span class="section-tag">Client Side</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="mainContacts">Main Contacts</label>
+          <div class="field-sub">Name, title, email — one per line.</div>
+          <textarea id="mainContacts" name="mainContacts" class="field-textarea"></textarea>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 4: GO-LIVE DETAILS ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">IV.</span>
+          <h2 class="section-title">Go-Live Details</h2>
+          <span class="section-tag">Launch</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="dk">DK (Envoy, Entourage, Concierge)</label>
+          <input type="text" id="dk" name="dk" class="field-input" />
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="cutoverDate">Cutover Date</label>
+            <input type="date" id="cutoverDate" name="cutoverDate" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="goLiveDate">Go-Live Date (Envoy, Entourage, Concierge)</label>
+            <input type="text" id="goLiveDate" name="goLiveDate" class="field-input" placeholder="e.g. Envoy: 2026-10-01, Entourage: 2026-10-15" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="launchType">Full or Partial Launch</label>
+          <select id="launchType" name="launchType" class="field-input">
+            <option value="">— Select —</option>
+            <option value="Full">Full</option>
+            <option value="Partial">Partial</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="serviceFees">Service Fees</label>
+          <div class="field-sub">Advise pay-per-use or cash fees. If cash fees, Finance needs to be advised if they're EFT, or CC with approval (confirm with client before charging), or CC without approval.</div>
+          <textarea id="serviceFees" name="serviceFees" class="field-textarea"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="travelPolicyLink">Travel Policy Recap — Link</label>
+          <input type="url" id="travelPolicyLink" name="travelPolicyLink" class="field-input" placeholder="https://" />
+        </div>
+      </section>
+
+      <!-- ============ SECTION 5: FINANCIALS ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">V.</span>
+          <h2 class="section-title">Financials</h2>
+          <span class="section-tag">OBT &amp; Fees</span>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="obt">OBT</label>
+            <input type="text" id="obt" name="obt" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="ongoingFees">On-going Yearly / Monthly Fees</label>
+            <input type="text" id="ongoingFees" name="ongoingFees" class="field-input" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="contractExpiration">Contract Expiration Date</label>
+          <input type="date" id="contractExpiration" name="contractExpiration" class="field-input" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="rebateProgram">Rebate Program</label>
+          <select id="rebateProgram" name="rebateProgram" class="field-input">
+            <option value="">— Select —</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div class="subgroup" id="rebateDetailsGroup">
+          <div class="subgroup-title">Rebate Details</div>
+          <div class="field">
+            <label class="field-label" for="rebateDetails">Copy/paste rebate details from contract</label>
+            <textarea id="rebateDetails" name="rebateDetails" class="field-textarea"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 6: TRAINING & SETUP ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">VI.</span>
+          <h2 class="section-title">Training &amp; Setup</h2>
+          <span class="section-tag">Enablement</span>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="generalTrainingDate">General Population Training Date</label>
+            <input type="date" id="generalTrainingDate" name="generalTrainingDate" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="adminTrainingDate">User Admin &amp; Super User Training Date</label>
+            <input type="date" id="adminTrainingDate" name="adminTrainingDate" class="field-input" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="kcaTrainingDate">KCA Training Date</label>
+            <input type="date" id="kcaTrainingDate" name="kcaTrainingDate" class="field-input" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="otherAncillaryTrainingDate">Other Ancillary Services Training Date</label>
+            <div class="field-sub">If applicable</div>
+            <input type="date" id="otherAncillaryTrainingDate" name="otherAncillaryTrainingDate" class="field-input" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="ancillaryServices">Ancillary Services</label>
+          <textarea id="ancillaryServices" name="ancillaryServices" class="field-textarea"></textarea>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="airCanadaContract">Air Canada Contract</label>
+            <select id="airCanadaContract" name="airCanadaContract" class="field-input">
+              <option value="">— Select —</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="flightPasses">Flight Passes</label>
+            <select id="flightPasses" name="flightPasses" class="field-input">
+              <option value="">— Select —</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="obtSignOnMethod">OBT Sign-on Method</label>
+          <input type="text" id="obtSignOnMethod" name="obtSignOnMethod" class="field-input" />
+        </div>
+      </section>
+
+      <!-- ============ SECTION 7: ACTION ITEMS (reference, read-only) ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">VII.</span>
+          <h2 class="section-title">Action Items</h2>
+          <span class="section-tag">Standard Follow-ups</span>
+        </div>
+        <div class="action-list">
+          <div class="action-list-title">Included automatically in this communication</div>
+          <ul>
+            <li>Ops to train agents</li>
+            <li>Sr Dir BDM &amp; CSM to add account to CSM incentive sheet</li>
+            <li>Solutions to add account to CSM portfolio in Trams/BI</li>
+            <li>Finance to add to payroll tracker</li>
+            <li>Finance to add to tracker if applicable</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ SECTION 8: RECIPIENTS ============ -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-num">VIII.</span>
+          <h2 class="section-title">Recipients</h2>
+          <span class="section-tag">Distribution</span>
+        </div>
+
+        <div class="notice"><strong>Standard distribution list.</strong> Check who this go-live applies to — this is included in the email body for reference.</div>
+
+        <div class="recipient-grid">
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="BDM" checked /> BDM</label>
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="Implementations" checked /> Implementations</label>
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="Sr Dir Ops" checked /> Sr Dir Ops</label>
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="Sr Dir Sales & CSM" checked /> Sr Dir Sales &amp; CSM</label>
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="Finance" checked /> Finance</label>
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="Patricia Alzate" checked /> Patricia Alzate</label>
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="Ops TL's" checked /> Ops TL's</label>
+          <label class="checkbox-row"><input type="checkbox" name="recip" value="Corporate Reporting/Sr Dir Solutions" checked /> Corporate Reporting / Sr Dir Solutions</label>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="toEmails">Send To (email addresses)<span class="required-mark">*</span></label>
+          <div class="field-sub">Enter the actual recipient email addresses / distro list, separated by commas.</div>
+          <input type="text" id="toEmails" name="toEmails" class="field-input" data-req="1" required placeholder="name@kensingtoncorporate.com, name2@kensingtoncorporate.com" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="ccEmails">CC (optional)</label>
+          <input type="text" id="ccEmails" name="ccEmails" class="field-input" />
+        </div>
+      </section>
+
+      <div class="form-footer">
+        <button type="submit" class="submit-btn">Submit Communication</button>
+        <p class="footer-note">This opens a pre-filled email in your default mail app. Review the recipients and content, then hit Send.</p>
+      </div>
+    </form>
+
+    <div class="form-card success" id="success">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">Almost done — <em>send your email</em></h2>
+      <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> If the draft didn't open, check the recipients you entered and email them directly.</p>
+      <button type="button" class="success-restart" id="restartBtn">Submit another communication</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var form = document.getElementById('goLiveForm');
+  var success = document.getElementById('success');
+
+  var rebateSelect = document.getElementById('rebateProgram');
+  var rebateGroup = document.getElementById('rebateDetailsGroup');
+  rebateSelect.addEventListener('change', function () {
+    rebateGroup.classList.toggle('show', rebateSelect.value === 'Yes');
+  });
+
+  function visible(el) { return !!(el.offsetParent !== null); }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var firstInvalid = null;
+
+    form.querySelectorAll('[data-req="1"]').forEach(function (f) {
+      if (!visible(f)) { f.classList.remove('field-error'); return; }
+      if (!String(f.value).trim()) { f.classList.add('field-error'); if (!firstInvalid) firstInvalid = f; }
+      else f.classList.remove('field-error');
+    });
+
+    if (firstInvalid) {
+      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      try { firstInvalid.focus({ preventScroll: true }); } catch (_) {}
+      alert('Please complete all required fields (marked with *) before submitting.');
+      return;
+    }
+
+    var d = {};
+    new FormData(form).forEach(function (value, key) {
+      if (d[key] !== undefined) {
+        if (Array.isArray(d[key])) d[key].push(value); else d[key] = [d[key], value];
+      } else { d[key] = value; }
+    });
+    var g = function (k) { return d[k] || ''; };
+    var recips = Array.isArray(d.recip) ? d.recip : (d.recip ? [d.recip] : []);
+
+    var lines = [
+      'Go-Live Internal Communication — ' + g('accountName'), '',
+      'Recipients: ' + (recips.length ? recips.join(', ') : '—'), '',
+      'Contracted Value: ' + g('contractedValue'),
+      'Account Location: ' + g('accountLocation'), '',
+      'BDM/Clip Date: ' + g('bdmClipDate'),
+      'Implementations Lead: ' + g('implementationsLead'),
+      'CSM: ' + g('csm'),
+      'CSIM: ' + g('csim'),
+      'CSIM to CSM Handover Date: ' + g('csimHandoverDate'),
+      'Lead Agent (90 days): ' + g('leadAgent'), '',
+      'Main contacts:',
+      g('mainContacts') || '—', '',
+      'DK (Envoy, Entourage, Concierge): ' + g('dk'),
+      'Cutover Date: ' + g('cutoverDate'),
+      'Go-Live Date (Envoy, Entourage, Concierge): ' + g('goLiveDate'),
+      'Full or Partial Launch: ' + g('launchType'),
+      'Service fees: ' + (g('serviceFees') || '—'), '',
+      'Travel Policy Recap: ' + (g('travelPolicyLink') || '—'), '',
+      'OBT: ' + g('obt'),
+      'On-going yearly/monthly fees: ' + g('ongoingFees'),
+      'Contract expiration date: ' + g('contractExpiration'),
+      'Rebate program: ' + (g('rebateProgram') || '—') + (g('rebateProgram') === 'Yes' && g('rebateDetails') ? ' — ' + g('rebateDetails') : ''), '',
+      'General Population Training Date: ' + g('generalTrainingDate'),
+      'User Admin & Super User Training Date: ' + g('adminTrainingDate'),
+      'KCA training date: ' + g('kcaTrainingDate'),
+      'Ancillary services: ' + (g('ancillaryServices') || '—'),
+      'Other ancillary services training date (if applicable): ' + g('otherAncillaryTrainingDate'),
+      'Air Canada Contract: ' + (g('airCanadaContract') || '—'),
+      'Flight Passes: ' + (g('flightPasses') || '—'),
+      'OBT sign-on Method: ' + g('obtSignOnMethod'), '',
+      'Action Items:',
+      '- Ops to train agents',
+      '- Sr Dir BDM & CSM to add account to CSM incentive sheet',
+      '- Solutions to add account to CSM portfolio in Trams/BI',
+      '- finance to add to payroll tracker',
+      '- finance to add to tracker if applicable',
+    ];
+
+    var subject = 'Go-Live Internal Communication — ' + g('accountName');
+    var mailto = 'mailto:' + encodeURIComponent(g('toEmails'))
+      + (g('ccEmails') ? '?cc=' + encodeURIComponent(g('ccEmails')) + '&' : '?')
+      + 'subject=' + encodeURIComponent(subject)
+      + '&body=' + encodeURIComponent(lines.join('\n'));
+
+    form.style.display = 'none';
+    success.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.location.href = mailto;
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', function () {
+    form.reset();
+    rebateGroup.classList.remove('show');
+    success.style.display = 'none';
+    form.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
