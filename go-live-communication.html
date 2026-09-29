@@ -124,6 +124,11 @@
         </div>
 
         <div class="field">
+          <label class="field-label" for="submittedBy">Submitted By<span class="required-mark">*</span></label>
+          <input type="text" id="submittedBy" name="submittedBy" class="field-input" data-req="1" required />
+        </div>
+
+        <div class="field">
           <label class="field-label" for="accountName">Account Name<span class="required-mark">*</span></label>
           <input type="text" id="accountName" name="accountName" class="field-input" data-req="1" required />
         </div>
@@ -511,6 +516,7 @@
 
     var lines = [
       'Go-Live ' + modeLabel + ' Communication — ' + g('accountName'), '',
+      'Submitted By: ' + g('submittedBy'), '',
       'Recipients: ' + (recips.length ? recips.join(', ') : '—'),
       'BDM Email: ' + g('bdmEmail'),
       'CSM Email: ' + g('csmEmail'), '',
@@ -556,6 +562,29 @@
       + (g('ccEmails') ? '?cc=' + encodeURIComponent(g('ccEmails')) + '&' : '?')
       + 'subject=' + encodeURIComponent(subject)
       + '&body=' + encodeURIComponent(lines.join('\n'));
+
+    // Logs this submission to the Excel tracker via the Power Automate flow
+    // (Excel Online "Add a row into a table", table GoLiveSubmissions).
+    // Fire-and-forget -- never blocks or delays the real email below.
+    fetch('https://default51cb5df4df054e5bb20c17d576ab85.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/02/workflows/a67ccc58c7484dd1b04aa9649bd7e47f/triggers/manual/paths/invoke?api-version=1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: modeLabel,
+        submittedBy: g('submittedBy'),
+        accountName: g('accountName'),
+        contractedValue: g('contractedValue'),
+        accountLocation: g('accountLocation'),
+        bdmEmail: g('bdmEmail'),
+        csmEmail: g('csmEmail'),
+        implementationsLead: g('implementationsLead'),
+        csm: g('csm'),
+        csim: g('csim'),
+        goLiveDate: g('goLiveDate'),
+        cutoverDate: g('cutoverDate'),
+        launchType: g('launchType'),
+      }),
+    }).catch(function () { /* best-effort -- the email is still the source of truth */ });
 
     document.querySelector('#success .success-text').innerHTML =
       'We\'ve opened a pre-filled email to <strong>' + toList + '</strong>. <strong>Review and hit Send.</strong> If the draft didn\'t open, check those addresses and email them directly.';
