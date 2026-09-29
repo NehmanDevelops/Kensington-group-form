@@ -22,7 +22,7 @@
 //
 // Env vars required: KV_REST_API_URL, KV_REST_API_TOKEN, FINANCE_TRACKER_PASSWORD
 
-const GOLIVE_FLOW_URL = 'https://default51cb5df4df054e5bb20c17d576ab85.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/02/workflows/a67ccc58c7484dd1b04aa9649bd7e47f/triggers/manual/paths/invoke?api-version=1';
+const GOLIVE_FLOW_URL = 'https://default51cb5df4df054e5bb20c17d576ab85.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/02/workflows/a67ccc58c7484dd1b04aa9649bd7e47f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=57DXfAdbkNMjnpP41-eoi8_KKQnWbfwHZXWvRFnwTj0';
 
 async function handleProxyFlow(body, res) {
   try {
