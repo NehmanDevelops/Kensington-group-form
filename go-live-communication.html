@@ -399,7 +399,18 @@
           <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Corporate Reporting/Sr Dir Solutions" checked /> Corporate Reporting / Sr Dir Solutions</label>
         </div>
 
-        <div class="notice">This routes automatically to the <strong id="recipientRouteLabel">Internal</strong> inbox — no need to type an email address. Add anyone extra below.</div>
+        <div class="notice">This always goes to <strong>Michael Beaucage, Patricia Alzate, Sandra Marias, and Corporate Reporting</strong> automatically. BDM and CSM change per account — enter their emails below and they'll be added to the recipients.</div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="bdmEmail">BDM Email<span class="required-mark">*</span></label>
+            <input type="email" id="bdmEmail" name="bdmEmail" class="field-input" data-req="1" required placeholder="name@kensingtoncorporate.com" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="csmEmail">CSM Email<span class="required-mark">*</span></label>
+            <input type="email" id="csmEmail" name="csmEmail" class="field-input" data-req="1" required placeholder="name@kensingtoncorporate.com" />
+          </div>
+        </div>
 
         <div class="field">
           <label class="field-label" for="ccEmails">CC (optional)</label>
@@ -427,21 +438,19 @@
   var success = document.getElementById('success');
 
   // ── Internal / External mode ───────────────────────────────────────
-  // TODO: the email goes here -- replace these two placeholders with the
-  // real distro addresses once given. Internal is the list Nehman provided
-  // (BDM, Implementations, Sr Dir Ops, Sr Dir Sales & CSM, Finance,
-  // Patricia Alzate, Ops TL's, Corporate Reporting/Sr Dir Solutions);
-  // External is a copy of the same list/routing until the real external
-  // version is sent.
-  var RECIPIENT_EMAIL = {
-    internal: 'REPLACE_WITH_INTERNAL_DISTRO_EMAIL@kensingtoncorporate.com',
-    external: 'REPLACE_WITH_INTERNAL_DISTRO_EMAIL@kensingtoncorporate.com',
-  };
+  // Fixed recipients on every submission, either mode -- BDM and CSM change
+  // per account, so those are entered in the form and added on top of this
+  // list (see the "BDM Email" / "CSM Email" fields below).
+  var FIXED_RECIPIENTS = [
+    'michael.beaucage@kensingtoncorporate.com',
+    'patricia.alzate@traveledge.com',
+    'sandra.marias@kensingtoncorporate.com',
+    'corporate.reporting@traveledge.com',
+  ];
   var mode = 'internal';
   var modeSwitch = document.getElementById('modeSwitch');
   var recipientsTag = document.getElementById('recipientsTag');
   var recipientsNotice = document.getElementById('recipientsNotice');
-  var recipientRouteLabel = document.getElementById('recipientRouteLabel');
   var gridInternal = document.getElementById('recipientGridInternal');
   var gridExternal = document.getElementById('recipientGridExternal');
 
@@ -454,10 +463,9 @@
     gridInternal.style.display = isInternal ? '' : 'none';
     gridExternal.style.display = isInternal ? 'none' : '';
     recipientsTag.textContent = isInternal ? 'Internal Distribution' : 'External Distribution';
-    recipientRouteLabel.textContent = isInternal ? 'Internal' : 'External';
     recipientsNotice.innerHTML = isInternal
-      ? '<strong>Standard internal distribution list.</strong> Check who this go-live applies to — this is included in the email body for reference. Submitting routes automatically to the Internal distro.'
-      : '<strong>External distribution list</strong> (copied from Internal for now — will be updated once the real external list is provided). Submitting routes automatically to the External distro.';
+      ? '<strong>Standard internal distribution list.</strong> Check who this go-live applies to — this is included in the email body for reference.'
+      : '<strong>External distribution list</strong> (copied from Internal for now — will be updated once the real external list is provided).';
   }
   modeSwitch.addEventListener('click', function (e) {
     var btn = e.target.closest('.mode-btn');
@@ -503,7 +511,9 @@
 
     var lines = [
       'Go-Live ' + modeLabel + ' Communication — ' + g('accountName'), '',
-      'Recipients: ' + (recips.length ? recips.join(', ') : '—'), '',
+      'Recipients: ' + (recips.length ? recips.join(', ') : '—'),
+      'BDM Email: ' + g('bdmEmail'),
+      'CSM Email: ' + g('csmEmail'), '',
       'Contracted Value: ' + g('contractedValue'),
       'Account Location: ' + g('accountLocation'), '',
       'BDM/Clip Date: ' + g('bdmClipDate'),
@@ -541,14 +551,14 @@
     ];
 
     var subject = 'Go-Live ' + modeLabel + ' Communication — ' + g('accountName');
-    var recipientEmail = RECIPIENT_EMAIL[mode];
-    var mailto = 'mailto:' + encodeURIComponent(recipientEmail)
+    var toList = FIXED_RECIPIENTS.concat([g('bdmEmail'), g('csmEmail')]).filter(Boolean).join(', ');
+    var mailto = 'mailto:' + encodeURIComponent(toList)
       + (g('ccEmails') ? '?cc=' + encodeURIComponent(g('ccEmails')) + '&' : '?')
       + 'subject=' + encodeURIComponent(subject)
       + '&body=' + encodeURIComponent(lines.join('\n'));
 
     document.querySelector('#success .success-text').innerHTML =
-      'We\'ve opened a pre-filled email to <strong>' + recipientEmail + '</strong>. <strong>Review and hit Send.</strong> If the draft didn\'t open, check that address and email it directly.';
+      'We\'ve opened a pre-filled email to <strong>' + toList + '</strong>. <strong>Review and hit Send.</strong> If the draft didn\'t open, check those addresses and email them directly.';
     form.style.display = 'none';
     success.style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
