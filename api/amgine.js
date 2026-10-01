@@ -504,18 +504,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: check if a given Group ID exists (or recently existed) in GROUPS (remove after use).
-  if (norm(body.__checkGroupExists)) {
-    const groups = await (await api(`/sheets/${GROUPS}?pageSize=500&page=1`)).json();
-    const G = indexSheet(groups);
-    const wanted = norm(body.__checkGroupExists).toLowerCase();
-    const exact = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === wanted);
-    const close = (groups.rows || []).filter(r => norm(G.val(r, 'GROUP ID')).toLowerCase().includes(wanted.slice(0, 8)));
-    return res.status(200).json({
-      ok: true, totalRows: (groups.rows || []).length, exactMatch: !!exact,
-      closeMatches: close.map(r => norm(G.val(r, 'GROUP ID'))),
-    });
-  }
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
