@@ -66,12 +66,22 @@ const toGender = (g) => {
 };
 
 // YYYY-MM-DD (or other common forms) -> DD-MM-YYYY  (Amgine wants DD-MM-YYYY)
+const MONTH_ABBR = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
 const toDOB = (v) => {
   const s = norm(v);
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
   m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}-${y}`; }
+  // Free-text "23Aug2015" / "23 Aug 2015" / "23-Aug-2015" style — found 2026-10-01
+  // ("Guest DOB" is a TEXT_NUMBER column, not DATE like the principal's own
+  // "Date of Birth" column, so it's whatever free text a human typed in —
+  // this format silently passed through unconverted and Amgine rejected it).
+  m = s.match(/^(\d{1,2})\s*[-\/]?\s*([A-Za-z]{3,9})\s*[-\/,]?\s*(\d{4})$/);
+  if (m) {
+    const mon = MONTH_ABBR[m[2].slice(0, 3).toLowerCase()];
+    if (mon) return `${m[1].padStart(2, '0')}-${String(mon).padStart(2, '0')}-${m[3]}`;
+  }
   return s;
 };
 
@@ -195,8 +205,8 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     // ── Guest (Vera, 2026-10-01): a traveller can bring one guest, filled in on
     // the SAME row (no separate guest row). Only the fields that actually exist
     // as dedicated "Guest ..." columns on this sheet are sent — same restraint
-    // as the principal traveller above (no Gender/Phone column for guests
-    // exists, so those are simply omitted, never guessed/invented).
+    // as the principal traveller above (no Phone column for guests exists,
+    // so that one is simply omitted, never guessed/invented).
     // First/Middle/Last split into their own columns (Vera, 2026-10-01, same
     // day) — replaced an earlier single "Guest Name" column that we naively
     // split on whitespace; this is exact, no guessing needed.
@@ -205,6 +215,9 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     guestLast: norm(M.val(mrow, 'Guest Last Name')),
     guestEmail: norm(M.val(mrow, 'Guest Email Address')),
     guestDob: toDOB(M.val(mrow, 'Guest DOB')),
+    // 'Guest Gender' added by Vera's manager 2026-10-01 — same conversion as
+    // the principal's own 'Gender' column.
+    guestGender: toGender(M.val(mrow, 'Guest Gender')),
     // 'Guest TSA Number' added by Vera 2026-10-01 — same single-field covers
     // Global Entry/TSA PreCheck/NEXUS/Redress as the principal's own KTN
     // column does (see note above on 'Global Entry Number'/'Known Traveller
@@ -236,7 +249,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const hasGuest = !!(t.guestFirst || t.guestLast || t.guestEmail);
   let guest = null;
   if (hasGuest) {
-    guest = { first: t.guestFirst, middle: t.guestMiddle, last: t.guestLast, email: t.guestEmail, dob: t.guestDob, ktn: t.guestKtn };
+    guest = { first: t.guestFirst, middle: t.guestMiddle, last: t.guestLast, email: t.guestEmail, dob: t.guestDob, ktn: t.guestKtn, gender: t.guestGender };
   }
 
   const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === t.groupId.toLowerCase());
@@ -393,18 +406,19 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) },
       // ★ Guest entry — only the fields that have a dedicated "Guest ..."
       // column on the sheet today (First/Middle/Last Name, Email Address,
-      // DOB, TSA Number, all added 2026-10-01). No Gender/Phone/CountryOfIssue
-      // column exists for a guest, so those are simply never sent — not
-      // guessed, not invented, same restraint as every other field in this
-      // payload. 'Guest TSA Number' is ONE combined field (Vera's own naming)
-      // mapped to KnownTravelerNumber — same single-field convention as the
-      // principal's own Global Entry Number/Known Traveller Number. No
-      // separate Guest Redress Number column exists, so RedressNumber is
-      // never sent for a guest.
+      // DOB, Gender, TSA Number — all added 2026-10-01). No Phone/
+      // CountryOfIssue column exists for a guest, so those are simply never
+      // sent — not guessed, not invented, same restraint as every other
+      // field in this payload. 'Guest TSA Number' is ONE combined field
+      // (Vera's own naming) mapped to KnownTravelerNumber — same
+      // single-field convention as the principal's own Global Entry Number/
+      // Known Traveller Number. No separate Guest Redress Number column
+      // exists, so RedressNumber is never sent for a guest.
       ...(guest ? [{ GuestSettings: { GuestFieldSnapshots: [
         { FieldName: 'FirstName', Data: guest.first || null },
         { FieldName: 'MiddleName', Data: guest.middle || null },
         { FieldName: 'LastName', Data: guest.last || null },
+        { FieldName: 'Gender', Data: guest.gender || null },
         { FieldName: 'DateOfBirth', Data: guest.dob || null },
         { FieldName: 'Email', Data: guest.email || null },
         { FieldName: 'KnownTravelerNumber', Data: guest.ktn || null },
@@ -489,21 +503,6 @@ export default async function handler(req, res) {
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-
-  // TEMP: debug DOB-not-sending + find new Gender column (remove after use).
-  if (norm(body.__debugGuestDob)) {
-    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
-    const guestCols = (master.columns || []).filter(c => /guest/i.test(c.title)).map(c => ({ title: c.title, type: c.type }));
-    const full = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(full);
-    const row = (full.rows || []).find(r => norm(M.val(r, 'Guest First Name')).toLowerCase() === norm(body.__guestFirst || 'nehman').toLowerCase());
-    return res.status(200).json({
-      ok: true, guestColumns: guestCols,
-      rowFound: !!row,
-      rawGuestDob: row ? M.val(row, 'Guest DOB') : null,
-      rawGuestLast: row ? M.val(row, 'Guest Last Name') : null,
-    });
-  }
 
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
