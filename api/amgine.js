@@ -197,7 +197,12 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     // as dedicated "Guest ..." columns on this sheet are sent — same restraint
     // as the principal traveller above (no Gender/Phone column for guests
     // exists, so those are simply omitted, never guessed/invented).
-    guestNameRaw: norm(M.val(mrow, 'Guest Name')),
+    // First/Middle/Last split into their own columns (Vera, 2026-10-01, same
+    // day) — replaced an earlier single "Guest Name" column that we naively
+    // split on whitespace; this is exact, no guessing needed.
+    guestFirst: norm(M.val(mrow, 'Guest First Name')),
+    guestMiddle: norm(M.val(mrow, 'Guest Middle Name')),
+    guestLast: norm(M.val(mrow, 'Guest Last Name')),
     guestEmail: norm(M.val(mrow, 'Guest Email Address')),
     guestDob: toDOB(M.val(mrow, 'Guest DOB')),
     // 'Guest TSA Number' added by Vera 2026-10-01 — same single-field covers
@@ -228,11 +233,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   // A guest exists only if a name or email was actually entered for one — no-op
   // otherwise (every existing row with no guest data sends byte-for-byte the
   // same single-traveller payload as before this feature existed).
-  const hasGuest = !!(t.guestNameRaw || t.guestEmail);
+  const hasGuest = !!(t.guestFirst || t.guestLast || t.guestEmail);
   let guest = null;
   if (hasGuest) {
-    const parts = t.guestNameRaw.split(/\s+/).filter(Boolean);
-    guest = { first: parts[0] || '', last: parts.slice(1).join(' ') || '', email: t.guestEmail, dob: t.guestDob, ktn: t.guestKtn };
+    guest = { first: t.guestFirst, middle: t.guestMiddle, last: t.guestLast, email: t.guestEmail, dob: t.guestDob, ktn: t.guestKtn };
   }
 
   const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === t.groupId.toLowerCase());
@@ -388,16 +392,18 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       ...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: t.email }] } : {}),
       ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) },
       // ★ Guest entry — only the fields that have a dedicated "Guest ..."
-      // column on the sheet today (Name, Email Address, DOB, TSA Number added
-      // 2026-10-01). No Gender/Phone/CountryOfIssue column exists for a guest,
-      // so those are simply never sent — not guessed, not invented, same
-      // restraint as every other field in this payload. 'Guest TSA Number' is
-      // ONE combined field (Vera's own naming) mapped to KnownTravelerNumber —
-      // same single-field convention as the principal's own Global Entry
-      // Number/Known Traveller Number. No separate Guest Redress Number
-      // column exists, so RedressNumber is never sent for a guest.
+      // column on the sheet today (First/Middle/Last Name, Email Address,
+      // DOB, TSA Number, all added 2026-10-01). No Gender/Phone/CountryOfIssue
+      // column exists for a guest, so those are simply never sent — not
+      // guessed, not invented, same restraint as every other field in this
+      // payload. 'Guest TSA Number' is ONE combined field (Vera's own naming)
+      // mapped to KnownTravelerNumber — same single-field convention as the
+      // principal's own Global Entry Number/Known Traveller Number. No
+      // separate Guest Redress Number column exists, so RedressNumber is
+      // never sent for a guest.
       ...(guest ? [{ GuestSettings: { GuestFieldSnapshots: [
         { FieldName: 'FirstName', Data: guest.first || null },
+        { FieldName: 'MiddleName', Data: guest.middle || null },
         { FieldName: 'LastName', Data: guest.last || null },
         { FieldName: 'DateOfBirth', Data: guest.dob || null },
         { FieldName: 'Email', Data: guest.email || null },
@@ -484,12 +490,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: confirm exact spelling of Vera's new Guest First/Middle/Last Name columns (remove after use).
-  if (norm(body.__listMasterCols)) {
-    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
-    return res.status(200).json({ ok: true, columns: (master.columns || []).map(c => c.title) });
-  }
-
   // TEMP: re-verification helpers for Guest TSA Number wiring (remove after use).
   if (body.__addTestTraveller && body.__groupId) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
@@ -499,7 +499,9 @@ export default async function handler(req, res) {
     if (M.id('First Name')) cells.push({ columnId: M.id('First Name'), value: String(body.__first || 'External') });
     if (M.id('Last Name')) cells.push({ columnId: M.id('Last Name'), value: String(body.__last || 'Test') });
     if (M.id('Email')) cells.push({ columnId: M.id('Email'), value: String(body.__email || 'externaltest@example.com') });
-    if (body.__guestName && M.id('Guest Name ')) cells.push({ columnId: M.id('Guest Name '), value: String(body.__guestName) });
+    if (body.__guestFirst && M.id('Guest First Name')) cells.push({ columnId: M.id('Guest First Name'), value: String(body.__guestFirst) });
+    if (body.__guestMiddle && M.id('Guest Middle Name')) cells.push({ columnId: M.id('Guest Middle Name'), value: String(body.__guestMiddle) });
+    if (body.__guestLast && M.id('Guest Last Name')) cells.push({ columnId: M.id('Guest Last Name'), value: String(body.__guestLast) });
     if (body.__guestEmail && M.id('Guest Email Address')) cells.push({ columnId: M.id('Guest Email Address'), value: String(body.__guestEmail) });
     if (body.__guestDob && M.id('Guest DOB')) cells.push({ columnId: M.id('Guest DOB'), value: String(body.__guestDob) });
     if (body.__guestKtn && M.id('Guest TSA Number')) cells.push({ columnId: M.id('Guest TSA Number'), value: String(body.__guestKtn) });
