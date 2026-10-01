@@ -490,6 +490,21 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: raw dump of guest columns on a row (remove after use).
+  if (norm(body.__dumpGuestCols) && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
+    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
+    return res.status(200).json({
+      ok: true,
+      guestFirst: M.val(row, 'Guest First Name'), guestMiddle: M.val(row, 'Guest Middle Name'),
+      guestLast: M.val(row, 'Guest Last Name'), guestEmail: M.val(row, 'Guest Email Address'),
+      guestDob: M.val(row, 'Guest DOB'), guestKtn: M.val(row, 'Guest TSA Number'),
+      idByTitleHasGuestFirst: !!M.id('Guest First Name'), idByTitleHasGuestLast: !!M.id('Guest Last Name'),
+    });
+  }
+
   // TEMP: re-verification helpers for Guest TSA Number wiring (remove after use).
   if (body.__addTestTraveller && body.__groupId) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
