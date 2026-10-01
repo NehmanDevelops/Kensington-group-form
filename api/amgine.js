@@ -192,6 +192,14 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     phone: norm(M.val(mrow, 'Phone Number')), ktn: norm(M.val(mrow, 'Global Entry Number')) || norm(M.val(mrow, 'Known Traveller Number')),
     redress: norm(M.val(mrow, 'Redress Number')), country: norm(M.val(mrow, 'Pass Country of Issue')),
     groupId: norm(M.val(mrow, 'Group ID')),
+    // ── Guest (Vera, 2026-10-01): a traveller can bring one guest, filled in on
+    // the SAME row (no separate guest row). Only the fields that actually exist
+    // as dedicated "Guest ..." columns on this sheet are sent — same restraint
+    // as the principal traveller above (no Gender/Phone/KTN/Redress column for
+    // guests exists, so those are simply omitted, never guessed/invented).
+    guestNameRaw: norm(M.val(mrow, 'Guest Name')),
+    guestEmail: norm(M.val(mrow, 'Guest Email Address')),
+    guestDob: toDOB(M.val(mrow, 'Guest DOB')),
     // Agents have been typing the actual date into 'Departure Time'/'Return
     // Time' instead of 'Departure Date'/'Return Date' (found 2026-09-01,
     // Vera) — fall back to the Time columns so Intent still builds either way.
@@ -211,6 +219,16 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   };
   const who = `${t.first} ${t.last}`.trim();
   if (!t.first && !t.last) { await setStatus('Booking failed: missing traveller name'); return { rowId, error: 'no name' }; }
+
+  // A guest exists only if a name or email was actually entered for one — no-op
+  // otherwise (every existing row with no guest data sends byte-for-byte the
+  // same single-traveller payload as before this feature existed).
+  const hasGuest = !!(t.guestNameRaw || t.guestEmail);
+  let guest = null;
+  if (hasGuest) {
+    const parts = t.guestNameRaw.split(/\s+/).filter(Boolean);
+    guest = { first: parts[0] || '', last: parts.slice(1).join(' ') || '', email: t.guestEmail, dob: t.guestDob };
+  }
 
   const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === t.groupId.toLowerCase());
   if (!grow) { await setStatus(`Booking failed: group "${t.groupId}" not found`); return { rowId, traveller: who, error: `group "${t.groupId}" not found` }; }
@@ -326,8 +344,19 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     //   entirely unless a group row has Notify/CC/Reply-To filled, so this is a
     //   no-op for every current booking. { To:[...], Cc:[...], ReplyTo:'...' }
     ...(hasEmailSettings ? { EmailSettings: emailSettings } : {}),
-    TravelerRequested: [{ AmgineTravelerId: -1, AmgineServicedEntityBranchGuid: branchGuid, TravelerFirstName: t.first, TravelerLastName: t.last, ...(policyGuid ? { AmginePolicyGuid: policyGuid } : {}) }],
-    TravelerInformation: [{ GuestSettings: { GuestFieldSnapshots: [
+    // ★ Guest (Vera, 2026-10-01; per Derek Hurren-Kelly/Amgine, 2026-09-30):
+    //   "for adding guests it is the same call as for individual travellers
+    //   /publicapi/api/TravelRequest/new. The difference being when using for
+    //   multi travellers, you would include the principal traveller, followed
+    //   by their guest, in a single call." So a guest is just a second entry
+    //   in BOTH TravelerRequested and TravelerInformation, appended after the
+    //   principal's — no separate API call, no separate row needed.
+    TravelerRequested: [
+      { AmgineTravelerId: -1, AmgineServicedEntityBranchGuid: branchGuid, TravelerFirstName: t.first, TravelerLastName: t.last, ...(policyGuid ? { AmginePolicyGuid: policyGuid } : {}) },
+      ...(guest ? [{ AmgineTravelerId: -1, AmgineServicedEntityBranchGuid: branchGuid, TravelerFirstName: guest.first, TravelerLastName: guest.last, ...(policyGuid ? { AmginePolicyGuid: policyGuid } : {}) }] : []),
+    ],
+    TravelerInformation: [
+      { GuestSettings: { GuestFieldSnapshots: [
       { FieldName: 'FirstName', Data: t.first || null }, { FieldName: 'MiddleName', Data: t.middle || null },
       { FieldName: 'LastName', Data: t.last || null }, { FieldName: 'Gender', Data: t.gender || null },
       { FieldName: 'DateOfBirth', Data: t.dob || null }, { FieldName: 'Email', Data: t.email || null },
@@ -352,7 +381,20 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       // wrapper itself was never the issue. Colin's final answer: just the raw
       // email address, no "PE" prefix, no delimiter at all.
       ...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: t.email }] } : {}),
-      ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) }],
+      ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) },
+      // ★ Guest entry — only the fields that have a dedicated "Guest ..."
+      // column on the sheet today (Name, Email Address, DOB). No Gender/Phone/
+      // KnownTravelerNumber/RedressNumber/CountryOfIssue column exists for a
+      // guest, so those are simply never sent — not guessed, not invented,
+      // same restraint as every other field in this payload.
+      ...(guest ? [{ GuestSettings: { GuestFieldSnapshots: [
+        { FieldName: 'FirstName', Data: guest.first || null },
+        { FieldName: 'LastName', Data: guest.last || null },
+        { FieldName: 'DateOfBirth', Data: guest.dob || null },
+        { FieldName: 'Email', Data: guest.email || null },
+      ].filter((f) => f.Data != null) },
+        ...(guest.email ? { CustomFields: [{ Name: 'PE Emails', Data: guest.email }] } : {}) }] : []),
+    ],
     Intent: { Nodes: intentNodes }, IntentOnly: false, ...flow,
   };
 
@@ -376,10 +418,10 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   const cells = [];
   if (M.id('Amgine Itinerary ID') && itinId !== '') cells.push({ columnId: M.id('Amgine Itinerary ID'), value: String(itinId) });
   if (M.id('Amgine Link') && itinId !== '') cells.push({ columnId: M.id('Amgine Link'), value: agentLink(itinId) });
-  if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: 'Sent' });
+  if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: guest ? `Sent (+ guest ${guest.first} ${guest.last})`.trim() : 'Sent' });
   if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells }]) });
 
-  return { rowId, traveller: who, ok: true, itineraryId: itinId, flightLegs: intentNodes.length, airports: { origin, dest } };
+  return { rowId, traveller: who, ok: true, itineraryId: itinId, flightLegs: intentNodes.length, airports: { origin, dest }, guest: guest ? `${guest.first} ${guest.last}`.trim() : null };
 }
 
 // Claim the rows (dup guard) → get token + groups once → fire in small parallel
@@ -432,12 +474,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: list MASTER sheet columns (guest-info feature research, remove after use).
-  if (norm(body.__listMasterCols)) {
-    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
-    return res.status(200).json({ ok: true, columns: (master.columns || []).map(c => ({ index: c.index, title: c.title, type: c.type })) });
-  }
-
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
@@ -482,10 +518,47 @@ export default async function handler(req, res) {
     if (M.id('First Name')) cells.push({ columnId: M.id('First Name'), value: String(body.__first || 'External') });
     if (M.id('Last Name')) cells.push({ columnId: M.id('Last Name'), value: String(body.__last || 'Test') });
     if (M.id('Email')) cells.push({ columnId: M.id('Email'), value: String(body.__email || 'externaltest@example.com') });
+    if (body.__guestName && M.id('Guest Name ')) cells.push({ columnId: M.id('Guest Name '), value: String(body.__guestName) });
+    if (body.__guestEmail && M.id('Guest Email Address')) cells.push({ columnId: M.id('Guest Email Address'), value: String(body.__guestEmail) });
+    if (body.__guestDob && M.id('Guest DOB')) cells.push({ columnId: M.id('Guest DOB'), value: String(body.__guestDob) });
     const r = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
     const j = await r.json().catch(() => ({}));
     const newRowId = j.result && j.result[0] && j.result[0].id;
     return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
+  }
+  if (body.__tickReadyToBook && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    if (!M.id('Ready to Book')) return res.status(200).json({ ok: false, error: 'Ready to Book column not found' });
+    const r = await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: M.id('Ready to Book'), value: true }] }]) });
+    return res.status(200).json({ ok: r.ok });
+  }
+  if (norm(body.__checkTravellerRow) && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
+    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
+    return res.status(200).json({
+      ok: true, status: M.val(row, 'Amgine Status'), itineraryId: M.val(row, 'Amgine Itinerary ID'),
+      link: M.val(row, 'Amgine Link'), note: M.val(row, 'Amgine Note'),
+    });
+  }
+  if (body.__createTestGroup && body.__branchGuid) {
+    const groups = await (await api(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const G = indexSheet(groups);
+    const cells = [];
+    if (G.id('GROUP ID')) cells.push({ columnId: G.id('GROUP ID'), value: String(body.__groupId) });
+    if (G.id('Amgine Branch GUID')) cells.push({ columnId: G.id('Amgine Branch GUID'), value: String(body.__branchGuid) });
+    if (G.id('Amgine Onboarded')) cells.push({ columnId: G.id('Amgine Onboarded'), value: true });
+    const r = await api(`/sheets/${GROUPS}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
+    const j = await r.json().catch(() => ({}));
+    const newRowId = j.result && j.result[0] && j.result[0].id;
+    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
+  }
+  if (body.__deleteTestRow && body.__sheetId) {
+    const r = await api(`/sheets/${body.__sheetId}/rows?ids=${body.__deleteTestRow}`, { method: 'DELETE' });
+    const j = await r.json().catch(() => ({}));
+    return res.status(200).json({ ok: r.ok, raw: r.ok ? undefined : j });
   }
 
   // ── SMARTSHEET webhook: verification challenge ──────────────────────────
