@@ -195,11 +195,16 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     // ── Guest (Vera, 2026-10-01): a traveller can bring one guest, filled in on
     // the SAME row (no separate guest row). Only the fields that actually exist
     // as dedicated "Guest ..." columns on this sheet are sent — same restraint
-    // as the principal traveller above (no Gender/Phone/KTN/Redress column for
-    // guests exists, so those are simply omitted, never guessed/invented).
+    // as the principal traveller above (no Gender/Phone column for guests
+    // exists, so those are simply omitted, never guessed/invented).
     guestNameRaw: norm(M.val(mrow, 'Guest Name')),
     guestEmail: norm(M.val(mrow, 'Guest Email Address')),
     guestDob: toDOB(M.val(mrow, 'Guest DOB')),
+    // 'Guest TSA Number' added by Vera 2026-10-01 — same single-field covers
+    // Global Entry/TSA PreCheck/NEXUS/Redress as the principal's own KTN
+    // column does (see note above on 'Global Entry Number'/'Known Traveller
+    // Number'); mapped to the same KnownTravelerNumber field in the payload.
+    guestKtn: norm(M.val(mrow, 'Guest TSA Number')),
     // Agents have been typing the actual date into 'Departure Time'/'Return
     // Time' instead of 'Departure Date'/'Return Date' (found 2026-09-01,
     // Vera) — fall back to the Time columns so Intent still builds either way.
@@ -227,7 +232,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
   let guest = null;
   if (hasGuest) {
     const parts = t.guestNameRaw.split(/\s+/).filter(Boolean);
-    guest = { first: parts[0] || '', last: parts.slice(1).join(' ') || '', email: t.guestEmail, dob: t.guestDob };
+    guest = { first: parts[0] || '', last: parts.slice(1).join(' ') || '', email: t.guestEmail, dob: t.guestDob, ktn: t.guestKtn };
   }
 
   const grow = (groups.rows || []).find(r => norm(G.val(r, 'GROUP ID')).toLowerCase() === t.groupId.toLowerCase());
@@ -383,15 +388,20 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
       ...(t.email ? { CustomFields: [{ Name: 'PE Emails', Data: t.email }] } : {}),
       ...(bookingProfile ? { BookingProfile: bookingProfile } : {}) },
       // ★ Guest entry — only the fields that have a dedicated "Guest ..."
-      // column on the sheet today (Name, Email Address, DOB). No Gender/Phone/
-      // KnownTravelerNumber/RedressNumber/CountryOfIssue column exists for a
-      // guest, so those are simply never sent — not guessed, not invented,
-      // same restraint as every other field in this payload.
+      // column on the sheet today (Name, Email Address, DOB, TSA Number added
+      // 2026-10-01). No Gender/Phone/CountryOfIssue column exists for a guest,
+      // so those are simply never sent — not guessed, not invented, same
+      // restraint as every other field in this payload. 'Guest TSA Number' is
+      // ONE combined field (Vera's own naming) mapped to KnownTravelerNumber —
+      // same single-field convention as the principal's own Global Entry
+      // Number/Known Traveller Number. No separate Guest Redress Number
+      // column exists, so RedressNumber is never sent for a guest.
       ...(guest ? [{ GuestSettings: { GuestFieldSnapshots: [
         { FieldName: 'FirstName', Data: guest.first || null },
         { FieldName: 'LastName', Data: guest.last || null },
         { FieldName: 'DateOfBirth', Data: guest.dob || null },
         { FieldName: 'Email', Data: guest.email || null },
+        { FieldName: 'KnownTravelerNumber', Data: guest.ktn || null },
       ].filter((f) => f.Data != null) },
         ...(guest.email ? { CustomFields: [{ Name: 'PE Emails', Data: guest.email }] } : {}) }] : []),
     ],
@@ -474,11 +484,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: confirm exact spelling of Vera's new "Guest TSA Number" column (remove after use).
-  if (norm(body.__listMasterCols)) {
-    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
-    return res.status(200).json({ ok: true, columns: (master.columns || []).map(c => c.title) });
-  }
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
