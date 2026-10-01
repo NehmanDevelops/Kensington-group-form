@@ -490,6 +490,21 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: debug DOB-not-sending + find new Gender column (remove after use).
+  if (norm(body.__debugGuestDob)) {
+    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    const guestCols = (master.columns || []).filter(c => /guest/i.test(c.title)).map(c => ({ title: c.title, type: c.type }));
+    const full = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(full);
+    const row = (full.rows || []).find(r => norm(M.val(r, 'Guest First Name')).toLowerCase() === norm(body.__guestFirst || 'nehman').toLowerCase());
+    return res.status(200).json({
+      ok: true, guestColumns: guestCols,
+      rowFound: !!row,
+      rawGuestDob: row ? M.val(row, 'Guest DOB') : null,
+      rawGuestLast: row ? M.val(row, 'Guest Last Name') : null,
+    });
+  }
+
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
