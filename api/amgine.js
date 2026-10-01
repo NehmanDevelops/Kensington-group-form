@@ -484,6 +484,12 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: confirm exact spelling of Vera's new Guest First/Middle/Last Name columns (remove after use).
+  if (norm(body.__listMasterCols)) {
+    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    return res.status(200).json({ ok: true, columns: (master.columns || []).map(c => c.title) });
+  }
+
   // TEMP: re-verification helpers for Guest TSA Number wiring (remove after use).
   if (body.__addTestTraveller && body.__groupId) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
