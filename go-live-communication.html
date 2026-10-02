@@ -589,7 +589,7 @@
       <div class="success-icon">✓</div>
       <h2 class="success-title">Almost done — <em>send your email</em></h2>
       <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> If the draft didn't open, check the recipients you entered and email them directly.</p>
-      <div id="extActions" style="display:none;margin-top:26px;"><a id="extOpenDraft" class="submit-btn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;margin-bottom:14px;">Open your draft in Outlook</a><br><button type="button" class="success-restart" id="extCopyBtn" style="margin:0 12px;">Copy the formatted letter again</button><button type="button" class="success-restart" id="extPlainBtn" style="margin:0 12px;">Reopen the email draft</button></div>
+      <div id="extActions" style="display:none;margin-top:26px;"><a id="extOpenDraft" class="submit-btn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;margin-bottom:14px;">Open your draft in Outlook</a><br><button type="button" class="success-restart" id="extDownloadBtn" style="margin:0 12px;display:none;">Download the draft again</button><button type="button" class="success-restart" id="extCopyBtn" style="margin:0 12px;">Copy the formatted letter again</button><button type="button" class="success-restart" id="extPlainBtn" style="margin:0 12px;">Reopen the email draft</button></div>
       <button type="button" class="success-restart" id="restartBtn">Submit another communication</button><button type="button" class="success-restart celebrate-btn" id="celebrateBtn">🎆 Celebrate again</button>
     </div>
   </div>
@@ -852,7 +852,7 @@
   // welcome email as a DRAFT in their own mailbox (To / CC / subject / styled body / logo) and opens it. Nothing is
   // sent automatically. Needs the Azure "SPA" app registration -- paste its Application (client) ID below.
   // While MS_CLIENT_ID is blank, or if anything fails, the page falls back to: copy to clipboard + open a mailto draft.
-  var MS_CLIENT_ID = '774d5cbc-5253-4432-b7a7-9deccc2170ae';
+  var MS_CLIENT_ID = '';  // OFF: tenant needs admin consent for Mail.ReadWrite (Azure app 774d5cbc-5253-4432-b7a7-9deccc2170ae exists; set this to turn the automatic route on after an admin grants consent)
   var MS_TENANT = '51cb5df4-df05-4e5b-b20c-17d576ab85e3';
   var MS_SCOPES = ['Mail.ReadWrite'];
   var msalApp = null, msalReady = false;
@@ -919,17 +919,52 @@
     return attach.length ? ' Then <strong>attach ' + esc(attach.join(', ')) + '</strong> and hit Send.' : ' Then hit Send.';
   }
 
-  // Fallback when Graph is not set up / fails: formatted letter on the clipboard + a mailto draft.
-  function fallbackDraft(reason) {
-    var x = lastExternal, note = reason ? ' (' + esc(reason) + ')' : '';
-    copyFormatted().then(function (ok) {
-      document.querySelector('#success .success-text').innerHTML = ok
-        ? 'Your email to <strong>' + esc(x.to) + '</strong> is opening in Outlook. <strong>Click in the message body and press Ctrl+V</strong> — your formatted welcome letter is on your clipboard.' + attachReminder()
-        : 'Your email to <strong>' + esc(x.to) + '</strong> is opening in Outlook with the letter text in it (this browser would not copy the formatted version).' + attachReminder();
-      document.getElementById('extCopyBtn').style.display = '';
-      document.getElementById('extPlainBtn').style.display = '';
-      openDraft(!ok);
+  // ── Outlook draft file (.eml) ──────────────────────────────────────
+  // No-admin route: the page builds a real HTML email as an Outlook draft file (X-Unsent: 1). Opened in Outlook it is a
+  // compose window with To / CC / subject / styled letter / logo already filled in. The browser asks once; ticking
+  // "Always open files of this type" makes every later submit open Outlook straight away.
+  function b64(str) { // UTF-8 safe base64
+    var bytes = new TextEncoder().encode(str), bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function wrap76(s) { return s.replace(/(.{76})/g, '$1\r\n'); }
+
+  function buildEml(to, cc, subject, html, logoB64) {
+    var B = '----=_KC_' + Date.now().toString(36);
+    var h = ['X-Unsent: 1', 'To: ' + to];
+    if (cc) h.push('Cc: ' + cc);
+    h.push('Subject: =?UTF-8?B?' + b64(subject) + '?=', 'MIME-Version: 1.0', 'Content-Type: multipart/related; type="text/html"; boundary="' + B + '"', '');
+    var parts = ['--' + B, 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', wrap76(b64(html))];
+    if (logoB64) parts.push('--' + B, 'Content-Type: image/png; name="kensington-logo.png"', 'Content-Transfer-Encoding: base64', 'Content-ID: <kclogo>', 'Content-Disposition: inline; filename="kensington-logo.png"', '', wrap76(logoB64));
+    parts.push('--' + B + '--', '');
+    return h.concat(parts).join('\r\n');
+  }
+
+  function downloadFile(name, content, type) {
+    var url = URL.createObjectURL(new Blob([content], { type: type }));
+    var a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+  }
+
+  function downloadDraft() {
+    var x = lastExternal;
+    if (!x) return;
+    fetchLogoBase64().then(function (logo) {
+      var html = '<html><body>' + buildEmailHtml(x.L, logo ? 'cid:kclogo' : '') + '</body></html>';
+      downloadFile('Welcome Email - ' + x.acct.replace(/[\\/:*?"<>|]+/g, ' ') + '.eml', buildEml(x.to, x.cc, x.subject, html, logo), 'message/rfc822');
     });
+  }
+  document.getElementById('extDownloadBtn').addEventListener('click', downloadDraft);
+
+  // Used when the automatic Graph route is off (MS_CLIENT_ID blank) or fails.
+  function fallbackDraft() {
+    document.querySelector('#success .success-text').innerHTML =
+      'Your formatted welcome email for <strong>' + esc(lastExternal.to) + '</strong> is ready — <strong>open the file that just downloaded</strong> and it opens in Outlook with everything filled in.' + attachReminder()
+      + '<div style="margin-top:16px;padding:12px 16px;background:#f3eedf;border-left:3px solid #1a3e32;text-align:left;font-size:13px;line-height:1.6;"><strong>First time only:</strong> in your browser\'s downloads list, click the <strong>⋯</strong> (or ▾) next to the file and choose <strong>Always open files of this type</strong>. After that, Outlook opens by itself every time you submit.</div>';
+    ['extDownloadBtn', 'extCopyBtn', 'extPlainBtn'].forEach(function (id) { document.getElementById(id).style.display = ''; });
+    downloadDraft();
   }
 
   function submitExternal() {
@@ -949,6 +984,7 @@
     }).catch(function () {});
 
     document.getElementById('extActions').style.display = '';
+    document.getElementById('extDownloadBtn').style.display = 'none';
     document.getElementById('extCopyBtn').style.display = 'none';
     document.getElementById('extPlainBtn').style.display = 'none';
     document.getElementById('extOpenDraft').style.display = 'none';
@@ -977,7 +1013,7 @@
       if (pre) pre.location.href = m.webLink;
     }).catch(function (err) {
       if (pre) { try { pre.close(); } catch (e) {} }
-      fallbackDraft(err && err.message ? 'automatic draft unavailable: ' + String(err.message).slice(0, 80) : '');
+      fallbackDraft();
     });
   }
 
