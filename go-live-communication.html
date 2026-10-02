@@ -113,6 +113,16 @@
   .lt-miss { background: #f6e9b8; color: #7a5b00; border-radius: 3px; padding: 0 4px; font-size: .92em; }
   .attach-row { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-bottom: 14px; }
   .letter-note { font-size: 12px; color: var(--ink-mute); font-style: italic; text-align: center; margin-top: 14px; }
+
+  /* Email preview: shows exactly what opens in Outlook (plain text) */
+  .mailwin { background: #fff; max-width: 680px; margin: 0 auto; border: 1px solid #cfcfcf; border-radius: 8px; box-shadow: 0 18px 50px rgba(58,47,60,0.16), 0 3px 10px rgba(58,47,60,0.06); overflow: hidden; font-family: Aptos, Calibri, 'Segoe UI', Arial, sans-serif; }
+  .mailwin-bar { background: #f3f2f1; border-bottom: 1px solid #e1dfdd; padding: 8px 14px; font-size: 12px; color: #605e5c; display: flex; gap: 6px; align-items: center; }
+  .mailwin-bar i { width: 10px; height: 10px; border-radius: 50%; background: #d2d0ce; display: inline-block; }
+  .mailwin-head { padding: 6px 18px 0; border-bottom: 1px solid #edebe9; }
+  .mailwin-row { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid #f3f2f1; font-size: 13.5px; color: #201f1e; }
+  .mailwin-row:last-child { border-bottom: none; }
+  .mailwin-row b { width: 58px; flex: none; font-weight: 400; color: #605e5c; }
+  .mailwin-body { padding: 18px 22px 24px; font-size: 14px; line-height: 1.5; color: #201f1e; white-space: pre-wrap; word-break: break-word; }
   #fireworks { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999; }
   .celebrate-btn { margin-left: 18px; }
 </style>
@@ -570,11 +580,11 @@
         <section class="section">
           <div class="section-header">
             <span class="section-num">IV.</span>
-            <h2 class="section-title">Letter Preview</h2>
+            <h2 class="section-title">Email Preview</h2>
             <span class="section-tag">Updates as you type</span>
           </div>
-          <div class="letter-wrap"><div class="letter" id="letterPreview"></div></div>
-          <div class="letter-note">Highlighted gold = still to fill in. Attach the files above before you hit Send — a mail link can't attach them for you.</div>
+          <div class="letter-wrap"><div class="mailwin" id="letterPreview"></div></div>
+          <div class="letter-note">This is exactly what opens in Outlook when you submit. Gold = still to fill in. Outlook may wrap long lines slightly differently. Attach the files above before you hit Send — a mail link can't attach them for you.</div>
         </section>
 
       </div><!-- /externalSections -->
@@ -727,26 +737,25 @@
 
   function renderPreview() {
     if (!preview) return;
-    var L = buildLetter(), h = [];
-    h.push('<img class="letter-logo" src="kensington-logo-taupe.png" alt="Kensington Corporate" onerror="this.style.display=\'none\'" /><hr class="letter-rule" />');
-    h.push('<p class="lt-hi">' + highlightMissing(esc(L.greet)) + '</p>');
-    L.intro.forEach(function (t) { h.push('<p>' + highlightMissing(esc(t)) + '</p>'); });
-    L.items.forEach(function (it, i) {
-      var body = it.paras.map(function (t) { return '<p>' + highlightMissing(esc(t)) + '</p>'; }).join('');
-      if (it.support !== undefined) body += '<div class="lt-support">' + (it.support ? esc(it.support) : '<span class="lt-miss">[Hours and phone numbers]</span>') + '</div>';
-      if (it.after) body += it.after.map(function (t) { return '<p>' + highlightMissing(esc(t)) + '</p>'; }).join('');
-      h.push('<div class="lt-item"><div class="lt-num">' + (i + 1) + '.</div><div class="lt-body"><div class="lt-head">' + esc(it.head) + '</div>' + body + '</div></div>');
-    });
-    h.push('<p class="lt-sign">Thank you,<br>' + highlightMissing(esc(L.signoff)) + '</p>');
-    preview.innerHTML = h.join('');
+    var to = val('extToEmails') || '', cc = val('extCc'), acct = val('extAccountName');
+    var subject = 'Welcome to Kensington Corporate — ' + (acct || '[Account name]') + ' Go-Live';
+    var miss = function (h) { return highlightMissing(esc(h)); };
+    var html = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div>'
+      + '<div class="mailwin-head">'
+      + '<div class="mailwin-row"><b>To</b><span>' + (to ? esc(to) : '<span class="lt-miss">[Client email]</span>') + '</span></div>'
+      + (cc ? '<div class="mailwin-row"><b>Cc</b><span>' + esc(cc) + '</span></div>' : '')
+      + '<div class="mailwin-row"><b>Subject</b><span>' + miss(subject) + '</span></div>'
+      + '</div>'
+      + '<div class="mailwin-body">' + miss(letterAsText()) + '</div>';
+    preview.innerHTML = html;
   }
 
   // Designed plain text: no formatting tricks, so it works in every mail app. A header line, ruled sections with
   // capitalised numbered headings, and the support hours set apart in an indented block.
   function letterAsText() {
     var L = buildLetter();
-    var thick = '══════════════════════════════════';
-    var thin = '──────────────────────────────────';
+    var thick = '──────────────────────────';
+    var thin = '──────────────────────────';
     var t = ['KENSINGTON CORPORATE  |  WELCOME', thick, '', L.greet, ''];
     L.intro.forEach(function (x) { t.push(x, ''); });
     L.items.forEach(function (it, i) {
