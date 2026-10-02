@@ -589,12 +589,13 @@
       <div class="success-icon">✓</div>
       <h2 class="success-title">Almost done — <em>send your email</em></h2>
       <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> If the draft didn't open, check the recipients you entered and email them directly.</p>
-      <div id="extActions" style="display:none;margin-top:26px;"><button type="button" class="success-restart" id="extCopyBtn" style="margin:0 12px;">Copy the formatted letter again</button><button type="button" class="success-restart" id="extPlainBtn" style="margin:0 12px;">Reopen the email draft</button></div>
+      <div id="extActions" style="display:none;margin-top:26px;"><a id="extOpenDraft" class="submit-btn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;margin-bottom:14px;">Open your draft in Outlook</a><br><button type="button" class="success-restart" id="extCopyBtn" style="margin:0 12px;">Copy the formatted letter again</button><button type="button" class="success-restart" id="extPlainBtn" style="margin:0 12px;">Reopen the email draft</button></div>
       <button type="button" class="success-restart" id="restartBtn">Submit another communication</button><button type="button" class="success-restart celebrate-btn" id="celebrateBtn">🎆 Celebrate again</button>
     </div>
   </div>
 
 <canvas id="fireworks"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
 <script>
 (function () {
   var form = document.getElementById('goLiveForm');
@@ -846,12 +847,95 @@
     } catch (e) { return Promise.resolve(false); }
   }
 
+  // ── Automatic Outlook draft (Microsoft Graph) ─────────────────────
+  // The person signs in once with their work Microsoft account; after that every submit creates the formatted
+  // welcome email as a DRAFT in their own mailbox (To / CC / subject / styled body / logo) and opens it. Nothing is
+  // sent automatically. Needs the Azure "SPA" app registration -- paste its Application (client) ID below.
+  // While MS_CLIENT_ID is blank, or if anything fails, the page falls back to: copy to clipboard + open a mailto draft.
+  var MS_CLIENT_ID = '';
+  var MS_TENANT = '51cb5df4-df05-4e5b-b20c-17d576ab85e3';
+  var MS_SCOPES = ['Mail.ReadWrite'];
+  var msalApp = null, msalReady = false;
+
+  function getMsal() {
+    if (!MS_CLIENT_ID || !window.msal) return null;
+    if (!msalApp) {
+      msalApp = new msal.PublicClientApplication({
+        auth: { clientId: MS_CLIENT_ID, authority: 'https://login.microsoftonline.com/' + MS_TENANT, redirectUri: location.origin + '/auth-redirect.html' },
+        cache: { cacheLocation: 'localStorage' }
+      });
+      msalApp.initialize().then(function () { msalReady = true; });
+    }
+    return msalApp;
+  }
+  getMsal(); // warm up on page load so it is ready by the time someone clicks submit
+
+  function gfetch(method, path, token, body) {
+    return fetch('https://graph.microsoft.com/v1.0' + path, {
+      method: method,
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        if (!r.ok) throw new Error('Graph ' + r.status + ': ' + t.slice(0, 200));
+        return t ? JSON.parse(t) : {};
+      });
+    });
+  }
+
+  function fetchLogoBase64() {
+    return fetch('kensington-logo-taupe.png').then(function (r) { if (!r.ok) throw new Error('no logo'); return r.blob(); })
+      .then(function (blob) { return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result).split(',')[1]); }; fr.onerror = rej; fr.readAsDataURL(blob); }); })
+      .catch(function () { return ''; });
+  }
+
+  function addrs(list) {
+    return String(list || '').split(/[;,]\s*/).map(function (a) { return a.trim(); }).filter(Boolean).map(function (a) { return { emailAddress: { address: a } }; });
+  }
+
+  function createDraft(token) {
+    var x = lastExternal;
+    return fetchLogoBase64().then(function (logo) {
+      var msg = {
+        subject: x.subject,
+        body: { contentType: 'HTML', content: '<div>' + buildEmailHtml(x.L, logo ? 'cid:kclogo' : '') + '</div>' },
+        toRecipients: addrs(x.to), ccRecipients: addrs(x.cc)
+      };
+      return gfetch('POST', '/me/messages', token, msg).then(function (m) {
+        if (!logo) return m;
+        return gfetch('POST', '/me/messages/' + m.id + '/attachments', token, {
+          '@odata.type': '#microsoft.graph.fileAttachment', name: 'kensington-logo.png', contentType: 'image/png',
+          contentBytes: logo, isInline: true, contentId: 'kclogo'
+        }).then(function () { return m; });
+      });
+    });
+  }
+
+  function attachReminder() {
+    var attach = [];
+    if (document.getElementById('extAttachGuide').checked) attach.push('the Concur training guide');
+    if (document.getElementById('extAttachContact').checked) attach.push('the agent contact sheet');
+    if (val('extAttachOther')) attach.push(val('extAttachOther'));
+    return attach.length ? ' Then <strong>attach ' + esc(attach.join(', ')) + '</strong> and hit Send.' : ' Then hit Send.';
+  }
+
+  // Fallback when Graph is not set up / fails: formatted letter on the clipboard + a mailto draft.
+  function fallbackDraft(reason) {
+    var x = lastExternal, note = reason ? ' (' + esc(reason) + ')' : '';
+    copyFormatted().then(function (ok) {
+      document.querySelector('#success .success-text').innerHTML = ok
+        ? 'Your email to <strong>' + esc(x.to) + '</strong> is opening in Outlook. <strong>Click in the message body and press Ctrl+V</strong> — your formatted welcome letter is on your clipboard.' + attachReminder()
+        : 'Your email to <strong>' + esc(x.to) + '</strong> is opening in Outlook with the letter text in it (this browser would not copy the formatted version).' + attachReminder();
+      document.getElementById('extCopyBtn').style.display = '';
+      document.getElementById('extPlainBtn').style.display = '';
+      openDraft(!ok);
+    });
+  }
+
   function submitExternal() {
     var toList = val('extToEmails').split(/[;,]\s*/).map(function (x) { return x.trim(); }).filter(Boolean).join(', ');
-    var cc = val('extCc');
     var acct = val('extAccountName');
-    var subject = 'Welcome to Kensington Corporate — ' + acct + ' Go-Live';
-    lastExternal = { to: toList, cc: cc, subject: subject, L: buildLetter(), acct: acct };
+    lastExternal = { to: toList, cc: val('extCc'), subject: 'Welcome to Kensington Corporate — ' + acct + ' Go-Live', L: buildLetter(), acct: acct };
 
     // Same tracker as the internal form (mode = External), best-effort like the internal path.
     fetch('/api/finance-tracker', {
@@ -864,25 +948,37 @@
       })
     }).catch(function () {});
 
-    var attach = [];
-    if (document.getElementById('extAttachGuide').checked) attach.push('the Concur training guide');
-    if (document.getElementById('extAttachContact').checked) attach.push('the agent contact sheet');
-    if (val('extAttachOther')) attach.push(val('extAttachOther'));
-    var attachMsg = attach.length ? ' Then <strong>attach ' + esc(attach.join(', ')) + '</strong> and hit Send.' : ' Then hit Send.';
-
-    // Copy first (this runs inside the submit click, so the browser allows it), then pop up the email.
-    copyFormatted().then(function (ok) {
-      document.querySelector('#success .success-text').innerHTML = ok
-        ? 'Your email to <strong>' + esc(toList) + '</strong> is opening in Outlook. <strong>Click in the message body and press Ctrl+V</strong> — your formatted welcome letter is on your clipboard.' + attachMsg
-        : 'Your email to <strong>' + esc(toList) + '</strong> is opening in Outlook with the letter text in it (this browser would not copy the formatted version).' + attachMsg;
-      openDraft(!ok);
-    });
-
     document.getElementById('extActions').style.display = '';
+    document.getElementById('extCopyBtn').style.display = 'none';
+    document.getElementById('extPlainBtn').style.display = 'none';
+    document.getElementById('extOpenDraft').style.display = 'none';
     form.style.display = 'none';
     success.style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     launchFireworks();
+
+    var ms = getMsal();
+    if (!ms || !msalReady) { fallbackDraft(); return; }
+
+    document.querySelector('#success .success-text').innerHTML = 'Creating your formatted email in Outlook…';
+    var accounts = ms.getAllAccounts();
+    var pre = null;                                   // window opened inside the click so the browser lets us navigate it later
+    if (accounts.length) { try { pre = window.open('about:blank', '_blank'); } catch (e) {} }
+
+    var tokenP = accounts.length
+      ? ms.acquireTokenSilent({ scopes: MS_SCOPES, account: accounts[0] }).catch(function () { return ms.acquireTokenPopup({ scopes: MS_SCOPES }); })
+      : ms.acquireTokenPopup({ scopes: MS_SCOPES });
+
+    tokenP.then(function (t) { return createDraft(t.accessToken); }).then(function (m) {
+      var link = document.getElementById('extOpenDraft');
+      link.href = m.webLink; link.style.display = '';
+      document.querySelector('#success .success-text').innerHTML =
+        'Your formatted email to <strong>' + esc(lastExternal.to) + '</strong> is saved as a draft in your Outlook (Drafts folder) and opening now.' + attachReminder();
+      if (pre) pre.location.href = m.webLink;
+    }).catch(function (err) {
+      if (pre) { try { pre.close(); } catch (e) {} }
+      fallbackDraft(err && err.message ? 'automatic draft unavailable: ' + String(err.message).slice(0, 80) : '');
+    });
   }
 
   document.getElementById('extCopyBtn').addEventListener('click', function () {
