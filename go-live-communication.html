@@ -104,8 +104,8 @@
   .letter p { margin: 0 0 14px; }
   .letter .lt-hi { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 19px; }
   .letter .lt-item { display: grid; grid-template-columns: 30px 1fr; gap: 6px; margin: 20px 0 6px; }
-  .letter .lt-num { font-family: 'SangBleu Sunrise', Georgia, serif; font-style: italic; color: var(--gold); font-size: 20px; line-height: 1.3; }
-  .letter .lt-head { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 16.5px; color: var(--gold-deep); font-weight: 500; margin-bottom: 4px; }
+  .letter .lt-num { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 700; color: var(--ink); font-size: 16.5px; line-height: 1.55; }
+  .letter .lt-head { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 16.5px; color: var(--ink); font-weight: 700; margin-bottom: 4px; }
   .letter .lt-body p { margin: 0 0 10px; }
   .letter .lt-support { background: var(--cream); border-left: 3px solid var(--gold-deep); border-radius: 3px; padding: 10px 14px; font-size: 13px; color: var(--ink-soft); white-space: pre-line; margin: 0 0 10px; }
   .letter .lt-sign { margin-top: 26px; }
@@ -589,7 +589,7 @@
       <div class="success-icon">✓</div>
       <h2 class="success-title">Almost done — <em>send your email</em></h2>
       <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> If the draft didn't open, check the recipients you entered and email them directly.</p>
-      <div id="extActions" style="display:none;margin-top:26px;"><button type="button" class="submit-btn" id="extDownloadBtn">Download Outlook draft again</button> <div style="margin-top:14px;"><button type="button" class="success-restart" id="extCopyBtn" style="margin:0 12px;">Copy formatted letter</button><button type="button" class="success-restart" id="extPlainBtn" style="margin:0 12px;">Open plain-text draft instead</button></div></div>
+      <div id="extActions" style="display:none;margin-top:26px;"><button type="button" class="success-restart" id="extCopyBtn" style="margin:0 12px;">Copy the formatted letter again</button><button type="button" class="success-restart" id="extPlainBtn" style="margin:0 12px;">Reopen the email draft</button></div>
       <button type="button" class="success-restart" id="restartBtn">Submit another communication</button><button type="button" class="success-restart celebrate-btn" id="celebrateBtn">🎆 Celebrate again</button>
     </div>
   </div>
@@ -799,79 +799,59 @@
   document.getElementById('celebrateBtn').addEventListener('click', launchFireworks);
 
   // ── Formatted (HTML) email ─────────────────────────────────────────
-  // mailto: links can only carry plain text, so the external letter is delivered as an Outlook draft (.eml with
-  // X-Unsent: 1): double-click it and Outlook opens a compose window with To / CC / subject and the styled HTML
-  // body already filled in. The logo is embedded (CID) so it shows without "download pictures".
+  // mailto: can only carry plain text, so on submit the styled letter is copied to the clipboard (rich HTML) and the
+  // Outlook compose window pops up with To / CC / subject filled in -- the user just presses Ctrl+V in the body.
   function buildEmailHtml(L, logoSrc) {
-    var GREEN = '#1a3e32', GOLD = '#767260', INK = '#3a2f3c', SOFT = '#524a54', CREAM = '#f3eedf', LINE = '#e4ddcc';
+    var INK = '#222222', SOFT = '#444444', MUTE = '#777777', LINE = '#dddddd', BOX = '#f5f3ee';
     var serif = "Georgia,'Times New Roman',serif";
     var p = function (t) { return '<p style="margin:0 0 12px 0;font-family:' + serif + ';font-size:15px;line-height:1.7;color:' + INK + ';">' + esc(t) + '</p>'; };
     var rows = [];
     L.items.forEach(function (it, i) {
       var body = it.paras.map(p).join('');
-      if (it.support) body += '<div style="margin:0 0 12px 0;padding:10px 14px;background:' + CREAM + ';border-left:3px solid ' + GREEN + ';font-family:' + serif + ';font-size:13.5px;line-height:1.6;color:' + SOFT + ';">' + esc(it.support).replace(/\n/g, '<br>') + '</div>';
+      if (it.support) body += '<div style="margin:0 0 12px 0;padding:10px 14px;background:' + BOX + ';border-left:3px solid ' + MUTE + ';font-family:' + serif + ';font-size:13.5px;line-height:1.6;color:' + SOFT + ';">' + esc(it.support).replace(/\n/g, '<br>') + '</div>';
       if (it.after) body += it.after.map(p).join('');
       rows.push(
-        '<tr><td valign="top" width="34" style="padding:14px 0 0 0;font-family:' + serif + ';font-style:italic;font-size:20px;color:' + GOLD + ';">' + (i + 1) + '.</td>' +
-        '<td valign="top" style="padding:14px 0 0 0;"><div style="font-family:' + serif + ';font-size:17px;color:' + GREEN + ';margin:0 0 6px 0;">' + esc(it.head) + '</div>' + body + '</td></tr>'
+        '<tr><td valign="top" width="30" style="padding:14px 0 0 0;font-family:' + serif + ';font-size:16px;font-weight:bold;color:' + INK + ';">' + (i + 1) + '.</td>' +
+        '<td valign="top" style="padding:14px 0 0 0;"><div style="font-family:' + serif + ';font-size:16px;font-weight:bold;color:' + INK + ';margin:0 0 6px 0;">' + esc(it.head) + '</div>' + body + '</td></tr>'
       );
     });
     var logo = logoSrc ? '<img src="' + logoSrc + '" alt="Kensington Corporate" height="46" style="height:46px;width:auto;display:block;margin:0 auto;border:0;">'
-                       : '<div style="font-family:' + serif + ';letter-spacing:4px;font-size:15px;color:' + GOLD + ';text-align:center;">KENSINGTON CORPORATE</div>';
-    return '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#fdf9ec;">' +
-      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fdf9ec"><tr><td align="center" style="padding:28px 12px;">' +
-      '<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;background:#fffdf8;border:1px solid ' + LINE + ';border-top:4px solid ' + GREEN + ';">' +
-      '<tr><td style="padding:34px 44px 8px 44px;">' + logo +
+                       : '<div style="font-family:' + serif + ';letter-spacing:4px;font-size:15px;color:' + MUTE + ';text-align:center;">KENSINGTON CORPORATE</div>';
+    return '<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;background:#ffffff;border:1px solid ' + LINE + ';">' +
+      '<tr><td style="padding:30px 40px 8px 40px;">' + logo +
       '<div style="height:1px;background:' + LINE + ';margin:18px 0 22px 0;line-height:1px;font-size:1px;">&nbsp;</div>' +
-      '<p style="margin:0 0 14px 0;font-family:' + serif + ';font-size:20px;color:' + INK + ';">' + esc(L.greet) + '</p>' +
+      '<p style="margin:0 0 14px 0;font-family:' + serif + ';font-size:18px;color:' + INK + ';">' + esc(L.greet) + '</p>' +
       L.intro.map(p).join('') +
       '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows.join('') + '</table>' +
       '<p style="margin:26px 0 0 0;font-family:' + serif + ';font-size:15px;line-height:1.7;color:' + INK + ';">Thank you,<br>' + esc(L.signoff) + '</p>' +
-      '</td></tr>' +
-      '<tr><td style="padding:22px 44px 30px 44px;"><div style="border-top:1px solid ' + LINE + ';padding-top:14px;font-family:' + serif + ';font-size:11px;letter-spacing:2px;color:' + GOLD + ';text-align:center;">KENSINGTON CORPORATE</div></td></tr>' +
-      '</table></td></tr></table></body></html>';
-  }
-
-  function b64(str) { // UTF-8 safe base64
-    var bytes = new TextEncoder().encode(str), bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin);
-  }
-  function wrap76(s) { return s.replace(/(.{76})/g, '$1\r\n'); }
-
-  function fetchLogoBase64() {
-    return fetch('kensington-logo-taupe.png').then(function (r) { if (!r.ok) throw new Error('no logo'); return r.blob(); })
-      .then(function (blob) { return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result).split(',')[1]); }; fr.onerror = rej; fr.readAsDataURL(blob); }); })
-      .catch(function () { return ''; });
-  }
-
-  function buildEml(to, cc, subject, html, logoB64) {
-    var B = '----=_KC_' + Date.now().toString(36);
-    var h = ['X-Unsent: 1', 'To: ' + to];
-    if (cc) h.push('Cc: ' + cc);
-    h.push('Subject: =?UTF-8?B?' + b64(subject) + '?=', 'MIME-Version: 1.0', 'Content-Type: multipart/related; type="text/html"; boundary="' + B + '"', '');
-    var parts = ['--' + B, 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', wrap76(b64(html))];
-    if (logoB64) parts.push('--' + B, 'Content-Type: image/png; name="kensington-logo.png"', 'Content-Transfer-Encoding: base64', 'Content-ID: <kclogo>', 'Content-Disposition: inline; filename="kensington-logo.png"', '', wrap76(logoB64));
-    parts.push('--' + B + '--', '');
-    return h.concat(parts).join('\r\n');
-  }
-
-  function downloadFile(name, content, type) {
-    var url = URL.createObjectURL(new Blob([content], { type: type }));
-    var a = document.createElement('a');
-    a.href = url; a.download = name; document.body.appendChild(a); a.click();
-    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+      '</td></tr><tr><td style="padding:10px 40px 26px 40px;"></td></tr></table>';
   }
 
   var lastExternal = null; // remembered so the success-screen buttons can re-use it
+
+  function openDraft(withBody) {
+    var x = lastExternal;
+    window.location.href = 'mailto:' + encodeURIComponent(x.to) + (x.cc ? '?cc=' + encodeURIComponent(x.cc) + '&' : '?')
+      + 'subject=' + encodeURIComponent(x.subject) + (withBody ? '&body=' + encodeURIComponent(letterAsText()) : '');
+  }
+
+  function copyFormatted() {
+    var x = lastExternal;
+    var html = buildEmailHtml(x.L, location.origin + '/kensington-logo-taupe.png');
+    try {
+      return navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([letterAsText()], { type: 'text/plain' })
+      })]).then(function () { return true; }, function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
+  }
 
   function submitExternal() {
     var toList = val('extToEmails').split(/[;,]\s*/).map(function (x) { return x.trim(); }).filter(Boolean).join(', ');
     var cc = val('extCc');
     var acct = val('extAccountName');
     var subject = 'Welcome to Kensington Corporate — ' + acct + ' Go-Live';
-    var L = buildLetter();
-    lastExternal = { to: toList, cc: cc, subject: subject, L: L, acct: acct };
+    lastExternal = { to: toList, cc: cc, subject: subject, L: buildLetter(), acct: acct };
 
     // Same tracker as the internal form (mode = External), best-effort like the internal path.
     fetch('/api/finance-tracker', {
@@ -888,44 +868,31 @@
     if (document.getElementById('extAttachGuide').checked) attach.push('the Concur training guide');
     if (document.getElementById('extAttachContact').checked) attach.push('the agent contact sheet');
     if (val('extAttachOther')) attach.push(val('extAttachOther'));
-    document.querySelector('#success .success-text').innerHTML =
-      'Your formatted welcome email for <strong>' + esc(toList) + '</strong> is ready. <strong>Open the downloaded draft</strong> (it opens in Outlook with the letter, To, CC and subject filled in)'
-      + (attach.length ? ', <strong>attach ' + esc(attach.join(', ')) + '</strong>' : '') + ', then hit Send.';
+    var attachMsg = attach.length ? ' Then <strong>attach ' + esc(attach.join(', ')) + '</strong> and hit Send.' : ' Then hit Send.';
+
+    // Copy first (this runs inside the submit click, so the browser allows it), then pop up the email.
+    copyFormatted().then(function (ok) {
+      document.querySelector('#success .success-text').innerHTML = ok
+        ? 'Your email to <strong>' + esc(toList) + '</strong> is opening in Outlook. <strong>Click in the message body and press Ctrl+V</strong> — your formatted welcome letter is on your clipboard.' + attachMsg
+        : 'Your email to <strong>' + esc(toList) + '</strong> is opening in Outlook with the letter text in it (this browser would not copy the formatted version).' + attachMsg;
+      openDraft(!ok);
+    });
+
     document.getElementById('extActions').style.display = '';
     form.style.display = 'none';
     success.style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     launchFireworks();
-    downloadDraft();
   }
 
-  function downloadDraft() {
-    if (!lastExternal) return;
-    var x = lastExternal;
-    fetchLogoBase64().then(function (logo) {
-      var html = buildEmailHtml(x.L, logo ? 'cid:kclogo' : '');
-      downloadFile('Welcome Email - ' + x.acct.replace(/[\\/:*?"<>|]+/g, ' ') + '.eml', buildEml(x.to, x.cc, x.subject, html, logo), 'message/rfc822');
+  document.getElementById('extCopyBtn').addEventListener('click', function () {
+    var btn = this;
+    copyFormatted().then(function (ok) {
+      btn.textContent = ok ? '✓ Copied — press Ctrl+V in your email' : 'Copy failed in this browser';
+      setTimeout(function () { btn.textContent = 'Copy the formatted letter again'; }, 4000);
     });
-  }
-
-  function copyFormatted() {
-    if (!lastExternal) return;
-    var x = lastExternal, btn = document.getElementById('extCopyBtn');
-    var html = buildEmailHtml(x.L, location.origin + '/kensington-logo-taupe.png');
-    var done = function (ok) { btn.textContent = ok ? '✓ Copied — paste into your email' : 'Copy failed — use the draft file'; setTimeout(function () { btn.textContent = 'Copy formatted letter'; }, 4000); };
-    try {
-      navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([letterAsText()], { type: 'text/plain' }) })]).then(function () { done(true); }, function () { done(false); });
-    } catch (e) { done(false); }
-  }
-
-  function plainDraft() {
-    if (!lastExternal) return;
-    var x = lastExternal;
-    window.location.href = 'mailto:' + encodeURIComponent(x.to) + (x.cc ? '?cc=' + encodeURIComponent(x.cc) + '&' : '?') + 'subject=' + encodeURIComponent(x.subject) + '&body=' + encodeURIComponent(letterAsText());
-  }
-  document.getElementById('extDownloadBtn').addEventListener('click', downloadDraft);
-  document.getElementById('extCopyBtn').addEventListener('click', copyFormatted);
-  document.getElementById('extPlainBtn').addEventListener('click', plainDraft);
+  });
+  document.getElementById('extPlainBtn').addEventListener('click', function () { openDraft(false); });
 
   var rebateSelect = document.getElementById('rebateProgram');
   var rebateGroup = document.getElementById('rebateDetailsGroup');
