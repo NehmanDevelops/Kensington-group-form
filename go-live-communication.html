@@ -958,13 +958,13 @@
   }
   document.getElementById('extDownloadBtn').addEventListener('click', downloadDraft);
 
-  // Used when the automatic Graph route is off (MS_CLIENT_ID blank) or fails.
+  // Default route: a normal email draft. Outlook opens by itself (mailto) with To / CC / subject and the letter as plain text.
   function fallbackDraft() {
     document.querySelector('#success .success-text').innerHTML =
-      'Your formatted welcome email for <strong>' + esc(lastExternal.to) + '</strong> is ready — <strong>open the file that just downloaded</strong> and it opens in Outlook with everything filled in.' + attachReminder()
-      + '<div style="margin-top:16px;padding:12px 16px;background:#f3eedf;border-left:3px solid #1a3e32;text-align:left;font-size:13px;line-height:1.6;"><strong>First time only:</strong> in your browser\'s downloads list, click the <strong>⋯</strong> (or ▾) next to the file and choose <strong>Always open files of this type</strong>. After that, Outlook opens by itself every time you submit.</div>';
-    ['extDownloadBtn', 'extCopyBtn', 'extPlainBtn'].forEach(function (id) { document.getElementById(id).style.display = ''; });
-    downloadDraft();
+      'Your email to <strong>' + esc(lastExternal.to) + '</strong> is opening in Outlook with the welcome letter already written.' + attachReminder();
+    ['extDownloadBtn', 'extCopyBtn'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+    document.getElementById('extPlainBtn').style.display = '';
+    openDraft(true);
   }
 
   function submitExternal() {
