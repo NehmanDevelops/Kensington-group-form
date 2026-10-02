@@ -741,16 +741,25 @@
     preview.innerHTML = h.join('');
   }
 
+  // Designed plain text: no formatting tricks, so it works in every mail app. A header line, ruled sections with
+  // capitalised numbered headings, and the support hours set apart in an indented block.
   function letterAsText() {
-    var L = buildLetter(), t = [L.greet, ''];
+    var L = buildLetter();
+    var thick = '══════════════════════════════════';
+    var thin = '──────────────────────────────────';
+    var t = ['KENSINGTON CORPORATE  |  WELCOME', thick, '', L.greet, ''];
     L.intro.forEach(function (x) { t.push(x, ''); });
     L.items.forEach(function (it, i) {
-      t.push((i + 1) + '.  ' + it.head);
+      t.push(thin, (i + 1) + '.  ' + it.head.toUpperCase(), thin, '');
       it.paras.forEach(function (x) { t.push(x, ''); });
-      if (it.support !== undefined) t.push(it.support || '', '');
+      if (it.support !== undefined) {
+        t.push('     SUPPORT HOURS & PHONE');
+        (it.support || '[Hours and phone numbers]').split('\n').forEach(function (line) { t.push('     ' + line); });
+        t.push('');
+      }
       if (it.after) it.after.forEach(function (x) { t.push(x, ''); });
     });
-    t.push('Thank you,', L.signoff);
+    t.push(thick, '', 'Thank you,', L.signoff, '', 'KENSINGTON CORPORATE');
     return t.join('\n');
   }
 
