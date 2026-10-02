@@ -11,7 +11,12 @@
 // master and (on commit) creates it. Columns are resolved BY TITLE on both
 // sheets so a column-ID change can never write to the wrong field.
 //
+// A group is only ever created ONCE: after it has been seen on the master its intake row is ticked
+// 'Synced to Master' and skipped from then on, so archived/deleted master rows stay gone.
+//
 // Usage (on Vercel, where SMARTSHEET_API_TOKEN is set):
+//   GET /api/reconcile-groups?setup=1            → DRY RUN of the one-time setup (adds the checkbox column, ticks existing rows)
+//   GET /api/reconcile-groups?setup=1&commit=1   → does it
 //   GET /api/reconcile-groups            → DRY RUN: reports what's missing, writes nothing
 //   GET /api/reconcile-groups?commit=1   → creates the missing master rows
 
@@ -28,6 +33,10 @@ const INTAKE_TITLES = {
   startDate:    ['Arrival Date', 'Travel Start Date', 'Start Date'],
   endDate:      ['Departure Date', 'Travel End Date', 'End Date'],
   doNotSync:    ['Do Not Sync', 'Archived', 'Do Not Re-Sync', 'Skip Sync'],
+  // Checkbox this endpoint maintains itself: ticked once a group has been on the master. A ticked row is
+  // NEVER re-created, so archiving/deleting a group off the master sticks (2026-10-02, Vera: archived rows
+  // came back every morning because this cron rebuilt them from the intake sheet).
+  synced:       ['Synced to Master'],
 };
 const MASTER_TITLES = {
   groupId:      ['GROUP ID', 'Group ID'],
@@ -167,6 +176,43 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, webhook: { id: hook.id, enabled: en.result?.enabled ?? hook.enabled, status: en.result?.status ?? hook.status }, ...bf });
   }
 
+  // One-time setup: add the 'Synced to Master' checkbox column to the intake sheet and tick every intake row that
+  // is older than 12h (those have all had a daily cron pass already, so they must never be re-created).
+  if (req.query?.setup === '1') {
+    try {
+      let intake = await api(`/sheets/${INTAKE_SHEET}`);
+      if (intake.error || !intake.columns) return res.status(502).json({ error: 'Could not read intake sheet', detail: intake });
+      let I = resolve(intake, INTAKE_TITLES);
+      const out = { dryRun: !commit, columnExisted: !!I.synced };
+      if (!I.synced && commit) {
+        const cr = await api(`/sheets/${INTAKE_SHEET}/columns`, { method: 'POST', body: JSON.stringify({ title: 'Synced to Master', type: 'CHECKBOX', index: intake.columns.length }) });
+        if (!cr.result) return res.status(502).json({ error: 'Could not add column', detail: cr });
+        intake = await api(`/sheets/${INTAKE_SHEET}`);
+        I = resolve(intake, INTAKE_TITLES);
+      }
+      const cutoff = Date.now() - 12 * 3600 * 1000;
+      const toTick = (intake.rows || []).filter(row => {
+        const gid = norm(cellVal(row, I.groupId));
+        if (!gid || /^(quote only|quote|n\/?a|tbd|none|pending|test)$/i.test(gid)) return false;
+        if (I.synced && cellVal(row, I.synced) === true) return false;
+        return new Date(row.createdAt).getTime() < cutoff;
+      });
+      out.rowsToTick = toTick.length;
+      out.groups = toTick.map(row => norm(cellVal(row, I.groupId)));
+      if (commit && I.synced) {
+        for (let i = 0; i < toTick.length; i += 100) {
+          const batch = toTick.slice(i, i + 100).map(row => ({ id: row.id, cells: [{ columnId: I.synced, value: true }] }));
+          const w = await api(`/sheets/${INTAKE_SHEET}/rows`, { method: 'PUT', body: JSON.stringify(batch) });
+          if (w.message && w.message !== 'SUCCESS') return res.status(502).json({ error: 'Tick failed', detail: w, ...out });
+        }
+        out.ticked = toTick.length;
+      }
+      return res.status(200).json(out);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   try {
     const heal = await backfillStatus();
     const dd = await dedupeMaster();
@@ -205,6 +251,8 @@ export default async function handler(req, res) {
     const adopt = [];
     const noGroupId = [];
     const batchSeen = new Set();   // within-batch guard: same gid twice in intake
+    const tickIds = [];            // intake rows to tick 'Synced to Master' (on commit)
+    const gidToIntakeRow = new Map();
     for (const row of intake.rows) {
       const gid = norm(cellVal(row, I.groupId));
       const company = norm(cellVal(row, I.company));
@@ -217,9 +265,11 @@ export default async function handler(req, res) {
       // re-created on the next run (e.g. VQ9GREDJUL26 / Red8 kept resurrecting
       // after being archived). Check the box on the intake row to retire a group.
       if (I.doNotSync) { const v = cellVal(row, I.doNotSync); if (v === true || /^(true|1|yes|y)$/i.test(norm(v))) continue; }
-      if (masterIds.has(gid.toLowerCase())) continue;
+      if (I.synced && cellVal(row, I.synced) === true) continue;   // already synced once: never re-create
+      if (masterIds.has(gid.toLowerCase())) { if (I.synced) tickIds.push(row.id); continue; }
       if (batchSeen.has(gid.toLowerCase())) continue;
       batchSeen.add(gid.toLowerCase());
+      gidToIntakeRow.set(gid, row.id);
       const blank = blankRows.find(b => !b.used && b.company === company.toLowerCase());
       if (blank) { blank.used = true; adopt.push({ rowId: blank.rowId, groupId: gid, company }); continue; }
       missing.push({
@@ -245,9 +295,19 @@ export default async function handler(req, res) {
         adopt,
         intakeRowsWithNoGroupId: noGroupId.length,
         noGroupId,
-        note: 'Nothing was written. Re-run with ?commit=1 to create the missing master rows.',
+        syncedColumn: !!I.synced,
+        note: I.synced ? 'Nothing was written. Re-run with ?commit=1 to create the missing master rows.' : 'No "Synced to Master" column on intake yet: run ?setup=1&commit=1 FIRST or archived groups will be re-created.',
       });
     }
+
+    const tick = async ids => {
+      if (!I.synced || !ids.length) return;
+      for (let i = 0; i < ids.length; i += 100) {
+        await api(`/sheets/${INTAKE_SHEET}/rows`, { method: 'PUT', body: JSON.stringify(ids.slice(i, i + 100).map(id => ({ id, cells: [{ columnId: I.synced, value: true }] }))) });
+      }
+    };
+    await tick(tickIds);                                          // groups already on the master
+    await tick(adopt.map(a => gidToIntakeRow.get(a.groupId)).filter(Boolean));
 
     // Adopt blank mirror rows first: fill their Group ID in place (no new row).
     if (adopt.length) {
@@ -285,6 +345,7 @@ export default async function handler(req, res) {
     if (result.message && result.message !== 'SUCCESS') {
       return res.status(502).json({ committed: false, error: result.message, detail: result });
     }
+    await tick(missing.map(m => gidToIntakeRow.get(m.groupId)).filter(Boolean));
     return res.status(200).json({
       committed: true,
       created: missing.length,
