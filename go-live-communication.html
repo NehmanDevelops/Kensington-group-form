@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kensington Corporate — Go-Live Internal Communication</title>
+<title>Kensington Corporate — Go-Live Communication</title>
 <style>
   @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
@@ -94,15 +94,36 @@
   .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
   .success-text { color: var(--ink-soft); max-width: 480px; margin: 0 auto; }
   .success-restart { display: inline-block; margin-top: 22px; font-size: 13px; color: var(--gold-deep); text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
+
+  /* ===== External welcome letter ===== */
+  .letter-wrap { background: linear-gradient(180deg, var(--cream), #ece5d0); border-radius: 10px; padding: 30px 22px; }
+  .letter { background: var(--paper); max-width: 640px; margin: 0 auto; border: 1px solid var(--line); border-top: 4px solid var(--gold-deep); border-radius: 4px; box-shadow: 0 18px 50px rgba(58,47,60,0.16), 0 3px 10px rgba(58,47,60,0.06); padding: 40px 46px 36px; color: var(--ink); font-size: 14.5px; line-height: 1.75; }
+  @media (max-width: 640px) { .letter { padding: 28px 22px; } }
+  .letter-logo { display: block; height: 44px; width: auto; margin: 0 auto 6px; }
+  .letter-rule { height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 14px 0 24px; border: 0; }
+  .letter p { margin: 0 0 14px; }
+  .letter .lt-hi { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 19px; }
+  .letter .lt-item { display: grid; grid-template-columns: 30px 1fr; gap: 6px; margin: 20px 0 6px; }
+  .letter .lt-num { font-family: 'SangBleu Sunrise', Georgia, serif; font-style: italic; color: var(--gold); font-size: 20px; line-height: 1.3; }
+  .letter .lt-head { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 16.5px; color: var(--gold-deep); font-weight: 500; margin-bottom: 4px; }
+  .letter .lt-body p { margin: 0 0 10px; }
+  .letter .lt-support { background: var(--cream); border-left: 3px solid var(--gold-deep); border-radius: 3px; padding: 10px 14px; font-size: 13px; color: var(--ink-soft); white-space: pre-line; margin: 0 0 10px; }
+  .letter .lt-sign { margin-top: 26px; }
+  .letter a { color: var(--gold-deep); }
+  .lt-miss { background: #f6e9b8; color: #7a5b00; border-radius: 3px; padding: 0 4px; font-size: .92em; }
+  .attach-row { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-bottom: 14px; }
+  .letter-note { font-size: 12px; color: var(--ink-mute); font-style: italic; text-align: center; margin-top: 14px; }
+  #fireworks { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999; }
+  .celebrate-btn { margin-left: 18px; }
 </style>
 </head>
 <body>
 
   <header class="hero">
     <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" onerror="this.style.display='none'" />
-    <div class="hero-eyebrow">Implementations · Internal Communication</div>
-    <h1 class="hero-title">Go-Live <em>Internal Communication</em></h1>
-    <p class="hero-subtitle">Complete this form once an account is ready to go live. Submitting opens a pre-filled email from your own Outlook to the recipients you select below — review and send.</p>
+    <div class="hero-eyebrow" id="heroEyebrow">Implementations · Internal Communication</div>
+    <h1 class="hero-title" id="heroTitle">Go-Live <em>Internal Communication</em></h1>
+    <p class="hero-subtitle" id="heroSub">Complete this form once an account is ready to go live. Submitting opens a pre-filled email from your own Outlook to the recipients you select below — review and send.</p>
   </header>
 
   <div class="mode-switch-wrap">
@@ -114,6 +135,7 @@
 
   <div class="form-wrap">
     <form id="goLiveForm" class="form-card" novalidate>
+<div id="internalSections">
 
       <!-- ============ SECTION 1: ACCOUNT OVERVIEW ============ -->
       <section class="section">
@@ -423,6 +445,140 @@
         </div>
       </section>
 
+</div><!-- /internalSections -->
+
+      <!-- ================= EXTERNAL: WELCOME LETTER ================= -->
+      <div id="externalSections" style="display:none;">
+
+        <section class="section">
+          <div class="section-header">
+            <span class="section-num">I.</span>
+            <h2 class="section-title">Client &amp; Account</h2>
+            <span class="section-tag">Who it's going to</span>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="extSubmittedBy">Submitted By<span class="required-mark">*</span></label>
+              <input type="text" id="extSubmittedBy" name="extSubmittedBy" class="field-input" data-req="1" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="extAccountName">Client / Account Name<span class="required-mark">*</span></label>
+              <input type="text" id="extAccountName" name="extAccountName" class="field-input" data-req="1" />
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="extGreeting">Greeting — client contact first names<span class="required-mark">*</span></label>
+            <div class="field-sub">Shown as "Hi …," — e.g. Betty, Patrick, and Sheila</div>
+            <input type="text" id="extGreeting" name="extGreeting" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="extToEmails">Client email(s) — To<span class="required-mark">*</span></label>
+            <div class="field-sub">Comma-separate multiple addresses.</div>
+            <input type="text" id="extToEmails" name="extToEmails" class="field-input" data-req="1" placeholder="name@client.com, name2@client.com" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="extCc">CC (optional)</label>
+            <input type="text" id="extCc" name="extCc" class="field-input" placeholder="name@kensingtoncorporate.com" />
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <span class="section-num">II.</span>
+            <h2 class="section-title">Adapt the Letter</h2>
+            <span class="section-tag">Per account</span>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="extRegion">Region<span class="required-mark">*</span></label>
+              <select id="extRegion" name="extRegion" class="field-input" data-req="1">
+                <option value="">— Select —</option>
+                <option value="Canada">Canada</option>
+                <option value="USA">USA</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="extSignOn">Sign-on method<span class="required-mark">*</span></label>
+              <select id="extSignOn" name="extSignOn" class="field-input" data-req="1">
+                <option value="">— Select —</option>
+                <option value="Email">Company email address</option>
+                <option value="SSO">SSO (single sign-on)</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="extDomain">Concur login address (country / domain)</label>
+              <input type="text" id="extDomain" name="extDomain" class="field-input" value="https://concursolutions.com" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="extLoyalty">Loyalty numbers<span class="required-mark">*</span></label>
+              <select id="extLoyalty" name="extLoyalty" class="field-input" data-req="1">
+                <option value="">— Select —</option>
+                <option value="Not migrated">Did not migrate over — travellers add their own</option>
+                <option value="Migrated">Migrated over — travellers confirm them</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="extLeadAgent">Lead agent<span class="required-mark">*</span></label>
+              <input type="text" id="extLeadAgent" name="extLeadAgent" class="field-input" data-req="1" placeholder="e.g. John Driscoll" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="extSignoff">Signed by (team names)<span class="required-mark">*</span></label>
+              <div class="field-sub">Becomes "Mira, Kathy, John, &amp; the entire team…"</div>
+              <input type="text" id="extSignoff" name="extSignoff" class="field-input" data-req="1" placeholder="Mira, Kathy, John" />
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="extNotes">Anything specific to this account (optional)</label>
+            <div class="field-sub">Added to the letter as its own numbered item.</div>
+            <textarea id="extNotes" name="extNotes" class="field-textarea"></textarea>
+          </div>
+          <div class="field">
+            <label class="field-label" for="extGoLive">Go-live date (optional — logged to the tracker)</label>
+            <input type="date" id="extGoLive" name="extGoLive" class="field-input" />
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <span class="section-num">III.</span>
+            <h2 class="section-title">Support Details</h2>
+            <span class="section-tag">Auto-fills by region</span>
+          </div>
+          <div class="notice" id="extSupportNotice">Choose a region above and the support details fill in. You can edit them.</div>
+          <div class="field">
+            <label class="field-label" for="extSupportHours">Hours &amp; phone numbers<span class="required-mark">*</span></label>
+            <textarea id="extSupportHours" name="extSupportHours" class="field-textarea" data-req="1"></textarea>
+          </div>
+          <div class="field">
+            <label class="field-label" for="extSupportEmail">Support email<span class="required-mark">*</span></label>
+            <input type="text" id="extSupportEmail" name="extSupportEmail" class="field-input" data-req="1" />
+          </div>
+          <div class="field">
+            <label class="field-label">Attachments to include</label>
+            <div class="attach-row">
+              <label class="checkbox-row"><input type="checkbox" id="extAttachGuide" name="extAttachGuide" checked /> Concur training guide</label>
+              <label class="checkbox-row"><input type="checkbox" id="extAttachContact" name="extAttachContact" checked /> Agent contact sheet</label>
+            </div>
+            <input type="text" id="extAttachOther" name="extAttachOther" class="field-input" placeholder="Other attachment(s), if any (optional)" />
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <span class="section-num">IV.</span>
+            <h2 class="section-title">Letter Preview</h2>
+            <span class="section-tag">Updates as you type</span>
+          </div>
+          <div class="letter-wrap"><div class="letter" id="letterPreview"></div></div>
+          <div class="letter-note">Highlighted gold = still to fill in. Attach the files above before you hit Send — a mail link can't attach them for you.</div>
+        </section>
+
+      </div><!-- /externalSections -->
+
       <div class="form-footer">
         <button type="submit" class="submit-btn">Submit Communication</button>
         <p class="footer-note">This opens a pre-filled email in your default mail app. Review the recipients and content, then hit Send.</p>
@@ -433,10 +589,11 @@
       <div class="success-icon">✓</div>
       <h2 class="success-title">Almost done — <em>send your email</em></h2>
       <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> If the draft didn't open, check the recipients you entered and email them directly.</p>
-      <button type="button" class="success-restart" id="restartBtn">Submit another communication</button>
+      <button type="button" class="success-restart" id="restartBtn">Submit another communication</button><button type="button" class="success-restart celebrate-btn" id="celebrateBtn">🎆 Celebrate again</button>
     </div>
   </div>
 
+<canvas id="fireworks"></canvas>
 <script>
 (function () {
   var form = document.getElementById('goLiveForm');
@@ -461,6 +618,7 @@
 
   function setMode(next) {
     mode = next;
+    applyModeView();
     modeSwitch.querySelectorAll('.mode-btn').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-mode') === mode);
     });
@@ -477,6 +635,203 @@
     if (!btn) return;
     setMode(btn.getAttribute('data-mode'));
   });
+
+  // ── External welcome letter ────────────────────────────────────────
+  var CANADA_HOURS = 'Monday – Friday 8:30am - 8:30pm EST | 855-249-8121 or 416-649-9091\n24/7 Emergency Support: 888-481-2012 or 647-288-3057';
+  var CANADA_EMAIL = 'canada@kensingtoncorporate.com';
+  var extHours = document.getElementById('extSupportHours');
+  var extEmail = document.getElementById('extSupportEmail');
+  var extRegion = document.getElementById('extRegion');
+  var extSupportNotice = document.getElementById('extSupportNotice');
+  var preview = document.getElementById('letterPreview');
+
+  function applyModeView() {
+    var ext = mode === 'external';
+    document.getElementById('internalSections').style.display = ext ? 'none' : '';
+    document.getElementById('externalSections').style.display = ext ? '' : 'none';
+    document.getElementById('heroEyebrow').textContent = ext ? 'Implementations · External Welcome Letter' : 'Implementations · Internal Communication';
+    document.getElementById('heroTitle').innerHTML = ext ? 'Go-Live <em>Welcome Letter</em>' : 'Go-Live <em>Internal Communication</em>';
+    document.getElementById('heroSub').textContent = ext
+      ? 'Fill in the account details and the client welcome letter writes itself. Submitting opens a pre-filled email from your own Outlook — attach the files, review and send.'
+      : 'Complete this form once an account is ready to go live. Submitting opens a pre-filled email from your own Outlook to the recipients you select below — review and send.';
+    document.getElementById('goLiveForm').querySelector('.submit-btn').textContent = ext ? 'Create Welcome Email' : 'Submit Communication';
+    if (ext) renderPreview();
+  }
+
+  function applyRegion(force) {
+    var region = extRegion.value;
+    var hoursIsPrefill = !extHours.value.trim() || extHours.value === CANADA_HOURS;
+    var emailIsPrefill = !extEmail.value.trim() || extEmail.value === CANADA_EMAIL;
+    if (region === 'Canada') {
+      if (force || hoursIsPrefill) extHours.value = CANADA_HOURS;
+      if (force || emailIsPrefill) extEmail.value = CANADA_EMAIL;
+      extSupportNotice.innerHTML = '<strong>Canada support details</strong> filled in from the standard welcome letter. Edit if this account differs.';
+    } else if (region === 'USA') {
+      if (force || hoursIsPrefill) extHours.value = '';
+      if (force || emailIsPrefill) extEmail.value = '';
+      extSupportNotice.innerHTML = '<strong>USA:</strong> the US hours, phone numbers and email are not on file yet — enter them below.';
+    }
+    renderPreview();
+  }
+  extRegion.addEventListener('change', function () { applyRegion(false); });
+
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+  // Builds the letter once as structured data; rendered as styled HTML for the preview and as plain text for the email.
+  function buildLetter() {
+    var acct = val('extAccountName'), greet = val('extGreeting'), lead = val('extLeadAgent'), sign = val('extSignoff');
+    var domain = val('extDomain') || 'https://concursolutions.com';
+    var signOn = val('extSignOn'), loyalty = val('extLoyalty');
+    var hours = val('extSupportHours'), supEmail = val('extSupportEmail'), notes = val('extNotes');
+    var guide = document.getElementById('extAttachGuide').checked, contact = document.getElementById('extAttachContact').checked;
+    var leadFirst = lead.split(/\s+/)[0] || '';
+    var A = acct || '[Account name]';
+
+    var signInText = signOn === 'SSO'
+      ? 'You can log into Concur Travel at ' + domain + ' using your company single sign-on (SSO). Please use your usual company credentials.'
+      : 'You can log into Concur Travel at ' + domain + ' using your company email address. Two-factor authentication will need to be set up the first time you log in.';
+
+    var loyaltyText = loyalty === 'Migrated'
+      ? 'Your existing frequent flyer, hotel rewards and rental car loyalty numbers have been migrated into your Concur profile. Please review them to confirm they are accurate, and add or update anything that is missing directly in Concur.'
+      : 'Frequent flyer numbers, hotel rewards numbers, rental car loyalty numbers, and similar travel program details can be added or updated directly in Concur. We recommend ensuring that all information is up to date.';
+
+    var agentParas = [];
+    if (contact) agentParas.push('Attached is our contact sheet with our hours, phone numbers (including 24/7) and some helpful email addresses. This can be shared with anyone at ' + A + ' and/or posted on your intranet.');
+    agentParas.push('A reminder that 24/7 support is only available via phone. Our emails are not monitored outside of business hours.');
+
+    var items = [];
+    items.push({ head: 'Signing in to Concur', paras: [signInText] });
+    items.push({ head: 'Review and update your Concur profile', paras: ['Please go to your profile in the upper-right corner of Concur and confirm that all information is accurate. This includes your name, contact information, TSA/passport details, travel preferences, and any required profile fields, which now includes a mobile phone number. All mandatory fields are clearly marked and must be completed prior to making a reservation.'] });
+    items.push({ head: 'Loyalty and rewards program information', paras: [loyaltyText] });
+    if (guide) items.push({ head: 'Use the training guide if you need a refresher', paras: ['Attached is a quick Concur training guide that walks through updating your profile, booking air, hotel, and car reservations. This can be shared with anyone at ' + A + ' and/or posted on your intranet. Concur training videos are also available here: SAP Concur Travel'] });
+    items.push({
+      head: 'Agent Support', paras: agentParas, support: hours,
+      after: ['While our entire team is committed to helping ' + A + ', we have assigned ' + (lead || '[Lead agent]') + ' as the lead agent to support your travelers. When emailing ' + (supEmail || '[Support email]') + ' put ATTN: ' + (lead || '[Lead agent]') + ' at the top. If ' + (leadFirst || '[Lead agent]') + ' is unavailable or not working, another agent will step in to help. The purpose of assigning ' + (leadFirst || '[Lead agent]') + ' as your lead agent is to ensure we are learning as much as we can about ' + A + ' for a long and successful partnership.']
+    });
+    if (notes) items.push({ head: 'Specific to ' + A, paras: [notes] });
+    items.push({ head: 'Contact Online Support for site issues', paras: ['If you experience issues with the site or notice that something is not displaying correctly, please contact Kensington Corporate\'s Online Support Team: onlinesupport@kensingtoncorporate.com | 877-218-5388'] });
+
+    return {
+      greet: 'Hi ' + (greet || '[Names]') + ',',
+      intro: ['I\'m thrilled to officially welcome you and your Team at ' + A + ' to Kensington Corporate! Your Concur site is now up and running.',
+              'Here are some helpful details to get you started. Please do not hesitate to reach out to us with any questions.'],
+      items: items,
+      signoff: (sign || '[Team names]') + ', & the entire team here at Kensington Corporate'
+    };
+  }
+
+  function highlightMissing(html) { return html.replace(/\[[A-Za-z ]+\]/g, function (m) { return '<span class="lt-miss">' + m + '</span>'; }); }
+
+  function renderPreview() {
+    if (!preview) return;
+    var L = buildLetter(), h = [];
+    h.push('<img class="letter-logo" src="kensington-logo-taupe.png" alt="Kensington Corporate" onerror="this.style.display=\'none\'" /><hr class="letter-rule" />');
+    h.push('<p class="lt-hi">' + highlightMissing(esc(L.greet)) + '</p>');
+    L.intro.forEach(function (t) { h.push('<p>' + highlightMissing(esc(t)) + '</p>'); });
+    L.items.forEach(function (it, i) {
+      var body = it.paras.map(function (t) { return '<p>' + highlightMissing(esc(t)) + '</p>'; }).join('');
+      if (it.support !== undefined) body += '<div class="lt-support">' + (it.support ? esc(it.support) : '<span class="lt-miss">[Hours and phone numbers]</span>') + '</div>';
+      if (it.after) body += it.after.map(function (t) { return '<p>' + highlightMissing(esc(t)) + '</p>'; }).join('');
+      h.push('<div class="lt-item"><div class="lt-num">' + (i + 1) + '.</div><div class="lt-body"><div class="lt-head">' + esc(it.head) + '</div>' + body + '</div></div>');
+    });
+    h.push('<p class="lt-sign">Thank you,<br>' + highlightMissing(esc(L.signoff)) + '</p>');
+    preview.innerHTML = h.join('');
+  }
+
+  function letterAsText() {
+    var L = buildLetter(), t = [L.greet, ''];
+    L.intro.forEach(function (x) { t.push(x, ''); });
+    L.items.forEach(function (it, i) {
+      t.push((i + 1) + '.  ' + it.head);
+      it.paras.forEach(function (x) { t.push(x, ''); });
+      if (it.support !== undefined) t.push(it.support || '', '');
+      if (it.after) it.after.forEach(function (x) { t.push(x, ''); });
+    });
+    t.push('Thank you,', L.signoff);
+    return t.join('\n');
+  }
+
+  var extWrap = document.getElementById('externalSections');
+  ['input', 'change'].forEach(function (ev) { extWrap.addEventListener(ev, renderPreview); });
+
+  // ── Fireworks ──────────────────────────────────────────────────────
+  function launchFireworks() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var cv = document.getElementById('fireworks'), ctx = cv.getContext('2d');
+    var W = cv.width = window.innerWidth, H = cv.height = window.innerHeight;
+    var colors = ['#c9b78f', '#e0c36a', '#8fbf9f', '#2f7a5c', '#fdf9ec', '#ffffff', '#d98c6a'];
+    var rockets = [], sparks = [], start = performance.now(), nextLaunch = 0;
+    function launch() {
+      rockets.push({ x: W * (0.15 + Math.random() * 0.7), y: H, ty: H * (0.15 + Math.random() * 0.35), vy: -(7 + Math.random() * 3), c: colors[(Math.random() * colors.length) | 0] });
+    }
+    function burst(x, y, c) {
+      var n = 70 + (Math.random() * 40 | 0);
+      for (var i = 0; i < n; i++) {
+        var a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 4.2;
+        sparks.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, d: 0.011 + Math.random() * 0.012, c: Math.random() < 0.7 ? c : colors[(Math.random() * colors.length) | 0] });
+      }
+    }
+    function frame(now) {
+      var t = now - start;
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter';
+      if (t < 4200 && t >= nextLaunch) { launch(); if (Math.random() < 0.5) launch(); nextLaunch = t + 260 + Math.random() * 300; }
+      rockets = rockets.filter(function (r) {
+        r.y += r.vy; r.vy *= 0.985;
+        ctx.fillStyle = r.c; ctx.beginPath(); ctx.arc(r.x, r.y, 2.2, 0, 6.3); ctx.fill();
+        if (r.y <= r.ty || r.vy > -1.2) { burst(r.x, r.y, r.c); return false; }
+        return true;
+      });
+      sparks = sparks.filter(function (s) {
+        s.x += s.vx; s.y += s.vy; s.vy += 0.045; s.vx *= 0.99; s.life -= s.d;
+        if (s.life <= 0) return false;
+        ctx.globalAlpha = Math.max(s.life, 0); ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(s.x, s.y, 1.9, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1;
+        return true;
+      });
+      if (t < 7500 || sparks.length || rockets.length) requestAnimationFrame(frame);
+      else ctx.clearRect(0, 0, W, H);
+    }
+    requestAnimationFrame(frame);
+  }
+  document.getElementById('celebrateBtn').addEventListener('click', launchFireworks);
+
+  function submitExternal() {
+    var toList = val('extToEmails').split(/[;,]\s*/).map(function (x) { return x.trim(); }).filter(Boolean).join(', ');
+    var cc = val('extCc');
+    var acct = val('extAccountName');
+    var subject = 'Welcome to Kensington Corporate — ' + acct + ' Go-Live';
+    var mailto = 'mailto:' + encodeURIComponent(toList)
+      + (cc ? '?cc=' + encodeURIComponent(cc) + '&' : '?')
+      + 'subject=' + encodeURIComponent(subject)
+      + '&body=' + encodeURIComponent(letterAsText());
+
+    // Same tracker as the internal form (mode = External), best-effort like the internal path.
+    fetch('/api/finance-tracker', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'proxy-flow',
+        body: { mode: 'External', submittedBy: val('extSubmittedBy'), accountName: acct, contractedValue: '', accountLocation: val('extRegion'),
+                bdmEmail: '', csmEmail: '', implementationsLead: '', csm: '', csim: '', goLiveDate: val('extGoLive'), cutoverDate: '', launchType: '' }
+      })
+    }).catch(function () {});
+
+    var attach = [];
+    if (document.getElementById('extAttachGuide').checked) attach.push('the Concur training guide');
+    if (document.getElementById('extAttachContact').checked) attach.push('the agent contact sheet');
+    if (val('extAttachOther')) attach.push(val('extAttachOther'));
+    document.querySelector('#success .success-text').innerHTML =
+      'We\'ve opened a pre-filled welcome email to <strong>' + esc(toList) + '</strong>.'
+      + (attach.length ? ' <strong>Remember to attach ' + esc(attach.join(', ')) + '</strong> before you send.' : '')
+      + ' Review it, then hit Send.';
+    form.style.display = 'none';
+    success.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    launchFireworks();
+    window.location.href = mailto;
+  }
 
   var rebateSelect = document.getElementById('rebateProgram');
   var rebateGroup = document.getElementById('rebateDetailsGroup');
@@ -502,6 +857,8 @@
       alert('Please complete all required fields (marked with *) before submitting.');
       return;
     }
+
+    if (mode === 'external') { submitExternal(); return; }
 
     var d = {};
     new FormData(form).forEach(function (value, key) {
@@ -599,12 +956,14 @@
     form.style.display = 'none';
     success.style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    launchFireworks();
     window.location.href = mailto;
   });
 
   document.getElementById('restartBtn').addEventListener('click', function () {
     form.reset();
     rebateGroup.classList.remove('show');
+    applyRegion(true);
     success.style.display = 'none';
     form.style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
