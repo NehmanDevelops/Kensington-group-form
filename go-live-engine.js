@@ -165,6 +165,70 @@
   }
   function unknownRefs(tpl, cfg) { var idx = fieldIndex(cfg); return refs(tpl).filter(function (id) { return !idx[id]; }); }
 
-  var api = { RULE: RULE, DEFAULT_DATE_FORMAT: DEFAULT_DATE_FORMAT, fmtDate: fmtDate, parseContacts: parseContacts, render: render, renderEmail: renderEmail, unknownRefs: unknownRefs, refs: refs, fieldIndex: fieldIndex, condTrue: condTrue };
+  // ---- friendly text for the editor -------------------------------------------------------------------------------
+  // The editor shows ‹Account Name› instead of {{accountName}}, "‹IF Region is USA› … ‹OTHERWISE› … ‹END IF›" instead of
+  // {{#if region=USA}} … {{else}} … {{/if}}. toFriendly() / toRaw() translate both ways (and round-trip exactly).
+  function labelOf(cfg, id) { var f = fieldIndex(cfg)[id]; return f ? f.label : id; }
+  function idOfLabel(cfg, label) {
+    var want = String(label).trim().toLowerCase(), hit = null;
+    ((cfg && cfg.sections) || []).forEach(function (s) { (s.fields || []).forEach(function (f) { if (!hit && f.label.trim().toLowerCase() === want) hit = f.id; }); });
+    return hit;
+  }
+  function toFriendly(raw, cfg) {
+    return String(raw || '').replace(/\{\{\s*([^}]*?)\s*\}\}/g, function (all, inner) {
+      if (inner === 'else') return '‹OTHERWISE›';
+      if (inner === '/if') return '‹END IF›';
+      var m = /^#if\s+(.*)$/.exec(inner);
+      if (m) {
+        var c = m[1].trim(), x;
+        if ((x = /^([A-Za-z][A-Za-z0-9_]*)\s*(!=|=|~)\s*(.*)$/.exec(c))) {
+          var lab = labelOf(cfg, x[1]), vals = x[3].split('|').join(' or ');
+          return '‹IF ' + lab + (x[2] === '=' ? ' is ' : x[2] === '!=' ? ' is not ' : ' contains ') + vals + '›';
+        }
+        if (c.charAt(0) === '!') return '‹IF ' + labelOf(cfg, c.slice(1).trim()) + ' is empty›';
+        return '‹IF ' + labelOf(cfg, c) + ' is filled in›';
+      }
+      var bar = inner.indexOf('|'), expr = bar === -1 ? inner : inner.slice(0, bar), tail = bar === -1 ? '' : inner.slice(bar);
+      var p = expr.split(':').map(function (t) { return t.trim(); });
+      if (p.length === 1) return '‹' + labelOf(cfg, p[0]) + tail + '›';
+      var fn = p[0], id = p[1], role = p.slice(2).join(':');
+      if (fn === 'date') return '‹' + labelOf(cfg, id) + ' as date' + tail + '›';
+      if (fn === 'first') return '‹first word of ' + labelOf(cfg, id) + tail + '›';
+      if (fn === 'names') return '‹' + (role || 'Contact') + ' first names' + tail + '›';
+      if (fn === 'emails') return '‹' + (role || 'Contact') + ' emails' + tail + '›';
+      if (fn === 'contactLines') return '‹Contact list' + tail + '›';
+      return all;
+    });
+  }
+  function toRaw(text, cfg) {
+    return String(text || '').replace(/‹([^›\n]+)›/g, function (all, inner) {
+      var t = inner.trim(), m;
+      if (/^OTHERWISE$/i.test(t)) return '{{else}}';
+      if (/^END IF$/i.test(t)) return '{{/if}}';
+      var cond = function (lab, op, val) { var id = idOfLabel(cfg, lab); return id ? '{{#if ' + id + op + val + '}}' : all; };
+      if ((m = /^IF (.+?) is not (.+)$/i.exec(t))) return cond(m[1], '!=', m[2].split(/ or /i).join('|'));
+      if ((m = /^IF (.+?) is filled in$/i.exec(t))) { var a = idOfLabel(cfg, m[1]); return a ? '{{#if ' + a + '}}' : all; }
+      if ((m = /^IF (.+?) is empty$/i.exec(t))) { var b = idOfLabel(cfg, m[1]); return b ? '{{#if !' + b + '}}' : all; }
+      if ((m = /^IF (.+?) contains (.+)$/i.exec(t))) return cond(m[1], '~', m[2].split(/ or /i).join('|'));
+      if ((m = /^IF (.+?) is (.+)$/i.exec(t))) return cond(m[1], '=', m[2].split(/ or /i).join('|'));
+      var bar = t.indexOf('|'), head = (bar === -1 ? t : t.slice(0, bar)).trim(), tail = bar === -1 ? '' : t.slice(bar);
+      var id = idOfLabel(cfg, head);
+      if (id) return '{{' + id + tail + '}}';
+      if ((m = /^(.+) as date$/i.exec(head))) { id = idOfLabel(cfg, m[1]); if (id) return '{{date:' + id + tail + '}}'; }
+      if ((m = /^first word of (.+)$/i.exec(head))) { id = idOfLabel(cfg, m[1]); if (id) return '{{first:' + id + tail + '}}'; }
+      if ((m = /^(.+) first names$/i.exec(head))) return '{{names:contacts:' + m[1] + tail + '}}';
+      if ((m = /^(.+) emails$/i.exec(head))) return '{{emails:contacts:' + m[1] + tail + '}}';
+      if (/^Contact list$/i.test(head)) return '{{contactLines:contacts' + tail + '}}';
+      return all;     // not recognised: left as typed so the editor can warn about it
+    });
+  }
+  // pieces of friendly text the editor could not understand
+  function unrecognised(friendly, cfg) {
+    var bad = [];
+    String(friendly || '').replace(/‹([^›\n]+)›/g, function (all) { if (toRaw(all, cfg) === all) bad.push(all); return all; });
+    return bad;
+  }
+
+  var api = { toFriendly: toFriendly, toRaw: toRaw, unrecognised: unrecognised, idOfLabel: idOfLabel, RULE: RULE, DEFAULT_DATE_FORMAT: DEFAULT_DATE_FORMAT, fmtDate: fmtDate, parseContacts: parseContacts, render: render, renderEmail: renderEmail, unknownRefs: unknownRefs, refs: refs, fieldIndex: fieldIndex, condTrue: condTrue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GoLive = api;
 })(typeof window !== 'undefined' ? window : this);

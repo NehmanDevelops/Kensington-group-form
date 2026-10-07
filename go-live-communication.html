@@ -14,19 +14,14 @@
   html { scroll-behavior:smooth; }
   body { font-family:'SangBleu Republic', Georgia, serif; background:var(--bone); color:var(--ink); line-height:1.6; -webkit-font-smoothing:antialiased; }
 
-  .hero { position:relative; padding:44px 24px 70px; text-align:center; background:radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%), linear-gradient(135deg,#2a2230 0%,#3a2f3c 45%,#1a3e32 100%); }
+  .hero { position:relative; padding:44px 24px 56px; text-align:center; background:radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%), linear-gradient(135deg,#2a2230 0%,#3a2f3c 45%,#1a3e32 100%); }
   .hero-logo { height:52px; display:block; margin:0 auto 18px; }
   .hero-eyebrow { font-size:11px; letter-spacing:.35em; text-transform:uppercase; color:#c9c3b2; margin-bottom:10px; }
   .hero-title { font-family:'SangBleu Sunrise', Georgia, serif; font-weight:400; color:var(--bone); font-size:clamp(24px,3vw,36px); line-height:1.2; }
   .hero-title em { font-style:italic; color:#c9b78f; }
   .hero-sub { color:rgba(245,241,232,.72); font-size:14px; max-width:620px; margin:12px auto 0; }
 
-  .bar { max-width:1240px; margin:-26px auto 0; padding:0 20px; position:relative; z-index:2; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-  .pill { background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:10px 20px; font:inherit; font-size:13px; color:var(--ink-soft); cursor:pointer; text-decoration:none; box-shadow:var(--shadow); }
-  .pill:hover { background:var(--cream); }
-  .pill.saved { cursor:default; color:var(--ink-mute); }
-
-  .layout { max-width:1240px; margin:22px auto 70px; padding:0 20px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,520px); gap:24px; align-items:start; }
+  .layout { max-width:1240px; margin:26px auto 30px; padding:0 20px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,520px); gap:24px; align-items:start; }
   @media (max-width:1000px){ .layout{ grid-template-columns:1fr; } .preview{ position:static !important; } }
 
   .card { background:var(--paper); border:1px solid var(--line); box-shadow:var(--shadow); margin-bottom:18px; }
@@ -44,51 +39,55 @@
   .field-textarea { min-height:78px; resize:vertical; }
   .field-input:focus, .field-textarea:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(118,114,96,.15); }
   .field-input.err, .field-textarea.err { border-color:var(--error); box-shadow:0 0 0 3px rgba(176,58,58,.12); }
+  .minilink { font:inherit; font-size:12px; color:var(--green); background:none; border:none; cursor:pointer; text-decoration:underline; margin-left:8px; padding:0; font-weight:400; }
 
   .preview { position:sticky; top:14px; }
   .tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
   .tab { flex:1; min-width:120px; font:inherit; font-size:13px; padding:11px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink-soft); border-radius:8px; cursor:pointer; }
   .tab.active { background:var(--green); color:var(--bone); border-color:var(--green); }
-  .mailwin { background:#fff; border:1px solid #cfcfcf; border-radius:8px; box-shadow:var(--shadow); overflow:hidden; font-family:Aptos, Calibri, 'Segoe UI', Arial, sans-serif; }
-  .mailwin-bar { background:#f3f2f1; border-bottom:1px solid #e1dfdd; padding:8px 14px; font-size:12px; color:#605e5c; display:flex; gap:6px; align-items:center; }
-  .mailwin-bar i { width:10px; height:10px; border-radius:50%; background:#d2d0ce; display:inline-block; }
-  .mailwin-head { padding:4px 16px 0; border-bottom:1px solid #edebe9; }
-  .mailwin-row { display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #f3f2f1; font-size:13px; color:#201f1e; }
-  .mailwin-row:last-child { border-bottom:none; }
-  .mailwin-row b { width:54px; flex:none; font-weight:400; color:#605e5c; }
-  .mailwin-row span { min-width:0; overflow-wrap:anywhere; }
-  .mailwin-body { padding:16px 18px 22px; font-size:13.5px; line-height:1.5; color:#201f1e; white-space:pre-wrap; word-break:break-word; max-height:62vh; overflow:auto; }
-  .miss { background:#f6e9b8; color:#7a5b00; border-radius:3px; padding:0 3px; }
-  .actions { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center; }
-  .btn { font:inherit; font-size:15px; font-weight:500; border:none; border-radius:6px; padding:13px 26px; cursor:pointer; background:var(--ink); color:var(--bone); }
-  .btn:hover { background:#4a3d4d; }
-  .btn.ghost { background:transparent; color:var(--ink-soft); border:1px solid var(--line); font-size:13px; padding:12px 18px; }
-  .btn.ghost:hover { background:var(--cream); }
-  .note { font-size:12px; color:var(--ink-mute); line-height:1.5; margin-top:10px; }
-  .banner { margin-top:12px; padding:12px 14px; border-left:3px solid var(--green); background:var(--cream); font-size:13px; color:var(--ink-soft); display:none; }
-  .banner.show { display:block; }
-  .banner.warn { border-left-color:#b9852c; }
-  .blank-list { font-size:12px; color:#7a5b00; margin-top:8px; }
-  #fireworks { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; }
-  .loading { text-align:center; padding:60px 0; color:var(--ink-mute); }
-  .pill.on { background:var(--green); color:var(--bone); border-color:var(--green); }
-  .view { display:none; } .view.on { display:block; }
-  .wrap { max-width:1240px; margin:22px auto 70px; padding:0 20px; }
-  .tr-top { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
-  .tr-top input { flex:1; min-width:200px; max-width:380px; font:inherit; font-size:14px; padding:10px 13px; border:1px solid var(--line); border-radius:6px; background:#fff; }
-  table.tr { width:100%; border-collapse:collapse; font-size:14px; }
-  table.tr th { text-align:left; font-weight:500; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-mute); padding:12px 14px; border-bottom:1px solid var(--line); background:var(--cream); }
-  table.tr td { padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
-  table.tr tr:hover td { background:#fbf8ee; }
-  .tag { display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; background:var(--cream); color:var(--ink-soft); }
-  .tag.internal { background:#e6eef0; } .tag.welcome { background:#e4efe7; } .tag.tm { background:#f2ebdc; }
-  .empty { text-align:center; color:var(--ink-mute); padding:44px 10px; font-size:14px; }
   .extras { display:grid; grid-template-columns:auto 1fr; gap:8px 10px; align-items:center; margin-bottom:10px; background:var(--paper); border:1px solid var(--line); padding:10px 12px; }
   .extras label { font-size:12px; color:var(--ink-soft); white-space:nowrap; }
   .extras input { width:100%; font:inherit; font-size:14px; padding:8px 11px; border:1px solid var(--line); border-radius:6px; background:#fff; }
   .extras input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(118,114,96,.15); }
   .extras-bad { grid-column:1 / -1; font-size:12px; color:var(--error); }
-  #editorFrame { width:100%; height:calc(100vh - 150px); min-height:600px; border:1px solid var(--line); background:var(--bone); box-shadow:var(--shadow); }
+  .mailwin { background:#fff; border:1px solid #cfcfcf; border-radius:8px; box-shadow:var(--shadow); overflow:hidden; font-family:Aptos, Calibri, 'Segoe UI', Arial, sans-serif; }
+  .mailwin-bar { background:#f3f2f1; border-bottom:1px solid #e1dfdd; padding:8px 14px; font-size:12px; color:#605e5c; display:flex; gap:6px; align-items:center; }
+  .mailwin-bar i { width:10px; height:10px; border-radius:50%; background:#d2d0ce; display:inline-block; }
+  .mailwin-head { padding:4px 16px 0; border-bottom:1px solid #edebe9; }
+  .mailwin-row { display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #f3f2f1; font-size:13px; color:#201f1e; } .mailwin-row:last-child { border-bottom:none; }
+  .mailwin-row b { width:54px; flex:none; font-weight:400; color:#605e5c; } .mailwin-row span { min-width:0; overflow-wrap:anywhere; }
+  .mailwin-body { padding:16px 18px 22px; font-size:13.5px; line-height:1.5; color:#201f1e; white-space:pre-wrap; word-break:break-word; max-height:58vh; overflow:auto; }
+  .miss { background:#f6e9b8; color:#7a5b00; border-radius:3px; padding:0 3px; }
+  .actions { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+  .btn { font:inherit; font-size:15px; font-weight:500; border:none; border-radius:6px; padding:13px 26px; cursor:pointer; background:var(--ink); color:var(--bone); }
+  .btn:hover { background:#4a3d4d; } .btn:disabled { opacity:.5; cursor:default; }
+  .btn.ghost { background:transparent; color:var(--ink-soft); border:1px solid var(--line); font-size:13px; padding:12px 18px; } .btn.ghost:hover { background:var(--cream); }
+  .btn.small { font-size:13px; padding:9px 16px; }
+  .note { font-size:12px; color:var(--ink-mute); line-height:1.5; margin-top:10px; }
+  .banner { margin-top:12px; padding:12px 14px; border-left:3px solid var(--green); background:var(--cream); font-size:13px; color:var(--ink-soft); display:none; }
+  .banner.show { display:block; } .banner.warn { border-left-color:#b9852c; }
+  .blank-list { font-size:12px; color:#7a5b00; margin-top:8px; }
+  #fireworks { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; }
+  .loading { text-align:center; padding:60px 0; color:var(--ink-mute); }
+
+  .addwrap { margin-top:6px; }
+  .addbtn { font:inherit; font-size:13px; color:var(--green); background:transparent; border:1px dashed var(--gold); border-radius:6px; padding:9px 16px; cursor:pointer; }
+  .addbtn:hover { background:var(--cream); }
+  .inpanel { margin-top:10px; background:var(--cream); border:1px solid var(--line); border-radius:8px; padding:14px 16px 12px; }
+  .aem { display:flex; gap:16px; flex-wrap:wrap; font-size:14px; } .aem label { white-space:nowrap; }
+  .addact { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px; } .addmsg { font-size:13px; color:var(--ink-mute); }
+
+  .edpanel { margin-top:12px; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:14px 16px 14px; box-shadow:var(--shadow); }
+  .edpanel label.l { display:block; font-size:12px; font-weight:500; margin:10px 0 5px; color:var(--ink-soft); }
+  .edpanel input[type=text], .edpanel select, .edpanel textarea { width:100%; font:inherit; font-size:14px; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:6px; padding:9px 11px; }
+  .edpanel textarea { font-size:13.5px; line-height:1.5; min-height:300px; resize:vertical; }
+  .edpanel input:focus, .edpanel select:focus, .edpanel textarea:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(118,114,96,.15); }
+  .edtools { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0; } .edtools select { width:auto; max-width:220px; }
+  .edwarn { background:#fbeaea; border-left:3px solid var(--error); padding:8px 12px; font-size:13px; margin:8px 0; color:#7a2a2a; }
+  .edhint { font-size:12px; color:var(--ink-mute); margin-bottom:6px; }
+
+  .foot { max-width:1240px; margin:0 auto 50px; padding:0 20px; text-align:center; font-size:13px; color:var(--ink-mute); }
+  .foot a { color:var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -101,15 +100,6 @@
   <p class="hero-sub">Fill in the account once. The internal communication, the client welcome letter and the Travel Manager next steps are all written for you, ready to open in Outlook.</p>
 </header>
 
-<nav class="bar" id="nav">
-  <button type="button" class="pill on" data-view="create">Create emails</button>
-  <button type="button" class="pill" data-view="tracker">Tracker</button>
-  <button type="button" class="pill" data-view="customize" title="Add dropdowns, change labels, edit the email wording">⚙ Customize</button>
-  <button type="button" class="pill" id="newBtn">+ New account</button>
-  <span class="pill saved" id="savedNote">Draft saves on this computer</span>
-</nav>
-
-<div class="view on" id="view-create">
 <div class="layout">
   <form id="goLiveForm" novalidate><div class="loading" id="loading">Loading…</div></form>
 
@@ -124,36 +114,30 @@
     <div class="blank-list" id="blankList"></div>
     <div class="actions">
       <button type="button" class="btn" id="createBtn">Create email in Outlook</button>
+      <button type="button" class="btn ghost" id="editBtn">✎ Edit this email</button>
       <button type="button" class="btn ghost" id="copyBtn">Copy text</button>
     </div>
     <div class="banner" id="banner"></div>
+    <div id="edHost"></div>
     <p class="note">Outlook opens with the To, CC, subject and the email already written. Gold = still to fill in. Outlook may wrap long lines slightly differently, and adds your own signature.</p>
   </aside>
 </div>
+
+<div class="foot" id="foot" style="display:none">
+  <a href="#" id="newLink">Start a new account</a> &nbsp;·&nbsp; <a href="#" id="undoLink">Undo the last change to the form settings</a> &nbsp;·&nbsp; <a id="xlsxLink" href="#" target="_blank" rel="noopener">Open the Excel tracker</a>
+  <div id="footMsg" style="margin-top:8px"></div>
 </div>
-
-<div class="view" id="view-tracker"><div class="wrap">
-  <div class="card section">
-    <div class="section-header"><span class="section-num">&#9679;</span><h2 class="section-title">Tracker</h2></div>
-    <p class="field-help" style="margin-bottom:14px">Every email created from this form is logged here, and also added to the Excel tracker. “Reopen” brings back the account details on this computer so you can create the next email without retyping.</p>
-    <div class="tr-top"><input type="text" id="trSearch" placeholder="Search by account, person or email…"><a class="btn ghost" id="trXlsx" href="#" target="_blank" rel="noopener">Open the Excel tracker ↗</a><button type="button" class="btn ghost" id="trRefresh">Refresh</button></div>
-    <div id="trBody"><div class="empty">Loading…</div></div>
-  </div>
-</div></div>
-
-<div class="view" id="view-customize"><div class="wrap">
-  <iframe id="editorFrame" title="Customize the form and emails"></iframe>
-</div></div>
 
 <script src="go-live-engine.js"></script>
 <script>
 (function () {
   var G = window.GoLive;
   var REMOTE = 'https://link-portal-alpha.vercel.app/api/golive-config';
+  var TRACKER_XLSX = 'https://navigatrgroup-my.sharepoint.com/:x:/g/personal/nehman_rahimi_kensingtoncorporate_com/IQBGtB9zHIChS7mv-DckNTtgAcdxUw4UzE0JYEOAC0Lkoqc';
   var DRAFT_KEY = 'golive-draft-v2';
-  var cfg = null, values = {}, active = 'internal';
+  var cfg = null, values = {}, active = 'internal', editing = null;
   var $ = function (id) { return document.getElementById(id); };
-  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function validCfg(c) { return c && Array.isArray(c.sections) && c.emails && c.emails.internal && c.emails.welcome && c.emails.tm; }
 
   function loadConfig() {
@@ -163,11 +147,19 @@
       .then(function (c) { clearTimeout(timer); if (!validCfg(c)) throw new Error('bad'); return c; })
       .catch(function () { clearTimeout(timer); return fetch('go-live-default-config.json').then(function (r) { return r.json(); }); });
   }
-
   function allFields() { var a = []; cfg.sections.forEach(function (s) { (s.fields || []).forEach(function (f) { a.push(f); }); }); return a; }
   function applyDefaults() { allFields().forEach(function (f) { if ((values[f.id] === undefined || values[f.id] === '') && f.default) values[f.id] = f.default; }); }
   function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(values)); } catch (e) {} }
   function loadDraft() { try { var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); if (d && typeof d === 'object') values = d; } catch (e) {} }
+
+  // Save a change to the shared settings: re-read the latest first so nobody else's change is overwritten.
+  function changeSettings(mutate, message) {
+    return fetch(REMOTE).then(function (r) { if (!r.ok) throw new Error('settings service unavailable'); return r.json(); }).then(function (fresh) {
+      var out = mutate(fresh);
+      return fetch(REMOTE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', config: fresh, message: message }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'save failed'); cfg = fresh; applyDefaults(); return out; }); });
+    });
+  }
 
   // ---------- form ----------
   var ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
@@ -182,6 +174,7 @@
         if (f.type === 'textarea') wrap.style.gridColumn = '1 / -1';
         var lab = document.createElement('label'); lab.className = 'field-label'; lab.htmlFor = 'f_' + f.id;
         lab.innerHTML = esc(f.label) + (f.required ? '<span class="req">*</span>' : '');
+        if (f.type === 'select') { var ec = document.createElement('button'); ec.type = 'button'; ec.className = 'minilink'; ec.textContent = 'edit choices'; ec.addEventListener('click', function () { toggleChoices(wrap, f); }); lab.appendChild(ec); }
         wrap.appendChild(lab);
         if (f.help) { var h = document.createElement('div'); h.className = 'field-help'; h.textContent = f.help; wrap.appendChild(h); }
         var el;
@@ -189,39 +182,87 @@
           el = document.createElement('select'); el.className = 'field-input';
           var o0 = document.createElement('option'); o0.value = ''; o0.textContent = '— Select —'; el.appendChild(o0);
           (f.options || []).forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = o; el.appendChild(op); });
-        } else if (f.type === 'textarea') {
-          el = document.createElement('textarea'); el.className = 'field-textarea'; el.rows = f.rows || 3;
-        } else {
-          el = document.createElement('input'); el.className = 'field-input';
-          el.type = f.type === 'date' ? 'date' : (f.type === 'email' ? 'email' : (f.type === 'url' ? 'url' : 'text'));
-        }
+        } else if (f.type === 'textarea') { el = document.createElement('textarea'); el.className = 'field-textarea'; el.rows = f.rows || 3; }
+        else { el = document.createElement('input'); el.className = 'field-input'; el.type = f.type === 'date' ? 'date' : (f.type === 'email' ? 'email' : (f.type === 'url' ? 'url' : 'text')); }
         el.id = 'f_' + f.id; el.dataset.fid = f.id;
         if (f.placeholder) el.placeholder = f.placeholder;
         el.value = values[f.id] || '';
         el.addEventListener('input', onEdit); el.addEventListener('change', onEdit);
-        wrap.appendChild(el);
-        grid.appendChild(wrap);
+        wrap.appendChild(el); grid.appendChild(wrap);
       });
+      card.appendChild(addFieldUI(si));
       form.appendChild(card);
     });
   }
-  function onEdit(e) {
-    var el = e.target; values[el.dataset.fid] = el.value; el.classList.remove('err');
-    saveDraft(); renderPreview();
+  function onEdit(e) { var el = e.target; values[el.dataset.fid] = el.value; el.classList.remove('err'); saveDraft(); renderPreview(); }
+
+  // ---------- edit a dropdown's choices, right where it is ----------
+  function toggleChoices(wrap, f) {
+    var open = wrap.querySelector('.inpanel'); if (open) { open.remove(); return; }
+    var p = document.createElement('div'); p.className = 'inpanel';
+    p.innerHTML = '<div class="edhint">One choice per line.</div><textarea class="field-textarea" rows="' + Math.max(3, (f.options || []).length + 1) + '">' + esc((f.options || []).join('\n')) + '</textarea>'
+      + '<div class="addact"><button type="button" class="btn small go">Save for everyone</button><button type="button" class="btn ghost small cancel">Cancel</button><span class="addmsg"></span></div>';
+    var msg = p.querySelector('.addmsg');
+    p.querySelector('.cancel').onclick = function () { p.remove(); };
+    p.querySelector('.go').onclick = function () {
+      var opts = p.querySelector('textarea').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!opts.length) { msg.textContent = 'Keep at least one choice.'; return; }
+      msg.textContent = 'Saving…'; p.querySelector('.go').disabled = true;
+      changeSettings(function (fresh) { fresh.sections.forEach(function (s) { s.fields.forEach(function (x) { if (x.id === f.id) x.options = opts; }); }); }, 'Edited choices: ' + f.label)
+        .then(function () { if (opts.indexOf(values[f.id]) === -1) { values[f.id] = ''; saveDraft(); } applyDefaults(); renderForm(); renderPreview(); })
+        .catch(function (e) { p.querySelector('.go').disabled = false; msg.textContent = 'Could not save: ' + e.message; });
+    };
+    wrap.appendChild(p); p.querySelector('textarea').focus();
   }
 
-  // ---------- preview ----------
-  function emailKeys() { return ['internal', 'welcome', 'tm'].filter(function (k) { return cfg.emails[k]; }); }
-  function renderTabs() {
-    var t = $('tabs'); t.innerHTML = '';
-    emailKeys().forEach(function (k) {
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'tab' + (k === active ? ' active' : ''); b.textContent = cfg.emails[k].label || k;
-      b.addEventListener('click', function () { active = k; $('banner').className = 'banner'; syncExtraInputs(); renderTabs(); renderPreview(); });
-      t.appendChild(b);
-    });
+  // ---------- "+ Add a field" at the bottom of every section ----------
+  var TYPE_CHOICES = [['text', 'Short answer'], ['textarea', 'Long answer'], ['select', 'Dropdown'], ['date', 'Date']];
+  function slugify(label, ids) {
+    var w = String(label).replace(/[^A-Za-z0-9 ]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+    var id = w.map(function (x, i) { x = x.toLowerCase(); return i ? x.charAt(0).toUpperCase() + x.slice(1) : x; }).join('') || 'question';
+    if (!/^[a-z]/.test(id)) id = 'q' + id; id = id.slice(0, 30);
+    var base = id, n = 2; while (ids.indexOf(id) !== -1) id = base + n++;
+    return id;
   }
-  function hi(text) { return esc(text).replace(/\[[^\]\n]{1,80}\]/g, function (m) { return '<span class="miss">' + m + '</span>'; }); }
-  // Extra recipients typed on the form (added to the ones the template works out). Kept per email, on this computer.
+  function addFieldUI(si) {
+    var wrap = document.createElement('div'); wrap.className = 'addwrap';
+    wrap.innerHTML = '<button type="button" class="addbtn">+ Add a field</button><div class="inpanel" style="display:none">'
+      + '<div class="grid2"><div class="field"><label class="field-label">Question</label><input type="text" class="field-input aq" placeholder="e.g. Preferred hotel chain"></div>'
+      + '<div class="field"><label class="field-label">Answer type</label><select class="field-input at">' + TYPE_CHOICES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('') + '</select></div></div>'
+      + '<div class="field ac" style="display:none"><label class="field-label">Choices (one per line)</label><textarea class="field-textarea acx" rows="3" placeholder="Marriott&#10;Hilton&#10;Other"></textarea></div>'
+      + '<div class="field"><label class="field-label">Also mention the answer in</label><div class="aem">'
+      + ['internal', 'welcome', 'tm'].filter(function (k) { return cfg.emails[k]; }).map(function (k) { return '<label><input type="checkbox" data-em="' + k + '"> ' + esc(cfg.emails[k].label) + '</label>'; }).join('') + '</div></div>'
+      + '<div class="addact"><button type="button" class="btn small go">Add field</button><button type="button" class="btn ghost small cancel">Cancel</button><span class="addmsg"></span></div></div>';
+    var btn = wrap.querySelector('.addbtn'), panel = wrap.querySelector('.inpanel'), msg = wrap.querySelector('.addmsg');
+    btn.onclick = function () { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; if (panel.style.display === 'block') wrap.querySelector('.aq').focus(); };
+    wrap.querySelector('.cancel').onclick = function () { panel.style.display = 'none'; msg.textContent = ''; };
+    wrap.querySelector('.at').onchange = function (e) { wrap.querySelector('.ac').style.display = e.target.value === 'select' ? '' : 'none'; };
+    wrap.querySelector('.go').onclick = function () {
+      var label = wrap.querySelector('.aq').value.trim(), type = wrap.querySelector('.at').value;
+      var opts = wrap.querySelector('.acx').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!label) { msg.textContent = 'Type the question first.'; return; }
+      if (type === 'select' && !opts.length) { msg.textContent = 'Add at least one choice for the dropdown.'; return; }
+      var mention = [].slice.call(wrap.querySelectorAll('[data-em]:checked')).map(function (c) { return c.dataset.em; });
+      var go = wrap.querySelector('.go'); go.disabled = true; msg.textContent = 'Saving…';
+      var sectionId = cfg.sections[si].id;
+      changeSettings(function (fresh) {
+        var all = []; fresh.sections.forEach(function (s) { s.fields.forEach(function (x) { all.push(x); }); });
+        var l = label, n = 2; while (all.some(function (x) { return x.label.trim().toLowerCase() === l.toLowerCase(); })) l = label + ' ' + n++;
+        var f = { id: slugify(l, all.map(function (x) { return x.id; })), label: l, type: type }; if (type === 'select') f.options = opts;
+        (fresh.sections.filter(function (s) { return s.id === sectionId; })[0] || fresh.sections[fresh.sections.length - 1]).fields.push(f);
+        mention.forEach(function (k) {
+          var e = fresh.emails[k]; if (!e) return; var line = f.label + ': {{' + f.id + '}}', at = e.body.lastIndexOf('\nThank you,');
+          e.body = at === -1 ? e.body + '\n\n' + line : e.body.slice(0, at) + '\n' + line + '\n' + e.body.slice(at);
+        });
+        return f.id;
+      }, 'Added field: ' + label).then(function (newId) {
+        renderForm(); renderPreview(); var el = $('f_' + newId); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { el.focus({ preventScroll: true }); } catch (e) {} }
+      }).catch(function (e) { go.disabled = false; msg.textContent = 'Could not save: ' + e.message; });
+    };
+    return wrap;
+  }
+
+  // ---------- the three emails + live preview ----------
   var EXTRAS_KEY = 'golive-extras-v1', extras = {};
   try { extras = JSON.parse(localStorage.getItem(EXTRAS_KEY) || '{}') || {}; } catch (e) { extras = {}; }
   function saveExtras() { try { localStorage.setItem(EXTRAS_KEY, JSON.stringify(extras)); } catch (e) {} }
@@ -235,31 +276,99 @@
     $('extrasBad').textContent = bad.length ? 'Not a valid email address: ' + bad.join(', ') : '';
     renderPreview();
   }
+  function emailKeys() { return ['internal', 'welcome', 'tm'].filter(function (k) { return cfg.emails[k]; }); }
+  function renderTabs() {
+    var t = $('tabs'); t.innerHTML = '';
+    emailKeys().forEach(function (k) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'tab' + (k === active ? ' active' : ''); b.textContent = cfg.emails[k].label || k;
+      b.addEventListener('click', function () { if (k === active) return; if (editing && !closeEditor(true)) return; active = k; $('banner').className = 'banner'; syncExtraInputs(); renderTabs(); renderPreview(); });
+      t.appendChild(b);
+    });
+  }
+  function hi(text) { return esc(text).replace(/\[[^\]\n]{1,80}\]/g, function (m) { return '<span class="miss">' + m + '</span>'; }); }
+  // while the wording editor is open, the preview shows the unsaved wording
+  function activeEmail() {
+    var e = cfg.emails[active];
+    if (editing && editing.key === active) return { subject: G.toRaw(editing.sub, cfg), to: e.to, cc: e.cc, body: G.toRaw(editing.body, cfg), attachments: e.attachments, label: e.label, tracker: e.tracker };
+    return e;
+  }
+  function previewCfg() { return (editing && editing.dateFormat) ? Object.assign({}, cfg, { dateFormat: editing.dateFormat }) : cfg; }
   function current() {
-    var r = G.renderEmail(cfg.emails[active], values, cfg), x = extras[active] || {};
+    var r = G.renderEmail(activeEmail(), values, previewCfg()), x = extras[active] || {};
     r.to = uniq(r.to.concat(addrList(x.to).filter(function (a) { return EMAIL_RE.test(a); })));
     r.cc = uniq(r.cc.concat(addrList(x.cc).filter(function (a) { return EMAIL_RE.test(a); })));
     return r;
   }
   function renderPreview() {
     var r = current();
-    var h = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div><div class="mailwin-head">'
+    $('mailwin').innerHTML = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div><div class="mailwin-head">'
       + '<div class="mailwin-row"><b>To</b><span>' + (r.to.length ? esc(r.to.join('; ')) : '<span class="miss">[recipients]</span>') + '</span></div>'
       + (r.cc.length ? '<div class="mailwin-row"><b>Cc</b><span>' + esc(r.cc.join('; ')) + '</span></div>' : '')
-      + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div></div>'
-      + '<div class="mailwin-body">' + hi(r.body) + '</div>';
-    $('mailwin').innerHTML = h;
+      + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div></div><div class="mailwin-body">' + hi(r.body) + '</div>';
     $('blankList').textContent = r.missing.length ? 'Still blank: ' + r.missing.join(', ') : '';
   }
 
-  // ---------- create ----------
-  function requiredMissing() {
-    var bad = [];
-    allFields().forEach(function (f) { if (f.required && !String(values[f.id] || '').trim()) bad.push(f); });
-    return bad;
+  // ---------- "✎ Edit this email": change the wording right here ----------
+  var DATE_PRESETS = [['{weekday}, {month} {dayth}, {year}', 'Wednesday, October 21st, 2026'], ['{weekday} {month} {dayth}, {year}', 'Wednesday October 21st, 2026'], ['{month} {dayth}, {year}', 'October 21st, 2026'], ['{month} {day}, {year}', 'October 21, 2026'], ['{mon} {day}, {year}', 'Oct 21, 2026'], ['{day} {month} {year}', '21 October 2026'], ['{year}-{mm}-{dd}', '2026-10-21']];
+  function insertAt(ta, text) { var s = ta.selectionStart, e = ta.selectionEnd; ta.value = ta.value.slice(0, s) + text + ta.value.slice(e); ta.focus(); ta.selectionStart = ta.selectionEnd = s + text.length; ta.dispatchEvent(new Event('input')); }
+  function closeEditor(askIfChanged) {
+    if (!editing) return true;
+    var e = cfg.emails[editing.key], changed = editing.sub !== editing.origSub || editing.body !== editing.origBody || editing.dateFormat !== editing.origDate;
+    if (askIfChanged && changed && !confirm('Throw away your unsaved wording changes?')) return false;
+    editing = null; $('edHost').innerHTML = ''; $('editBtn').textContent = '✎ Edit this email'; renderPreview(); return true;
   }
-  function banner(msg, warn) { var b = $('banner'); b.innerHTML = msg; b.className = 'banner show' + (warn ? ' warn' : ''); }
+  function openEditor() {
+    var e = cfg.emails[active], fr = function (t) { return G.toFriendly(t || '', cfg); };
+    var curDate = cfg.dateFormat || G.DEFAULT_DATE_FORMAT, isPreset = DATE_PRESETS.some(function (p) { return p[0] === curDate; });
+    editing = { key: active, sub: fr(e.subject), body: fr(e.body), dateFormat: curDate };
+    editing.origSub = editing.sub; editing.origBody = editing.body; editing.origDate = curDate;
+    var host = $('edHost');
+    host.innerHTML = '<div class="edpanel"><div class="edhint">Write it like a normal email. Pieces like <b>‹Account Name›</b> are filled in from the form: use “Insert a field” to add one. Changes show in the preview above and are shared with everyone once you save.</div>'
+      + '<label class="l">Subject</label><input type="text" id="edSub"><label class="l">Email</label><div class="edtools" id="edTools"></div><textarea id="edBody"></textarea><div id="edWarn"></div>'
+      + '<label class="l">How dates are written (all emails)</label><select id="edDate">' + DATE_PRESETS.map(function (p) { return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>'; }).join('') + (isPreset ? '' : '<option value="' + esc(curDate) + '">Your current style</option>') + '</select>'
+      + '<div class="addact" style="margin-top:12px"><button type="button" class="btn small" id="edSave">Save for everyone</button><button type="button" class="btn ghost small" id="edCancel">Cancel</button><span class="addmsg" id="edMsg"></span></div></div>';
+    $('edSub').value = editing.sub; $('edBody').value = editing.body; $('edDate').value = curDate;
+    var ta = $('edBody'), tools = $('edTools');
+    var fieldSel = document.createElement('select'); fieldSel.innerHTML = '<option value="">Insert a field…</option>' + cfg.sections.map(function (s) { return '<optgroup label="' + esc(s.title) + '">' + s.fields.map(function (f) { return '<option value="' + esc(f.label) + '">' + esc(f.label) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+    fieldSel.onchange = function () { if (fieldSel.value) { insertAt(ta, '‹' + fieldSel.value + '›'); fieldSel.value = ''; } };
+    tools.appendChild(fieldSel);
+    var dd = allFields().filter(function (f) { return f.type === 'select' && f.options && f.options.length; });
+    if (dd.length) {
+      var cb = document.createElement('button'); cb.type = 'button'; cb.className = 'btn ghost small'; cb.textContent = 'Paragraph that only shows when…';
+      var box = document.createElement('span'); box.style.cssText = 'display:none;gap:6px;align-items:center;flex-wrap:wrap';
+      var fsel = document.createElement('select'); fsel.innerHTML = dd.map(function (f) { return '<option value="' + esc(f.label) + '">' + esc(f.label) + '</option>'; }).join('');
+      var op = document.createElement('select'); op.innerHTML = '<option value="is">is</option><option value="is not">is not</option>';
+      var vsel = document.createElement('select'); var fill = function () { var f = dd.filter(function (x) { return x.label === fsel.value; })[0]; vsel.innerHTML = (f ? f.options : []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join(''); };
+      fsel.onchange = fill; fill();
+      var go = document.createElement('button'); go.type = 'button'; go.className = 'btn small'; go.textContent = 'Insert';
+      go.onclick = function () { insertAt(ta, '\n‹IF ' + fsel.value + ' ' + op.value + ' ' + vsel.value + '›\nWrite the paragraph here.\n‹END IF›\n'); box.style.display = 'none'; };
+      [fsel, op, vsel, go].forEach(function (n) { box.appendChild(n); });
+      cb.onclick = function () { box.style.display = box.style.display === 'none' ? 'inline-flex' : 'none'; };
+      tools.appendChild(cb); tools.appendChild(box);
+    }
+    var hb = document.createElement('button'); hb.type = 'button'; hb.className = 'btn ghost small'; hb.textContent = 'Heading'; hb.onclick = function () { insertAt(ta, '\n## Heading text\n'); }; tools.appendChild(hb);
+    var warn = function () { var bad = G.unrecognised(editing.sub + '\n' + editing.body, cfg); $('edWarn').innerHTML = bad.length ? '<div class="edwarn">These pieces were not recognised, so they would appear as typed: <b>' + esc(bad.join('  ')) + '</b>. Use “Insert a field”.</div>' : ''; };
+    $('edSub').oninput = function (ev) { editing.sub = ev.target.value; warn(); renderPreview(); };
+    ta.oninput = function (ev) { editing.body = ev.target.value; warn(); renderPreview(); };
+    $('edDate').onchange = function (ev) { editing.dateFormat = ev.target.value; renderPreview(); };
+    $('edCancel').onclick = function () { closeEditor(true); };
+    $('edSave').onclick = function () {
+      var bad = G.unrecognised(editing.sub + '\n' + editing.body, cfg);
+      if (bad.length && !confirm('These pieces were not recognised and would appear as typed:\n\n' + bad.join('  ') + '\n\nSave anyway?')) return;
+      var ed = editing, msg = $('edMsg'); $('edSave').disabled = true; msg.textContent = 'Saving…';
+      changeSettings(function (fresh) {
+        var em = fresh.emails[ed.key]; em.subject = G.toRaw(ed.sub, fresh); em.body = G.toRaw(ed.body, fresh);
+        if (ed.dateFormat !== ed.origDate) fresh.dateFormat = ed.dateFormat;
+      }, 'Edited wording: ' + e.label).then(function () { editing = null; $('edHost').innerHTML = ''; $('editBtn').textContent = '✎ Edit this email'; renderForm(); renderTabs(); renderPreview(); banner('✓ Saved for everyone.', false); })
+        .catch(function (er) { $('edSave').disabled = false; msg.textContent = 'Could not save: ' + er.message; });
+    };
+    $('editBtn').textContent = '✎ Close editor'; renderPreview(); $('edSub').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  $('editBtn').addEventListener('click', function () { if (editing) closeEditor(true); else openEditor(); });
 
+  // ---------- create ----------
+  function requiredMissing() { var bad = []; allFields().forEach(function (f) { if (f.required && !String(values[f.id] || '').trim()) bad.push(f); }); return bad; }
+  function banner(msg, warn) { var b = $('banner'); b.innerHTML = msg; b.className = 'banner show' + (warn ? ' warn' : ''); }
   function logTracker(mode) {
     var v = function (k) { return String(values[k] || ''); };
     fetch('/api/finance-tracker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
@@ -268,13 +377,11 @@
               bdmEmail: v('bdmEmail'), csmEmail: v('csmEmail'), implementationsLead: v('implementationsLead'), csm: v('csm'), csim: v('csim'),
               goLiveDate: v('goLiveDate'), cutoverDate: v('cutoverDate'), launchType: v('launchType') } }) }).catch(function () {});
   }
-
   function text(r) { return 'To: ' + r.to.join('; ') + (r.cc.length ? '\nCc: ' + r.cc.join('; ') : '') + '\nSubject: ' + r.subject + '\n\n' + r.body; }
-  function copyText(t) {
-    try { return navigator.clipboard.writeText(t).then(function () { return true; }, function () { return false; }); } catch (e) { return Promise.resolve(false); }
-  }
+  function copyText(t) { try { return navigator.clipboard.writeText(t).then(function () { return true; }, function () { return false; }); } catch (e) { return Promise.resolve(false); } }
 
   $('createBtn').addEventListener('click', function () {
+    if (editing) { alert('You are editing the wording. Press “Save for everyone” (or Cancel) first, then create the email.'); return; }
     var bad = requiredMissing();
     if (bad.length) {
       bad.forEach(function (f) { var el = $('f_' + f.id); if (el) el.classList.add('err'); });
@@ -285,16 +392,13 @@
     var r = current();
     if (r.missing.length && !confirm('These are still blank and will show as [placeholders] in the email:\n\n' + r.missing.join('\n') + '\n\nCreate the email anyway?')) return;
     if (!r.to.length && !confirm('There are no recipients yet (check the contacts and their "Travel Manager" role). Create the email anyway?')) return;
-
     var url = 'mailto:' + encodeURIComponent(r.to.join(',')) + '?subject=' + encodeURIComponent(r.subject)
       + (r.cc.length ? '&cc=' + encodeURIComponent(r.cc.join(',')) : '') + '&body=' + encodeURIComponent(r.body);
     var em = cfg.emails[active];
     if (em.tracker) logTracker(em.tracker);
-    logEntry(active, em); saveSnapshot();
     var attach = G.render(em.attachments || '', values, cfg).text;
     var reminder = attach ? ' <strong>Remember to attach ' + esc(attach) + '</strong> before you send.' : '';
-
-    if (url.length > 8000) {   // very long: some mail apps cut the body off, so give the text as a safety net
+    if (url.length > 8000) {
       copyText(r.body).then(function (ok) {
         banner('This email is very long, so Outlook may cut it off. ' + (ok ? 'The full text is copied: press Ctrl+V in the body if anything is missing.' : 'Use "Copy text" if anything is missing.') + reminder, true);
         window.location.href = url; launchFireworks();
@@ -305,12 +409,35 @@
     launchFireworks();
     window.location.href = url;
   });
-  $('copyBtn').addEventListener('click', function () {
-    var b = this; copyText(text(current())).then(function (ok) { b.textContent = ok ? '✓ Copied' : 'Copy failed'; setTimeout(function () { b.textContent = 'Copy text'; }, 2500); });
-  });
-  $('newBtn').addEventListener('click', function () {
+  $('copyBtn').addEventListener('click', function () { var b = this; copyText(text(current())).then(function (ok) { b.textContent = ok ? '✓ Copied' : 'Copy failed'; setTimeout(function () { b.textContent = 'Copy text'; }, 2500); }); });
+
+  // ---------- small links at the bottom ----------
+  $('xlsxLink').href = TRACKER_XLSX;
+  $('newLink').addEventListener('click', function (ev) {
+    ev.preventDefault();
     if (!confirm('Start a new account? This clears everything you have typed on this form.')) return;
+    if (editing) closeEditor(false);
     values = {}; extras = {}; saveExtras(); applyDefaults(); saveDraft(); renderForm(); syncExtraInputs(); $('extrasBad').textContent = ''; renderPreview(); $('banner').className = 'banner'; window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  // Undo goes back to the most recent saved version whose contents really DIFFER from what is live now
+  // (the history list can lag a moment, so contents are compared rather than trusting its order).
+  $('undoLink').addEventListener('click', function (ev) {
+    ev.preventDefault(); var msg = $('footMsg'); msg.textContent = 'Looking for the previous version…';
+    var getJ = function (u) { return fetch(u).then(function (r) { return r.json(); }); };
+    Promise.all([getJ(REMOTE), getJ(REMOTE + '?versions=1')]).then(function (res) {
+      var curS = JSON.stringify(res[0]), list = (res[1].versions || []).slice(), tried = 0;
+      var next = function () {
+        if (!list.length || tried++ > 8) return Promise.reject(new Error('There is no earlier version to go back to.'));
+        var v = list.shift();
+        return getJ(REMOTE + '?version=' + v.sha).then(function (c) { return JSON.stringify(c) === curS ? next() : v; });
+      };
+      return next();
+    }).then(function (v) {
+      if (!confirm('Go back to “' + v.message + '” (' + new Date(v.date).toLocaleString() + ')?\n\nThis changes the form for everyone. You can undo again afterwards.')) { msg.textContent = ''; return; }
+      return fetch(REMOTE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'restore', sha: v.sha }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); }); })
+        .then(function () { return loadConfig(); }).then(function (c) { cfg = c; applyDefaults(); if (editing) closeEditor(false); renderForm(); renderTabs(); renderPreview(); msg.textContent = '✓ Went back one version.'; setTimeout(function () { msg.textContent = ''; }, 4000); });
+    }).catch(function (e) { msg.textContent = e.message; });
   });
 
   // ---------- fireworks ----------
@@ -331,73 +458,12 @@
     requestAnimationFrame(frame);
   }
 
-  // ---------- tracker (shared log + this computer's saved accounts) ----------
-  var TRACKER_XLSX = 'https://navigatrgroup-my.sharepoint.com/:x:/g/personal/nehman_rahimi_kensingtoncorporate_com/IQBGtB9zHIChS7mv-DckNTtgAcdxUw4UzE0JYEOAC0Lkoqc';
-  var SNAP_KEY = 'golive-accounts-v1', trEntries = null;
-  function snaps() { try { return JSON.parse(localStorage.getItem(SNAP_KEY) || '{}') || {}; } catch (e) { return {}; } }
-  function saveSnapshot() {   // full account details stay on THIS computer only (client contact details are not sent anywhere else)
-    var name = String(values.accountName || '').trim(); if (!name) return;
-    var all = snaps(); all[name.toLowerCase()] = { name: name, values: values, ts: Date.now() };
-    try { localStorage.setItem(SNAP_KEY, JSON.stringify(all)); } catch (e) {}
-  }
-  function logEntry(key, em) {
-    fetch(REMOTE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'log', entry: {
-      account: values.accountName || '', email: key, label: em.label || key, by: values.submittedBy || '', goLive: values.goLiveDate || '', region: values.region || '' } }) })
-      .then(function () { trEntries = null; }).catch(function () {});
-  }
-  function fmtWhen(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
-  function loadTracker(force) {
-    $('trXlsx').href = (cfg && cfg.trackerUrl) || TRACKER_XLSX;
-    if (trEntries && !force) return paintTracker();
-    $('trBody').innerHTML = '<div class="empty">Loading…</div>';
-    fetch(REMOTE + '?log=1').then(function (r) { return r.json(); }).then(function (j) { trEntries = j.entries || []; paintTracker(); })
-      .catch(function () { $('trBody').innerHTML = '<div class="empty">Could not load the tracker. Try Refresh.</div>'; });
-  }
-  function paintTracker() {
-    var q = ($('trSearch').value || '').toLowerCase(), all = snaps();
-    var rows = (trEntries || []).filter(function (e) { return !q || (e.account + ' ' + e.by + ' ' + e.label).toLowerCase().indexOf(q) !== -1; });
-    if (!rows.length) { $('trBody').innerHTML = '<div class="empty">' + (trEntries && trEntries.length ? 'Nothing matches your search.' : 'No emails created yet. They will appear here as you create them.') + '</div>'; return; }
-    var h = '<table class="tr"><thead><tr><th>When</th><th>Account</th><th>Email</th><th>Created by</th><th>Go-live</th><th></th></tr></thead><tbody>';
-    rows.forEach(function (e) {
-      var has = !!all[String(e.account).toLowerCase()];
-      h += '<tr><td>' + esc(fmtWhen(e.ts)) + '</td><td><b>' + esc(e.account) + '</b>' + (e.region ? '<br><small style="color:var(--ink-mute)">' + esc(e.region) + '</small>' : '') + '</td><td><span class="tag ' + esc(e.email) + '">' + esc(e.label || e.email) + '</span></td><td>' + esc(e.by) + '</td><td>' + esc(G.fmtDate(e.goLive, cfg && cfg.dateFormat) || e.goLive || '') + '</td><td>'
-        + (has ? '<button type="button" class="btn ghost" data-reopen="' + esc(String(e.account).toLowerCase()) + '" style="padding:8px 14px">Reopen</button>' : '') + '</td></tr>';
-    });
-    $('trBody').innerHTML = h + '</tbody></table>';
-    $('trBody').querySelectorAll('[data-reopen]').forEach(function (b) { b.addEventListener('click', function () {
-      var s = snaps()[b.dataset.reopen]; if (!s) return;
-      values = s.values; applyDefaults(); saveDraft(); renderForm(); renderPreview(); showView('create'); window.scrollTo({ top: 0, behavior: 'smooth' });
-    }); });
-  }
-  $('trSearch').addEventListener('input', paintTracker);
-  $('trRefresh').addEventListener('click', function () { loadTracker(true); });
-
-  // ---------- one page, three views ----------
-  function showView(v) {
-    if (['create', 'tracker', 'customize'].indexOf(v) === -1) v = 'create';
-    document.querySelectorAll('.view').forEach(function (x) { x.classList.toggle('on', x.id === 'view-' + v); });
-    document.querySelectorAll('#nav [data-view]').forEach(function (b) { b.classList.toggle('on', b.dataset.view === v); });
-    $('newBtn').style.display = v === 'create' ? '' : 'none'; $('savedNote').style.display = v === 'create' ? '' : 'none';
-    if (v === 'tracker') loadTracker(false);
-    if (v === 'customize' && !$('editorFrame').getAttribute('src')) $('editorFrame').setAttribute('src', 'go-live-admin.html?embed=1');
-    if (location.hash.replace('#', '') !== v) { try { history.replaceState(null, '', '#' + v); } catch (e) { location.hash = v; } }
-  }
-  document.querySelectorAll('#nav [data-view]').forEach(function (b) { b.addEventListener('click', function () { showView(b.dataset.view); }); });
-  window.addEventListener('hashchange', function () { showView(location.hash.replace('#', '')); });
-
-  // the editor (inside the Customize tab) tells us when it saved, so the form uses the new settings straight away
-  window.addEventListener('message', function (e) {
-    if (e.origin !== location.origin || !e.data || e.data.type !== 'golive-config-saved') return;
-    loadConfig().then(function (c) { cfg = c; applyDefaults(); renderForm(); renderTabs(); renderPreview(); }).catch(function () {});
-  });
-
   $('extraTo').addEventListener('input', onExtras); $('extraCc').addEventListener('input', onExtras);
 
   // ---------- start ----------
   loadConfig().then(function (c) {
     cfg = c; loadDraft(); applyDefaults();
-    renderForm(); renderTabs(); syncExtraInputs(); $('previewCol').style.display = ''; renderPreview();
-    showView(location.hash.replace('#', ''));
+    renderForm(); renderTabs(); syncExtraInputs(); $('previewCol').style.display = ''; $('foot').style.display = ''; renderPreview();
   }).catch(function () { $('loading').textContent = 'Could not load the form settings. Please refresh the page.'; });
 })();
 </script>
