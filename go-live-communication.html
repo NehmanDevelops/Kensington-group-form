@@ -83,6 +83,11 @@
   .tag { display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; background:var(--cream); color:var(--ink-soft); }
   .tag.internal { background:#e6eef0; } .tag.welcome { background:#e4efe7; } .tag.tm { background:#f2ebdc; }
   .empty { text-align:center; color:var(--ink-mute); padding:44px 10px; font-size:14px; }
+  .extras { display:grid; grid-template-columns:auto 1fr; gap:8px 10px; align-items:center; margin-bottom:10px; background:var(--paper); border:1px solid var(--line); padding:10px 12px; }
+  .extras label { font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+  .extras input { width:100%; font:inherit; font-size:14px; padding:8px 11px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  .extras input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(118,114,96,.15); }
+  .extras-bad { grid-column:1 / -1; font-size:12px; color:var(--error); }
   #editorFrame { width:100%; height:calc(100vh - 150px); min-height:600px; border:1px solid var(--line); background:var(--bone); box-shadow:var(--shadow); }
 </style>
 </head>
@@ -110,6 +115,11 @@
 
   <aside class="preview" id="previewCol" style="display:none;">
     <div class="tabs" id="tabs"></div>
+    <div class="extras">
+      <label for="extraTo">Also send to</label><input type="text" id="extraTo" placeholder="Type more email addresses, separated by commas" autocomplete="off" />
+      <label for="extraCc">Also CC</label><input type="text" id="extraCc" placeholder="Type CC addresses, separated by commas" autocomplete="off" />
+      <div class="extras-bad" id="extrasBad"></div>
+    </div>
     <div class="mailwin" id="mailwin"></div>
     <div class="blank-list" id="blankList"></div>
     <div class="actions">
@@ -206,12 +216,31 @@
     var t = $('tabs'); t.innerHTML = '';
     emailKeys().forEach(function (k) {
       var b = document.createElement('button'); b.type = 'button'; b.className = 'tab' + (k === active ? ' active' : ''); b.textContent = cfg.emails[k].label || k;
-      b.addEventListener('click', function () { active = k; $('banner').className = 'banner'; renderTabs(); renderPreview(); });
+      b.addEventListener('click', function () { active = k; $('banner').className = 'banner'; syncExtraInputs(); renderTabs(); renderPreview(); });
       t.appendChild(b);
     });
   }
   function hi(text) { return esc(text).replace(/\[[^\]\n]{1,80}\]/g, function (m) { return '<span class="miss">' + m + '</span>'; }); }
-  function current() { return G.renderEmail(cfg.emails[active], values, cfg); }
+  // Extra recipients typed on the form (added to the ones the template works out). Kept per email, on this computer.
+  var EXTRAS_KEY = 'golive-extras-v1', extras = {};
+  try { extras = JSON.parse(localStorage.getItem(EXTRAS_KEY) || '{}') || {}; } catch (e) { extras = {}; }
+  function saveExtras() { try { localStorage.setItem(EXTRAS_KEY, JSON.stringify(extras)); } catch (e) {} }
+  function addrList(text) { return String(text || '').split(/[\s,;]+/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  function uniq(list) { var seen = {}, out = []; list.forEach(function (a) { var k = a.toLowerCase(); if (!seen[k]) { seen[k] = 1; out.push(a); } }); return out; }
+  function syncExtraInputs() { var x = extras[active] || {}; $('extraTo').value = x.to || ''; $('extraCc').value = x.cc || ''; }
+  function onExtras() {
+    extras[active] = { to: $('extraTo').value, cc: $('extraCc').value }; saveExtras();
+    var bad = addrList($('extraTo').value).concat(addrList($('extraCc').value)).filter(function (a) { return !EMAIL_RE.test(a); });
+    $('extrasBad').textContent = bad.length ? 'Not a valid email address: ' + bad.join(', ') : '';
+    renderPreview();
+  }
+  function current() {
+    var r = G.renderEmail(cfg.emails[active], values, cfg), x = extras[active] || {};
+    r.to = uniq(r.to.concat(addrList(x.to).filter(function (a) { return EMAIL_RE.test(a); })));
+    r.cc = uniq(r.cc.concat(addrList(x.cc).filter(function (a) { return EMAIL_RE.test(a); })));
+    return r;
+  }
   function renderPreview() {
     var r = current();
     var h = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div><div class="mailwin-head">'
@@ -281,7 +310,7 @@
   });
   $('newBtn').addEventListener('click', function () {
     if (!confirm('Start a new account? This clears everything you have typed on this form.')) return;
-    values = {}; applyDefaults(); saveDraft(); renderForm(); renderPreview(); $('banner').className = 'banner'; window.scrollTo({ top: 0, behavior: 'smooth' });
+    values = {}; extras = {}; saveExtras(); applyDefaults(); saveDraft(); renderForm(); syncExtraInputs(); $('extrasBad').textContent = ''; renderPreview(); $('banner').className = 'banner'; window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   // ---------- fireworks ----------
@@ -362,10 +391,12 @@
     loadConfig().then(function (c) { cfg = c; applyDefaults(); renderForm(); renderTabs(); renderPreview(); }).catch(function () {});
   });
 
+  $('extraTo').addEventListener('input', onExtras); $('extraCc').addEventListener('input', onExtras);
+
   // ---------- start ----------
   loadConfig().then(function (c) {
     cfg = c; loadDraft(); applyDefaults();
-    renderForm(); renderTabs(); $('previewCol').style.display = ''; renderPreview();
+    renderForm(); renderTabs(); syncExtraInputs(); $('previewCol').style.display = ''; renderPreview();
     showView(location.hash.replace('#', ''));
   }).catch(function () { $('loading').textContent = 'Could not load the form settings. Please refresh the page.'; });
 })();

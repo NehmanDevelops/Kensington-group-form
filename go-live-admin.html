@@ -80,7 +80,7 @@
   function tellParent() { try { window.parent.postMessage({ type: 'golive-config-saved' }, location.origin); } catch (e) {} }
   var API = 'https://link-portal-alpha.vercel.app/api/golive-config';
   var $app = document.getElementById('app');
-  var cfg = null, orig = '', pass = '', tab = 'fields', emailKey = 'internal', open = {}, sampleOn = true, dirty = false;
+  var cfg = null, orig = '', tab = 'fields', emailKey = 'internal', open = {}, sampleOn = true, dirty = false;
   var TYPES = [['text', 'Text'], ['textarea', 'Long text'], ['select', 'Dropdown'], ['date', 'Date'], ['email', 'Email'], ['url', 'Link']];
   var SAMPLE = { submittedBy: 'Jenna Davidson', accountName: 'Example Company', region: 'Canada', accountLocation: 'Calgary, AB', contractedValue: '$80k USD', serviceLevel: 'Envoy', dk: '6475550100', launchType: 'Full', goLiveDate: '2026-10-06', handoverDate: '2026-10-06', implementationsLead: 'Kathy Boyken', csim: 'Jenna Davidson', csm: 'Mira Seagram', csmEmail: 'mira.seagram@kensingtoncorporate.com', csmPhone: '647-329-4045', leadAgent: 'Melissa Sawicki', bdm: 'Tammy Jule-Ganne', bdmEmail: 'tammy@kensingtoncorporate.com', signoffNames: 'Jenna, Kathy, Mira, Melissa', tmSignoff: 'Jenna & Kathy', contacts: 'Heidi Berger | Special Projects Lead | heidi@example.com | Travel Manager\nDyllan Lough | EA | dyllan@example.com | Travel Manager', selfRegLink: 'https://example.com/self-registration', adminTraining: '2026-09-24', generalTraining: '2026-10-06', contractExpiry: '2028-07-30', policyLink: 'https://example.com/policy' };
 
@@ -95,30 +95,6 @@
   }
   function getJson(u) { return fetch(u).then(function (r) { return r.json(); }); }
 
-  // ---------------- gate ----------------
-  function gate() {
-    fetch(API + '?status=1').then(function (r) { return r.json(); }).then(function (s) {
-      if (!s.passcodeSet) {
-        $app.innerHTML = '<div class="card gate"><h2>Create the editor passcode</h2><p>Anyone with this passcode can change the form and the emails, so share it only with the people who should. Minimum 6 characters.</p>'
-          + '<label class="l">New passcode</label><input type="password" id="p1" autocomplete="new-password"><label class="l">Type it again</label><input type="password" id="p2" autocomplete="new-password">'
-          + '<p id="gmsg" class="status bad" style="margin:10px 0"></p><button class="btn g" id="gbtn">Create passcode</button></div>';
-        document.getElementById('gbtn').onclick = function () {
-          var a = document.getElementById('p1').value, b = document.getElementById('p2').value, m = document.getElementById('gmsg');
-          if (a.length < 6) { m.textContent = 'Use at least 6 characters.'; return; }
-          if (a !== b) { m.textContent = 'The two passcodes do not match.'; return; }
-          post({ action: 'setPasscode', newPasscode: a }).then(function () { pass = a; try { sessionStorage.setItem('golive-pass', a); } catch (e) {} load(); }).catch(function (e) { m.textContent = e.message; });
-        };
-      } else {
-        var saved = ''; try { saved = sessionStorage.getItem('golive-pass') || ''; } catch (e) {}
-        if (saved) { pass = saved; post({ action: 'check', passcode: pass }).then(load).catch(function () { pass = ''; askPass(); }); } else askPass();
-      }
-    }).catch(function () { $app.innerHTML = '<div class="card gate"><h2>Could not reach the settings service</h2><p>Please refresh the page and try again.</p></div>'; });
-  }
-  function askPass(msg) {
-    $app.innerHTML = '<div class="card gate"><h2>Editor passcode</h2><label class="l">Passcode</label><input type="password" id="p1" autocomplete="current-password"><p id="gmsg" class="status bad" style="margin:10px 0">' + esc(msg || '') + '</p><button class="btn g" id="gbtn">Unlock</button></div>';
-    var go = function () { var a = document.getElementById('p1').value; post({ action: 'check', passcode: a }).then(function () { pass = a; try { sessionStorage.setItem('golive-pass', a); } catch (e) {} load(); }).catch(function (e) { document.getElementById('gmsg').textContent = e.message; }); };
-    document.getElementById('gbtn').onclick = go; document.getElementById('p1').onkeydown = function (e) { if (e.key === 'Enter') go(); };
-  }
   function load() {
     getJson(API).then(function (c) { cfg = c; orig = snap(); dirty = false; render(); }).catch(function () { $app.innerHTML = '<div class="card gate"><h2>Could not load the settings</h2></div>'; });
   }
@@ -126,7 +102,7 @@
   // ---------------- shell ----------------
   function render() {
     $app.innerHTML = '';
-    var top = el('<div class="topbar"><button class="btn g" id="saveBtn" disabled>Save changes</button><button class="btn line" id="revertBtn">Discard unsaved changes</button><span id="status" class="status"></span><span class="grow"></span><button class="btn line sm" id="pwBtn">Change passcode</button></div>');
+    var top = el('<div class="topbar"><button class="btn g" id="saveBtn" disabled>Save changes</button><button class="btn line" id="revertBtn">Discard unsaved changes</button><span id="status" class="status"></span><span class="grow"></span></div>');
     $app.appendChild(top);
     var tabs = el('<div class="tabs"></div>');
     [['fields', 'Fields & dropdowns'], ['emails', 'Email wording'], ['history', 'History / undo'], ['help', 'How it works']].forEach(function (t) {
@@ -138,7 +114,6 @@
     document.getElementById('saveBtn').disabled = !dirty;
     document.getElementById('saveBtn').onclick = save;
     document.getElementById('revertBtn').onclick = function () { if (!dirty || confirm('Throw away your unsaved changes?')) load(); };
-    document.getElementById('pwBtn').onclick = changePass;
     if (dirty) { var s = document.getElementById('status'); s.textContent = 'Unsaved changes'; }
   }
   function status(msg, cls) { var s = document.getElementById('status'); if (s) { s.textContent = msg; s.className = 'status ' + (cls || ''); } }
@@ -157,14 +132,9 @@
     if (p.length && !confirm('Some things look wrong:\n\n' + p.join('\n') + '\n\nSave anyway?')) return;
     var msg = prompt('Short note about what you changed (shown in History):', 'Updated settings'); if (msg === null) return;
     status('Saving…');
-    post({ action: 'save', passcode: pass, config: cfg, message: msg || 'Updated settings' }).then(function () { orig = snap(); dirty = false; document.getElementById('saveBtn').disabled = true; status('✓ Saved. The form uses the new settings straight away.', 'ok'); tellParent(); })
+    post({ action: 'save', config: cfg, message: msg || 'Updated settings' }).then(function () { orig = snap(); dirty = false; document.getElementById('saveBtn').disabled = true; status('✓ Saved. The form uses the new settings straight away.', 'ok'); tellParent(); })
       .catch(function (e) { status(e.message, 'bad'); });
   }
-  function changePass() {
-    var n = prompt('New passcode (at least 6 characters):'); if (!n) return;
-    post({ action: 'setPasscode', passcode: pass, newPasscode: n }).then(function () { pass = n; try { sessionStorage.setItem('golive-pass', n); } catch (e) {} status('✓ Passcode changed.', 'ok'); }).catch(function (e) { status(e.message, 'bad'); });
-  }
-
   // ---------------- fields ----------------
   function allIds() { var a = []; cfg.sections.forEach(function (s) { s.fields.forEach(function (f) { a.push(f.id); }); }); return a; }
   function slug(label) {
@@ -296,7 +266,7 @@
       var list = card.querySelector('#vlist'); list.innerHTML = '';
       (j.versions || []).forEach(function (v, i) {
         var row = el('<div class="vrow"><span class="grow"><b>' + esc(v.message) + '</b><br><small>' + new Date(v.date).toLocaleString() + (i === 0 ? ' · current' : '') + '</small></span></div>');
-        if (i > 0) { var b = el('<button class="btn line sm">Restore this version</button>'); b.onclick = function () { if (!confirm('Restore this version? Your current settings are kept in History, so you can undo this too.')) return; post({ action: 'restore', passcode: pass, sha: v.sha }).then(function () { status('✓ Restored.', 'ok'); tellParent(); load(); }).catch(function (e) { status(e.message, 'bad'); }); }; row.appendChild(b); }
+        if (i > 0) { var b = el('<button class="btn line sm">Restore this version</button>'); b.onclick = function () { if (!confirm('Restore this version? Your current settings are kept in History, so you can undo this too.')) return; post({ action: 'restore', sha: v.sha }).then(function () { status('✓ Restored.', 'ok'); tellParent(); load(); }).catch(function (e) { status(e.message, 'bad'); }); }; row.appendChild(b); }
         list.appendChild(row);
       });
     }).catch(function () { card.querySelector('#vlist').textContent = 'Could not load the history.'; });
@@ -313,7 +283,7 @@
       + '<div class="tip"><b>Main Contacts</b> are typed one per line as <code>Name | Title | Email | Role</code>. People whose Role contains "Travel Manager" are who the welcome letter and Travel Manager email are addressed to.</div></div>'));
   }
 
-  gate();
+  load();
 })();
 </script>
 </body>
