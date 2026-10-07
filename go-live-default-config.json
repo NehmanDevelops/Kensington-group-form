@@ -1,0 +1,343 @@
+{
+  "version": 1,
+  "note": "Edit with the Go-Live editor (go-live-admin.html), not by hand.",
+  "sections": [
+    {
+      "id": "account",
+      "title": "Account",
+      "fields": [
+        {
+          "id": "submittedBy",
+          "label": "Submitted By",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "accountName",
+          "label": "Account Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "region",
+          "label": "Region",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Canada",
+            "USA"
+          ],
+          "help": "Controls the support hours and contact details in the welcome letter."
+        },
+        {
+          "id": "accountLocation",
+          "label": "Location",
+          "type": "text",
+          "placeholder": "e.g. Richmond, BC"
+        },
+        {
+          "id": "contractedValue",
+          "label": "Contracted Value",
+          "type": "text",
+          "placeholder": "e.g. $180k USD"
+        },
+        {
+          "id": "serviceLevel",
+          "label": "Service Level Offering(s)",
+          "type": "text",
+          "placeholder": "e.g. Envoy, or Envoy & Entourage"
+        },
+        {
+          "id": "dk",
+          "label": "DK",
+          "type": "text"
+        },
+        {
+          "id": "launchType",
+          "label": "Full or Partial Launch",
+          "type": "select",
+          "options": [
+            "Full",
+            "Partial"
+          ]
+        },
+        {
+          "id": "launchNotes",
+          "label": "Launch details",
+          "type": "textarea",
+          "help": "Shown after \"Full or Partial Launch\" in the internal email, e.g. pilot group and roll-out timing."
+        },
+        {
+          "id": "goLiveDate",
+          "label": "Go-Live Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "id": "cutoverDate",
+          "label": "Cutover Date",
+          "type": "text",
+          "default": "N/A"
+        }
+      ]
+    },
+    {
+      "id": "team",
+      "title": "Kensington Team",
+      "fields": [
+        {
+          "id": "implementationsLead",
+          "label": "Implementations Lead",
+          "type": "text"
+        },
+        {
+          "id": "csim",
+          "label": "CSIM",
+          "type": "text"
+        },
+        {
+          "id": "csm",
+          "label": "CSM",
+          "type": "text"
+        },
+        {
+          "id": "csmEmail",
+          "label": "CSM Email",
+          "type": "email",
+          "placeholder": "name@kensingtoncorporate.com"
+        },
+        {
+          "id": "csmPhone",
+          "label": "CSM Phone",
+          "type": "text"
+        },
+        {
+          "id": "handoverDate",
+          "label": "CSIM to CSM Handover Date",
+          "type": "date"
+        },
+        {
+          "id": "leadAgent",
+          "label": "Lead Agent (90 days)",
+          "type": "text",
+          "placeholder": "e.g. Melissa Sawicki"
+        },
+        {
+          "id": "bdm",
+          "label": "BDM",
+          "type": "text"
+        },
+        {
+          "id": "bdmEmail",
+          "label": "BDM Email",
+          "type": "email",
+          "placeholder": "name@kensingtoncorporate.com"
+        },
+        {
+          "id": "signoffNames",
+          "label": "Welcome letter signed by",
+          "type": "text",
+          "placeholder": "Jenna, Kathy, Mira, Melissa",
+          "help": "Becomes \"Jenna, Kathy, Mira, Melissa & the entire Kensington Corporate team\"."
+        },
+        {
+          "id": "tmSignoff",
+          "label": "Travel Manager email signed by",
+          "type": "text",
+          "placeholder": "Jenna & Kathy"
+        }
+      ]
+    },
+    {
+      "id": "client",
+      "title": "Client Contacts",
+      "fields": [
+        {
+          "id": "contacts",
+          "label": "Main Contacts",
+          "type": "textarea",
+          "required": true,
+          "rows": 5,
+          "help": "One per line:  Name | Title | Email | Role.  Put \"Travel Manager\" as the Role for the people the welcome letter and Travel Manager email go to; they become the To addresses and the greeting names.",
+          "placeholder": "Heidi Berger | Special Projects Lead | heidi@client.com | Travel Manager"
+        },
+        {
+          "id": "selfRegLink",
+          "label": "Self-Registration Link",
+          "type": "url",
+          "placeholder": "https://"
+        },
+        {
+          "id": "cc",
+          "label": "CC (optional)",
+          "type": "text",
+          "placeholder": "name@kensingtoncorporate.com"
+        }
+      ]
+    },
+    {
+      "id": "program",
+      "title": "Program Details",
+      "fields": [
+        {
+          "id": "obt",
+          "label": "OBT",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Concur",
+            "Deem"
+          ],
+          "default": "Concur"
+        },
+        {
+          "id": "signOn",
+          "label": "OBT Sign-on Method",
+          "type": "select",
+          "options": [
+            "2FA or Email Verification",
+            "SSO",
+            "2FA / email verification at launch, SSO to follow"
+          ],
+          "default": "2FA or Email Verification"
+        },
+        {
+          "id": "loyalty",
+          "label": "Loyalty numbers",
+          "type": "select",
+          "options": [
+            "Did not migrate",
+            "Migrated"
+          ],
+          "default": "Did not migrate"
+        },
+        {
+          "id": "serviceFees",
+          "label": "Service Fees",
+          "type": "text",
+          "default": "Paid at time of booking on credit card."
+        },
+        {
+          "id": "policyLink",
+          "label": "Travel Policy Recap (link)",
+          "type": "url",
+          "placeholder": "https://"
+        },
+        {
+          "id": "ongoingFees",
+          "label": "On-going yearly/monthly fees",
+          "type": "text",
+          "default": "N/A"
+        },
+        {
+          "id": "contractExpiry",
+          "label": "Contract Expiration Date",
+          "type": "date"
+        },
+        {
+          "id": "rebate",
+          "label": "Rebate Program",
+          "type": "textarea",
+          "default": "N/A",
+          "help": "Paste the rebate wording from the contract, or leave N/A."
+        },
+        {
+          "id": "airCanada",
+          "label": "Air Canada Contract",
+          "type": "select",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "default": "No"
+        },
+        {
+          "id": "flightPasses",
+          "label": "Flight Passes",
+          "type": "select",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "default": "No"
+        },
+        {
+          "id": "ancillaryServices",
+          "label": "Ancillary Services",
+          "type": "textarea",
+          "default": "N/A",
+          "rows": 2
+        },
+        {
+          "id": "ancillaryTraining",
+          "label": "Ancillary Services Training",
+          "type": "text",
+          "default": "N/A"
+        }
+      ]
+    },
+    {
+      "id": "training",
+      "title": "Training",
+      "fields": [
+        {
+          "id": "generalTraining",
+          "label": "General Population Training",
+          "type": "date"
+        },
+        {
+          "id": "adminTraining",
+          "label": "OBT Admin Training",
+          "type": "date"
+        },
+        {
+          "id": "kcaTraining",
+          "label": "KCA Training",
+          "type": "text",
+          "default": "TBD"
+        }
+      ]
+    },
+    {
+      "id": "notes",
+      "title": "Extra Notes",
+      "fields": [
+        {
+          "id": "accountNotes",
+          "label": "Anything specific to this account (optional)",
+          "type": "textarea",
+          "help": "Added to the welcome letter as its own section."
+        }
+      ]
+    }
+  ],
+  "emails": {
+    "internal": {
+      "label": "Internal communication",
+      "subject": "Go-Live Internal Communication — {{accountName}} | Go-Live {{date:goLiveDate}}",
+      "to": "michael.beaucage@kensingtoncorporate.com, patricia.alzate@traveledge.com, sandra.marias@kensingtoncorporate.com, corporate.reporting@traveledge.com, {{bdmEmail}}, {{csmEmail}}",
+      "cc": "{{cc}}",
+      "attachments": "",
+      "tracker": "Internal",
+      "body": "KENSINGTON CORPORATE  |  GO-LIVE\n---\n\n{{accountName}}\n\nWe're excited to announce that {{accountName}} will be going live on {{date:goLiveDate}}! Below you'll find key information to help you familiarize yourself with the account ahead of launch, including a link to the travel policy, important account details, training information, and outstanding action items. Please take a few minutes to review the information and reach out if you have any questions or concerns before go-live.\n\n## Account\nContracted Value: {{contractedValue|N/A}}\nLocation: {{accountLocation|—}}\nGo-Live: {{date:goLiveDate}}\nImplementations Lead: {{implementationsLead|—}}\nCSIM: {{csim|—}}\nCSM: {{csm|—}}\nCSIM to CSM Handover Date: {{date:handoverDate|—}}\nLead Agent (90 days): {{leadAgent|—}}\nBDM: {{bdm|—}}\n\n## Launch\nDK: {{dk|—}}\nService Level Offering(s): {{serviceLevel|—}}\nCutover Date: {{cutoverDate|N/A}}\nGo-Live Date: {{date:goLiveDate}}\nFull or Partial Launch: {{launchType|—}}{{#if launchNotes}}. {{launchNotes}}{{/if}}\n\n## Financials\nService Fees: {{serviceFees|—}}\nTravel Policy Recap: {{policyLink|—}}\nOBT: {{obt|—}}\nOn-going yearly/monthly fees: {{ongoingFees|N/A}}\nContract Expiration Date: {{date:contractExpiry|—}}\nRebate Program: {{rebate|N/A}}\n\n## Training & Setup\nGeneral Population Training: {{date:generalTraining|TBD}}\nOBT Admin Training: {{date:adminTraining|TBD}}\nKCA Training: {{kcaTraining|TBD}}\nAncillary Services: {{ancillaryServices|N/A}}\nAncillary Services Training: {{ancillaryTraining|N/A}}\nAir Canada Contract: {{airCanada|—}}\nFlight Passes: {{flightPasses|—}}\nOBT Sign-on Method: {{signOn|—}}\n\n## Action Items\n- Ops to train agents\n- Sr Dir BDM & CSM to email finance adding account to CSM portfolio. Copy Corporate Reporting.\n- Corporate Reporting to add account to CSM portfolio in BI/Trams.\n- Finance to add to CSM and BDM monthly incentive sheet.\n- Finance to add to Client Corporate Summary tracker (if applicable).\n\n## Main Contact(s)\n{{contactLines:contacts}}"
+    },
+    "welcome": {
+      "label": "Welcome letter (client)",
+      "subject": "Welcome to Kensington Corporate — {{accountName}} Go-Live",
+      "to": "{{emails:contacts:Travel Manager}}",
+      "cc": "{{cc}}",
+      "attachments": "the {{obt}} training guide and the Kensington Corporate contact sheet",
+      "tracker": "External",
+      "body": "KENSINGTON CORPORATE  |  WELCOME\n---\n\nHi {{names:contacts:Travel Manager}},\n\nWe're thrilled to officially welcome you and your Team at {{accountName}} to Kensington Corporate!\n\nToday is go-live day, and your {{obt}} Travel site is officially up and running. We're excited to begin supporting your travellers and to build a long and successful partnership with {{accountName}}.\n\nBelow are a few helpful details to get everyone started. As always, please don't hesitate to reach out to us with any questions — we're here to help!\n\n## Signing in to {{obt}}\n{{#if obt=Deem}}\n[Deem sign-in instructions: add them by editing the Welcome Letter template]\n{{else}}\n{{#if signOn=SSO}}\nVisit concursolutions.com and sign in with your company single sign-on (SSO), using your usual company credentials.\n{{else}}\nVisit concursolutions.com and sign in using your company email address. You can set up two-factor authentication or request an email sign-in link, which we recommend.\n\nIf you request an email link, you should receive an email from Concur within a few seconds.\n{{/if}}\n{{/if}}\n\n## Review and update your {{obt}} profile\nPlease visit your profile in the upper-right corner of {{obt}} and confirm that all of your information is accurate and complete.\n\nThis includes:\n- Name and contact information\n- TSA/Passport information\n- Travel preferences\n- Mobile phone number\n- Any other required profile fields\n\nAll mandatory fields are clearly marked and must be completed before making a reservation.\n\n## Loyalty and rewards program information\n{{#if loyalty=Migrated}}\nFrequent flyer numbers, hotel rewards numbers, rental car loyalty numbers, and other travel program information were migrated from your previous TMC to Kensington Corporate. Please review them to make sure everything is accurate and complete.\n{{else}}\nFrequent flyer numbers, hotel rewards numbers, rental car loyalty numbers, and other travel program information did not migrate from your previous TMC to Kensington Corporate.\n\nWe recommend reviewing your profile and adding or updating this information before making your first reservation so your loyalty details are available when booking.\n{{/if}}\n\n## Use the training guide if you need a refresher\nWe've attached a quick {{obt}} training guide covering profile updates and booking air, hotel, and car reservations.\n\nFeel free to share the guide with anyone at {{accountName}} and/or post it on your company intranet.{{#if obt=Concur}} Concur training videos are also available through SAP Concur.{{/if}}\n\n## Agent Support\nWe've also attached our Kensington Corporate contact sheet, which includes our hours of operation, phone numbers, and helpful email addresses. This can also be shared with your travelers and/or posted on your company intranet.\n\n{{#if region=USA}}\n[US support details: add the hours, phone numbers and email by editing the Welcome Letter template]\n{{else}}\nMonday–Friday: 8:30 a.m.–8:30 p.m. ET\nAgent Support: 855-249-8121 or 416-649-9091\nEmail: canada@kensingtoncorporate.com\n24/7 Emergency Support: 888-481-2012 or 647-288-3057\n{{/if}}\n\nPlease note that 24/7 emergency support is available by phone only. Our email inboxes are not monitored outside of regular business hours.\n\nWhile our entire team is committed to supporting {{accountName}}, {{leadAgent}} will be your lead agent and primary point of contact for your travelers.\n\nWhen emailing {{#if region=USA}}[US support email]{{else}}canada@kensingtoncorporate.com{{/if}}, please put ATTN: {{leadAgent}} at the top of your email. If {{first:leadAgent}} is unavailable, another member of our team will be happy to assist.\n\nHaving a dedicated lead agent allows us to become familiar with {{accountName}}, your travelers, and your program so that we can provide increasingly personalized support as our partnership grows.\n\n{{#if csm}}\n## Dedicated Customer Success Manager\n{{csm}} is your dedicated Customer Success Manager and will be your primary partner for everything beyond day-to-day travel bookings: helping you navigate your program, answering questions, coordinating with our teams, and making sure you're getting the most value from your partnership with Kensington Corporate.\n\n{{first:csm}} can be reached at {{csmEmail}} or {{csmPhone}}.\n\n{{/if}}\n{{#if accountNotes}}\n## Specific to {{accountName}}\n{{accountNotes}}\n\n{{/if}}\n## {{obt}} Site Support\nIf you experience an issue with the site or notice that something is not displaying correctly, please contact our Online Support Team:\n\nEmail: onlinesupport@kensingtoncorporate.com\nPhone: 877-218-5388\n\nThank you again for choosing Kensington Corporate. We're incredibly excited to have {{accountName}} officially live and look forward to supporting your team every step of the way.\n\nHere's to a great start and a successful partnership!\n\nThank you,\n\n{{signoffNames}} & the entire Kensington Corporate team"
+    },
+    "tm": {
+      "label": "Travel Manager next steps",
+      "subject": "Next steps for your Travel Managers — {{accountName}}",
+      "to": "{{emails:contacts:Travel Manager}}",
+      "cc": "{{cc}}",
+      "attachments": "the {{obt}} Administrator Guide and the self-registration step-by-step guide",
+      "tracker": "",
+      "body": "KENSINGTON CORPORATE  |  NEXT STEPS\n---\n\nHi {{names:contacts:Travel Manager}},\n\nNow that {{accountName}} is officially live with Kensington Corporate, we wanted to share a few resources and next steps specifically for your team as Travel Managers.\n\nWe're excited to officially begin this next phase of our partnership and look forward to working closely with you as your program gets underway. The first few weeks are an important time to let bookings flow through the new program, make sure everything is working as expected, and start building a clear picture of your travel activity.\n\n## {{obt}} Administration\nAttached is the {{obt}} Administrator Guide, which provides an overview of the tools and functionality available to you as Travel Managers. We recommend keeping this guide handy as you become familiar with your new environment.\n\nIf you have questions along the way or need assistance with an administrative function, our team is always happy to help.\n\n## Self-Registration\nWe've also provided information on self-registration, along with a step-by-step guide attached to this email.\n\nSelf-registration can be used to ensure travelers who are new to the program are able to establish their profiles and access {{obt}}. Please feel free to share these instructions with your team as needed.\n\n{{accountName}} Self-Registration Link: {{selfRegLink}}\n\n## Kensington Corporate Analytics\nOne of the exciting next steps will be getting you set up with Kensington Corporate Analytics, our reporting and analytics platform.\n\nWe'll schedule a dedicated training session for approximately four weeks after go-live. Waiting a few weeks allows the platform to begin populating with actual booking data, giving us the opportunity to walk through the reporting tool using your own program activity.\n\nIn the meantime, we encourage you to let your travelers begin booking through {{obt}} and our agent team as normal. The more activity we have flowing through the program, the more meaningful your initial reporting and analytics session will be.\n\nWe'll be in touch closer to the four-week mark to coordinate a training date and make sure the session is tailored to your needs.\n\n## What's Next\nFor now, the key priorities are:\n- Familiarize yourselves with the {{obt}} Administrator Guide\n- Share the self-registration information with your travelers and internal teams as appropriate\n- Allow bookings to begin flowing through the program\n- Watch for our outreach to schedule your Kensington Corporate Analytics training approximately four weeks post-go-live\n\nAs always, please reach out if anything comes up during the transition. We're here to make sure you feel confident managing the program and have the support and resources you need from day one.\n\nWe're excited to see {{accountName}} officially live and look forward to working with you as we continue to build and optimize your travel program together!\n\nThank you,\n{{tmSignoff}}"
+    }
+  }
+}

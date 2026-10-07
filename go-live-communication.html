@@ -3,1183 +3,279 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kensington Corporate — Go-Live Communication</title>
+<title>Kensington Corporate — Go-Live Communications</title>
 <style>
   @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
-  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
   @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
-  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+  :root { --ink:#3a2f3c; --ink-soft:#524a54; --ink-mute:#8b8678; --bone:#fdf9ec; --paper:#fffdf8; --cream:#f3eedf; --gold:#767260; --green:#1a3e32; --line:#e4ddcc; --error:#b03a3a; --shadow:0 12px 40px rgba(58,47,60,0.10), 0 4px 12px rgba(58,47,60,0.05); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { scroll-behavior:smooth; }
+  body { font-family:'SangBleu Republic', Georgia, serif; background:var(--bone); color:var(--ink); line-height:1.6; -webkit-font-smoothing:antialiased; }
 
-  :root {
-    --ink: #3a2f3c; --ink-soft: #524a54; --ink-mute: #8b8678;
-    --bone: #fdf9ec; --paper: #fffdf8; --cream: #f3eedf;
-    --gold: #767260; --gold-deep: #1a3e32; --line: #e4ddcc; --error: #b03a3a;
-    --shadow-lg: 0 12px 40px rgba(58,47,60,0.10), 0 4px 12px rgba(58,47,60,0.05);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body { font-family: 'SangBleu Republic', Georgia, -apple-system, serif; background: var(--bone); color: var(--ink); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .hero { position:relative; padding:44px 24px 70px; text-align:center; background:radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%), linear-gradient(135deg,#2a2230 0%,#3a2f3c 45%,#1a3e32 100%); }
+  .hero-logo { height:52px; display:block; margin:0 auto 18px; }
+  .hero-eyebrow { font-size:11px; letter-spacing:.35em; text-transform:uppercase; color:#c9c3b2; margin-bottom:10px; }
+  .hero-title { font-family:'SangBleu Sunrise', Georgia, serif; font-weight:400; color:var(--bone); font-size:clamp(24px,3vw,36px); line-height:1.2; }
+  .hero-title em { font-style:italic; color:#c9b78f; }
+  .hero-sub { color:rgba(245,241,232,.72); font-size:14px; max-width:620px; margin:12px auto 0; }
 
-  .hero { position: relative; padding: 56px 24px 96px; text-align: center;
-    background: radial-gradient(ellipse at 20% 20%, rgba(118,114,96,0.22) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(26,62,50,0.28) 0%, transparent 55%), linear-gradient(135deg, #2a2230 0%, #3a2f3c 45%, #1a3e32 100%); overflow: hidden; }
-  .hero-logo { height: 56px; width: auto; display: block; margin: 0 auto 24px; }
-  .hero-eyebrow { font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase; color: #c9c3b2; margin-bottom: 14px; font-weight: 500; }
-  .hero-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; color: var(--bone); font-size: clamp(24px, 3vw, 38px); line-height: 1.2; }
-  .hero-title em { font-style: italic; color: #c9b78f; }
-  .hero-subtitle { color: rgba(245,241,232,0.72); font-size: 14px; max-width: 560px; margin: 16px auto 0; line-height: 1.7; }
+  .bar { max-width:1240px; margin:-26px auto 0; padding:0 20px; position:relative; z-index:2; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .pill { background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:10px 20px; font:inherit; font-size:13px; color:var(--ink-soft); cursor:pointer; text-decoration:none; box-shadow:var(--shadow); }
+  .pill:hover { background:var(--cream); }
+  .pill.saved { cursor:default; color:var(--ink-mute); }
 
-  .form-wrap { max-width: 780px; margin: 24px auto 80px; padding: 0 20px; position: relative; z-index: 2; }
-  .form-card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+  .layout { max-width:1240px; margin:22px auto 70px; padding:0 20px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,520px); gap:24px; align-items:start; }
+  @media (max-width:1000px){ .layout{ grid-template-columns:1fr; } .preview{ position:static !important; } }
 
-  .section { padding: 36px 44px; border-bottom: 1px solid var(--line); }
-  .section:last-of-type { border-bottom: none; }
-  .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
-  .section-num { font-family: 'SangBleu Sunrise', Georgia, serif; font-style: italic; color: var(--gold); font-size: 18px; }
-  .section-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 400; color: var(--ink); font-size: 22px; }
-  .section-tag { margin-left: auto; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-mute); }
+  .card { background:var(--paper); border:1px solid var(--line); box-shadow:var(--shadow); margin-bottom:18px; }
+  .section { padding:28px 32px; }
+  .section-header { display:flex; align-items:baseline; gap:12px; margin-bottom:20px; }
+  .section-num { font-family:'SangBleu Sunrise',Georgia,serif; font-style:italic; color:var(--gold); font-size:17px; }
+  .section-title { font-family:'SangBleu Sunrise',Georgia,serif; font-weight:400; font-size:21px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:640px){ .grid2{ grid-template-columns:1fr; } .section{ padding:22px 18px; } }
+  .field { margin-bottom:18px; display:flex; flex-direction:column; }
+  .field-label { font-size:13px; font-weight:500; margin-bottom:6px; }
+  .req { color:var(--error); margin-left:3px; }
+  .field-help { font-size:12px; color:var(--ink-mute); font-style:italic; margin:-3px 0 6px; line-height:1.5; }
+  .field-input, .field-textarea { width:100%; font-family:inherit; font-size:15px; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:6px; padding:11px 13px; min-height:46px; transition:border-color .15s, box-shadow .15s; }
+  .field-textarea { min-height:78px; resize:vertical; }
+  .field-input:focus, .field-textarea:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(118,114,96,.15); }
+  .field-input.err, .field-textarea.err { border-color:var(--error); box-shadow:0 0 0 3px rgba(176,58,58,.12); }
 
-  .field { margin-bottom: 22px; display: flex; flex-direction: column; }
-  .field:last-child { margin-bottom: 0; }
-  .grid2 .field, .grid3 .field { margin-bottom: 0; }
-  .field .field-input, .field .field-textarea { margin-top: auto; }
-  .field-input { min-height: 48px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 22px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; margin-bottom: 22px; }
-  @media (max-width: 640px) { .grid2, .grid3 { grid-template-columns: 1fr; } .section { padding: 28px 22px; } }
-
-  .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
-  .required-mark { color: var(--error); margin-left: 3px; }
-  .field-sub { font-size: 12px; color: var(--ink-mute); font-style: italic; margin: -4px 0 8px; line-height: 1.5; }
-
-  .field-input, .field-textarea, select.field-input { width: 100%; font-family: inherit; font-size: 15px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; transition: border-color .15s, box-shadow .15s; }
-  .field-textarea { min-height: 80px; resize: vertical; }
-  .field-input:focus, .field-textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(118,114,96,0.15); }
-  .field-input.field-error, .field-textarea.field-error { border-color: var(--error); box-shadow: 0 0 0 3px rgba(176,58,58,0.12); }
-
-  .notice { background: var(--cream); border-left: 3px solid var(--gold-deep); border-radius: 4px; padding: 14px 16px; font-size: 13px; color: var(--ink-soft); margin-bottom: 22px; line-height: 1.6; }
-  .notice strong { color: var(--gold-deep); }
-
-  .action-list { background: var(--cream); border-radius: 8px; padding: 18px 22px; }
-  .action-list-title { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 12px; font-weight: 500; }
-  .action-list ul { margin: 0; padding-left: 20px; }
-  .action-list li { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
-  .action-list li:last-child { margin-bottom: 0; }
-
-  .recipient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin-bottom: 22px; }
-  @media (max-width: 640px) { .recipient-grid { grid-template-columns: 1fr; } }
-  .checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-soft); }
-  .checkbox-row input { width: 17px; height: 17px; accent-color: var(--gold-deep); flex: none; }
-
-  .subgroup { border: 1px dashed var(--line); border-radius: 8px; padding: 18px 20px; margin-top: 8px; display: none; }
-  .subgroup.show { display: block; }
-  .subgroup-title { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
-
-  .form-footer { padding: 32px 44px 40px; text-align: center; }
-  .submit-btn { font-family: 'SangBleu Republic', serif; font-size: 15px; font-weight: 500; background: var(--ink); color: var(--bone); border: none; border-radius: 6px; padding: 15px 48px; cursor: pointer; letter-spacing: 0.02em; transition: background .15s, transform .1s; }
-  .submit-btn:hover { background: #4a3d4d; }
-  .submit-btn:active { transform: translateY(1px); }
-  .submit-btn:disabled { opacity: 0.6; cursor: default; }
-  .footer-note { font-size: 12px; color: var(--ink-mute); margin-top: 16px; line-height: 1.6; }
-
-  .mode-switch-wrap { position: relative; z-index: 3; display: flex; justify-content: center; margin: -34px 0 0; }
-  .mode-switch { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow-lg); padding: 5px; gap: 4px; }
-  .mode-btn { font-family: inherit; font-size: 13px; font-weight: 500; letter-spacing: 0.03em; color: var(--ink-soft); background: none; border: none; border-radius: 999px; padding: 11px 28px; cursor: pointer; transition: background .15s, color .15s; }
-  .mode-btn.active { background: var(--gold-deep); color: var(--bone); }
-  .mode-btn:not(.active):hover { background: var(--cream); }
-
-  .success { display: none; padding: 72px 44px; text-align: center; }
-  .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
-  .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
-  .success-text { color: var(--ink-soft); max-width: 480px; margin: 0 auto; }
-  .success-restart { display: inline-block; margin-top: 22px; font-size: 13px; color: var(--gold-deep); text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
-
-  /* ===== External welcome letter ===== */
-  .letter-wrap { background: linear-gradient(180deg, var(--cream), #ece5d0); border-radius: 10px; padding: 30px 22px; }
-  .letter { background: var(--paper); max-width: 640px; margin: 0 auto; border: 1px solid var(--line); border-top: 4px solid var(--gold-deep); border-radius: 4px; box-shadow: 0 18px 50px rgba(58,47,60,0.16), 0 3px 10px rgba(58,47,60,0.06); padding: 40px 46px 36px; color: var(--ink); font-size: 14.5px; line-height: 1.75; }
-  @media (max-width: 640px) { .letter { padding: 28px 22px; } }
-  .letter-logo { display: block; height: 44px; width: auto; margin: 0 auto 6px; }
-  .letter-rule { height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 14px 0 24px; border: 0; }
-  .letter p { margin: 0 0 14px; }
-  .letter .lt-hi { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 19px; }
-  .letter .lt-item { display: grid; grid-template-columns: 30px 1fr; gap: 6px; margin: 20px 0 6px; }
-  .letter .lt-num { font-family: 'SangBleu Sunrise', Georgia, serif; font-weight: 700; color: var(--ink); font-size: 16.5px; line-height: 1.55; }
-  .letter .lt-head { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 16.5px; color: var(--ink); font-weight: 700; margin-bottom: 4px; }
-  .letter .lt-body p { margin: 0 0 10px; }
-  .letter .lt-support { background: var(--cream); border-left: 3px solid var(--gold-deep); border-radius: 3px; padding: 10px 14px; font-size: 13px; color: var(--ink-soft); white-space: pre-line; margin: 0 0 10px; }
-  .letter .lt-sign { margin-top: 26px; }
-  .letter a { color: var(--gold-deep); }
-  .lt-miss { background: #f6e9b8; color: #7a5b00; border-radius: 3px; padding: 0 4px; font-size: .92em; }
-  .attach-row { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-bottom: 14px; }
-  .letter-note { font-size: 12px; color: var(--ink-mute); font-style: italic; text-align: center; margin-top: 14px; }
-
-  /* Email preview: shows exactly what opens in Outlook (plain text) */
-  .mailwin { background: #fff; max-width: 680px; margin: 0 auto; border: 1px solid #cfcfcf; border-radius: 8px; box-shadow: 0 18px 50px rgba(58,47,60,0.16), 0 3px 10px rgba(58,47,60,0.06); overflow: hidden; font-family: Aptos, Calibri, 'Segoe UI', Arial, sans-serif; }
-  .mailwin-bar { background: #f3f2f1; border-bottom: 1px solid #e1dfdd; padding: 8px 14px; font-size: 12px; color: #605e5c; display: flex; gap: 6px; align-items: center; }
-  .mailwin-bar i { width: 10px; height: 10px; border-radius: 50%; background: #d2d0ce; display: inline-block; }
-  .mailwin-head { padding: 6px 18px 0; border-bottom: 1px solid #edebe9; }
-  .mailwin-row { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid #f3f2f1; font-size: 13.5px; color: #201f1e; }
-  .mailwin-row:last-child { border-bottom: none; }
-  .mailwin-row b { width: 58px; flex: none; font-weight: 400; color: #605e5c; }
-  .mailwin-body { padding: 18px 22px 24px; font-size: 14px; line-height: 1.5; color: #201f1e; white-space: pre-wrap; word-break: break-word; }
-  #fireworks { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999; }
-  .celebrate-btn { margin-left: 18px; }
+  .preview { position:sticky; top:14px; }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .tab { flex:1; min-width:120px; font:inherit; font-size:13px; padding:11px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink-soft); border-radius:8px; cursor:pointer; }
+  .tab.active { background:var(--green); color:var(--bone); border-color:var(--green); }
+  .mailwin { background:#fff; border:1px solid #cfcfcf; border-radius:8px; box-shadow:var(--shadow); overflow:hidden; font-family:Aptos, Calibri, 'Segoe UI', Arial, sans-serif; }
+  .mailwin-bar { background:#f3f2f1; border-bottom:1px solid #e1dfdd; padding:8px 14px; font-size:12px; color:#605e5c; display:flex; gap:6px; align-items:center; }
+  .mailwin-bar i { width:10px; height:10px; border-radius:50%; background:#d2d0ce; display:inline-block; }
+  .mailwin-head { padding:4px 16px 0; border-bottom:1px solid #edebe9; }
+  .mailwin-row { display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #f3f2f1; font-size:13px; color:#201f1e; }
+  .mailwin-row:last-child { border-bottom:none; }
+  .mailwin-row b { width:54px; flex:none; font-weight:400; color:#605e5c; }
+  .mailwin-row span { min-width:0; overflow-wrap:anywhere; }
+  .mailwin-body { padding:16px 18px 22px; font-size:13.5px; line-height:1.5; color:#201f1e; white-space:pre-wrap; word-break:break-word; max-height:62vh; overflow:auto; }
+  .miss { background:#f6e9b8; color:#7a5b00; border-radius:3px; padding:0 3px; }
+  .actions { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+  .btn { font:inherit; font-size:15px; font-weight:500; border:none; border-radius:6px; padding:13px 26px; cursor:pointer; background:var(--ink); color:var(--bone); }
+  .btn:hover { background:#4a3d4d; }
+  .btn.ghost { background:transparent; color:var(--ink-soft); border:1px solid var(--line); font-size:13px; padding:12px 18px; }
+  .btn.ghost:hover { background:var(--cream); }
+  .note { font-size:12px; color:var(--ink-mute); line-height:1.5; margin-top:10px; }
+  .banner { margin-top:12px; padding:12px 14px; border-left:3px solid var(--green); background:var(--cream); font-size:13px; color:var(--ink-soft); display:none; }
+  .banner.show { display:block; }
+  .banner.warn { border-left-color:#b9852c; }
+  .blank-list { font-size:12px; color:#7a5b00; margin-top:8px; }
+  #fireworks { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; }
+  .loading { text-align:center; padding:60px 0; color:var(--ink-mute); }
 </style>
 </head>
 <body>
-
-  <header class="hero">
-    <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" onerror="this.style.display='none'" />
-    <div class="hero-eyebrow" id="heroEyebrow">Implementations · Internal Communication</div>
-    <h1 class="hero-title" id="heroTitle">Go-Live <em>Internal Communication</em></h1>
-    <p class="hero-subtitle" id="heroSub">Complete this form once an account is ready to go live. Submitting opens a pre-filled email from your own Outlook to the recipients you select below — review and send.</p>
-  </header>
-
-  <div class="mode-switch-wrap">
-    <div class="mode-switch" id="modeSwitch">
-      <button type="button" class="mode-btn active" data-mode="internal">Internal</button>
-      <button type="button" class="mode-btn" data-mode="external">External</button>
-    </div>
-  </div>
-
-  <div class="form-wrap">
-    <form id="goLiveForm" class="form-card" novalidate>
-<div id="internalSections">
-
-      <!-- ============ SECTION 1: ACCOUNT OVERVIEW ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">I.</span>
-          <h2 class="section-title">Account Overview</h2>
-          <span class="section-tag">Basics</span>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="submittedBy">Submitted By<span class="required-mark">*</span></label>
-          <input type="text" id="submittedBy" name="submittedBy" class="field-input" data-req="1" required />
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="accountName">Account Name<span class="required-mark">*</span></label>
-          <input type="text" id="accountName" name="accountName" class="field-input" data-req="1" required />
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="contractedValue">Contracted Value</label>
-            <input type="text" id="contractedValue" name="contractedValue" class="field-input" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="accountLocation">Account Location</label>
-            <input type="text" id="accountLocation" name="accountLocation" class="field-input" />
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ SECTION 2: TEAM & KEY DATES ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">II.</span>
-          <h2 class="section-title">Team &amp; Key Dates</h2>
-          <span class="section-tag">Ownership</span>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="bdmClipDate">BDM / Clip Date</label>
-          <div class="field-sub">BD clip starts on go-live day. Exceptions can be made if a piece of business goes live before implementation is done — e.g. implementation for Envoy is slated for 8 weeks, but Entourage goes live 2 weeks into implementation. BDM can choose to be clipped when Entourage goes live, or Envoy — but not both.</div>
-          <input type="text" id="bdmClipDate" name="bdmClipDate" class="field-input" />
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="implementationsLead">Implementations Lead</label>
-            <input type="text" id="implementationsLead" name="implementationsLead" class="field-input" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="csm">CSM</label>
-            <input type="text" id="csm" name="csm" class="field-input" />
-          </div>
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="csim">CSIM</label>
-            <input type="text" id="csim" name="csim" class="field-input" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="csimHandoverDate">CSIM to CSM Handover Date</label>
-            <input type="date" id="csimHandoverDate" name="csimHandoverDate" class="field-input" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="leadAgent">Lead Agent (90 days)</label>
-          <input type="text" id="leadAgent" name="leadAgent" class="field-input" />
-        </div>
-      </section>
-
-      <!-- ============ SECTION 3: MAIN CONTACTS ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">III.</span>
-          <h2 class="section-title">Main Contacts</h2>
-          <span class="section-tag">Client Side</span>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="mainContacts">Main Contacts</label>
-          <div class="field-sub">Name, title, email — one per line.</div>
-          <textarea id="mainContacts" name="mainContacts" class="field-textarea"></textarea>
-        </div>
-      </section>
-
-      <!-- ============ SECTION 4: GO-LIVE DETAILS ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">IV.</span>
-          <h2 class="section-title">Go-Live Details</h2>
-          <span class="section-tag">Launch</span>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="dk">DK (Envoy, Entourage, Concierge)</label>
-          <input type="text" id="dk" name="dk" class="field-input" />
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="cutoverDate">Cutover Date</label>
-            <input type="date" id="cutoverDate" name="cutoverDate" class="field-input" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="goLiveDate">Go-Live Date (Envoy, Entourage, Concierge)</label>
-            <input type="text" id="goLiveDate" name="goLiveDate" class="field-input" placeholder="e.g. Envoy: 2026-10-01, Entourage: 2026-10-15" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="launchType">Full or Partial Launch</label>
-          <select id="launchType" name="launchType" class="field-input">
-            <option value="">— Select —</option>
-            <option value="Full">Full</option>
-            <option value="Partial">Partial</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="serviceFees">Service Fees</label>
-          <div class="field-sub">Advise pay-per-use or cash fees. If cash fees, Finance needs to be advised if they're EFT, or CC with approval (confirm with client before charging), or CC without approval.</div>
-          <textarea id="serviceFees" name="serviceFees" class="field-textarea"></textarea>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="travelPolicyLink">Travel Policy Recap — Link</label>
-          <input type="url" id="travelPolicyLink" name="travelPolicyLink" class="field-input" placeholder="https://" />
-        </div>
-      </section>
-
-      <!-- ============ SECTION 5: FINANCIALS ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">V.</span>
-          <h2 class="section-title">Financials</h2>
-          <span class="section-tag">OBT &amp; Fees</span>
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="obt">OBT</label>
-            <input type="text" id="obt" name="obt" class="field-input" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="ongoingFees">On-going Yearly / Monthly Fees</label>
-            <input type="text" id="ongoingFees" name="ongoingFees" class="field-input" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="contractExpiration">Contract Expiration Date</label>
-          <input type="date" id="contractExpiration" name="contractExpiration" class="field-input" />
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="rebateProgram">Rebate Program</label>
-          <select id="rebateProgram" name="rebateProgram" class="field-input">
-            <option value="">— Select —</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-          </select>
-        </div>
-        <div class="subgroup" id="rebateDetailsGroup">
-          <div class="subgroup-title">Rebate Details</div>
-          <div class="field">
-            <label class="field-label" for="rebateDetails">Copy/paste rebate details from contract</label>
-            <textarea id="rebateDetails" name="rebateDetails" class="field-textarea"></textarea>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ SECTION 6: TRAINING & SETUP ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">VI.</span>
-          <h2 class="section-title">Training &amp; Setup</h2>
-          <span class="section-tag">Enablement</span>
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="generalTrainingDate">General Population Training Date</label>
-            <input type="date" id="generalTrainingDate" name="generalTrainingDate" class="field-input" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="adminTrainingDate">User Admin &amp; Super User Training Date</label>
-            <input type="date" id="adminTrainingDate" name="adminTrainingDate" class="field-input" />
-          </div>
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="kcaTrainingDate">KCA Training Date</label>
-            <input type="date" id="kcaTrainingDate" name="kcaTrainingDate" class="field-input" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="otherAncillaryTrainingDate">Other Ancillary Services Training Date</label>
-            <div class="field-sub">If applicable</div>
-            <input type="date" id="otherAncillaryTrainingDate" name="otherAncillaryTrainingDate" class="field-input" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="ancillaryServices">Ancillary Services</label>
-          <textarea id="ancillaryServices" name="ancillaryServices" class="field-textarea"></textarea>
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="airCanadaContract">Air Canada Contract</label>
-            <select id="airCanadaContract" name="airCanadaContract" class="field-input">
-              <option value="">— Select —</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="field-label" for="flightPasses">Flight Passes</label>
-            <select id="flightPasses" name="flightPasses" class="field-input">
-              <option value="">— Select —</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="obtSignOnMethod">OBT Sign-on Method</label>
-          <input type="text" id="obtSignOnMethod" name="obtSignOnMethod" class="field-input" />
-        </div>
-      </section>
-
-      <!-- ============ SECTION 7: ACTION ITEMS (reference, read-only) ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">VII.</span>
-          <h2 class="section-title">Action Items</h2>
-          <span class="section-tag">Standard Follow-ups</span>
-        </div>
-        <div class="action-list">
-          <div class="action-list-title">Included automatically in this communication</div>
-          <ul>
-            <li>Ops to train agents</li>
-            <li>Sr Dir BDM &amp; CSM to add account to CSM incentive sheet</li>
-            <li>Solutions to add account to CSM portfolio in Trams/BI</li>
-            <li>Finance to add to payroll tracker</li>
-            <li>Finance to add to tracker if applicable</li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ============ SECTION 8: RECIPIENTS ============ -->
-      <section class="section">
-        <div class="section-header">
-          <span class="section-num">VIII.</span>
-          <h2 class="section-title">Recipients</h2>
-          <span class="section-tag" id="recipientsTag">Internal Distribution</span>
-        </div>
-
-        <div class="notice" id="recipientsNotice"><strong>Standard internal distribution list.</strong> Check who this go-live applies to — this is included in the email body for reference. Submitting routes automatically to the Internal distro.</div>
-
-        <!-- Internal recipient checklist -->
-        <div class="recipient-grid" id="recipientGridInternal">
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="BDM" checked /> BDM</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="Implementations" checked /> Implementations</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="Sr Dir Ops" checked /> Sr Dir Ops</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="Sr Dir Sales & CSM" checked /> Sr Dir Sales &amp; CSM</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="Finance" checked /> Finance</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="Patricia Alzate" checked /> Patricia Alzate</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="Ops TL's" checked /> Ops TL's</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipInternal" value="Corporate Reporting/Sr Dir Solutions" checked /> Corporate Reporting / Sr Dir Solutions</label>
-        </div>
-
-        <!-- External recipient checklist -- copy of Internal's for now, until the
-             real external distribution list is provided; swap the values here
-             once that's confirmed. -->
-        <div class="recipient-grid" id="recipientGridExternal" style="display:none;">
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="BDM" checked /> BDM</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Implementations" checked /> Implementations</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Sr Dir Ops" checked /> Sr Dir Ops</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Sr Dir Sales & CSM" checked /> Sr Dir Sales &amp; CSM</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Finance" checked /> Finance</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Patricia Alzate" checked /> Patricia Alzate</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Ops TL's" checked /> Ops TL's</label>
-          <label class="checkbox-row"><input type="checkbox" name="recipExternal" value="Corporate Reporting/Sr Dir Solutions" checked /> Corporate Reporting / Sr Dir Solutions</label>
-        </div>
-
-        <div class="notice">This always goes to <strong>Michael Beaucage, Patricia Alzate, Sandra Marias, and Corporate Reporting</strong> automatically. BDM and CSM change per account — enter their emails below and they'll be added to the recipients.</div>
-
-        <div class="grid2">
-          <div class="field">
-            <label class="field-label" for="bdmEmail">BDM Email</label>
-            <input type="email" id="bdmEmail" name="bdmEmail" class="field-input" placeholder="name@kensingtoncorporate.com" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="csmEmail">CSM Email</label>
-            <input type="email" id="csmEmail" name="csmEmail" class="field-input" placeholder="name@kensingtoncorporate.com" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="ccEmails">CC (optional)</label>
-          <input type="text" id="ccEmails" name="ccEmails" class="field-input" placeholder="name@kensingtoncorporate.com" />
-        </div>
-      </section>
-
-</div><!-- /internalSections -->
-
-      <!-- ================= EXTERNAL: WELCOME LETTER ================= -->
-      <div id="externalSections" style="display:none;">
-
-        <section class="section">
-          <div class="section-header">
-            <span class="section-num">I.</span>
-            <h2 class="section-title">Client &amp; Account</h2>
-            <span class="section-tag">Who it's going to</span>
-          </div>
-          <div class="grid2">
-            <div class="field">
-              <label class="field-label" for="extSubmittedBy">Submitted By<span class="required-mark">*</span></label>
-              <input type="text" id="extSubmittedBy" name="extSubmittedBy" class="field-input" data-req="1" />
-            </div>
-            <div class="field">
-              <label class="field-label" for="extAccountName">Client / Account Name<span class="required-mark">*</span></label>
-              <input type="text" id="extAccountName" name="extAccountName" class="field-input" data-req="1" />
-            </div>
-          </div>
-          <div class="field">
-            <label class="field-label" for="extGreeting">Greeting — client contact first names<span class="required-mark">*</span></label>
-            <div class="field-sub">Shown as "Hi …," — e.g. Betty, Patrick, and Sheila</div>
-            <input type="text" id="extGreeting" name="extGreeting" class="field-input" data-req="1" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="extToEmails">Client email(s) — To<span class="required-mark">*</span></label>
-            <div class="field-sub">Comma-separate multiple addresses.</div>
-            <input type="text" id="extToEmails" name="extToEmails" class="field-input" data-req="1" placeholder="name@client.com, name2@client.com" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="extCc">CC (optional)</label>
-            <input type="text" id="extCc" name="extCc" class="field-input" placeholder="name@kensingtoncorporate.com" />
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="section-header">
-            <span class="section-num">II.</span>
-            <h2 class="section-title">Adapt the Letter</h2>
-            <span class="section-tag">Per account</span>
-          </div>
-          <div class="grid2">
-            <div class="field">
-              <label class="field-label" for="extRegion">Region<span class="required-mark">*</span></label>
-              <select id="extRegion" name="extRegion" class="field-input" data-req="1">
-                <option value="">— Select —</option>
-                <option value="Canada">Canada</option>
-                <option value="USA">USA</option>
-              </select>
-            </div>
-            <div class="field">
-              <label class="field-label" for="extSignOn">Sign-on method<span class="required-mark">*</span></label>
-              <select id="extSignOn" name="extSignOn" class="field-input" data-req="1">
-                <option value="">— Select —</option>
-                <option value="Email">Company email address</option>
-                <option value="SSO">SSO (single sign-on)</option>
-              </select>
-            </div>
-          </div>
-          <div class="grid2">
-            <div class="field">
-              <label class="field-label" for="extDomain">Concur login address (country / domain)</label>
-              <input type="text" id="extDomain" name="extDomain" class="field-input" value="https://concursolutions.com" />
-            </div>
-            <div class="field">
-              <label class="field-label" for="extLoyalty">Loyalty numbers<span class="required-mark">*</span></label>
-              <select id="extLoyalty" name="extLoyalty" class="field-input" data-req="1">
-                <option value="">— Select —</option>
-                <option value="Not migrated">Did not migrate over — travellers add their own</option>
-                <option value="Migrated">Migrated over — travellers confirm them</option>
-              </select>
-            </div>
-          </div>
-          <div class="grid2">
-            <div class="field">
-              <label class="field-label" for="extLeadAgent">Lead agent<span class="required-mark">*</span></label>
-              <input type="text" id="extLeadAgent" name="extLeadAgent" class="field-input" data-req="1" placeholder="e.g. John Driscoll" />
-            </div>
-            <div class="field">
-              <label class="field-label" for="extSignoff">Signed by (team names)<span class="required-mark">*</span></label>
-              <div class="field-sub">Becomes "Mira, Kathy, John, &amp; the entire team…"</div>
-              <input type="text" id="extSignoff" name="extSignoff" class="field-input" data-req="1" placeholder="Mira, Kathy, John" />
-            </div>
-          </div>
-          <div class="field">
-            <label class="field-label" for="extNotes">Anything specific to this account (optional)</label>
-            <div class="field-sub">Added to the letter as its own numbered item.</div>
-            <textarea id="extNotes" name="extNotes" class="field-textarea"></textarea>
-          </div>
-          <div class="field">
-            <label class="field-label" for="extGoLive">Go-live date (optional — logged to the tracker)</label>
-            <input type="date" id="extGoLive" name="extGoLive" class="field-input" />
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="section-header">
-            <span class="section-num">III.</span>
-            <h2 class="section-title">Support Details</h2>
-            <span class="section-tag">Auto-fills by region</span>
-          </div>
-          <div class="notice" id="extSupportNotice">Choose a region above and the support details fill in. You can edit them.</div>
-          <div class="field">
-            <label class="field-label" for="extSupportHours">Hours &amp; phone numbers<span class="required-mark">*</span></label>
-            <textarea id="extSupportHours" name="extSupportHours" class="field-textarea" data-req="1"></textarea>
-          </div>
-          <div class="field">
-            <label class="field-label" for="extSupportEmail">Support email<span class="required-mark">*</span></label>
-            <input type="text" id="extSupportEmail" name="extSupportEmail" class="field-input" data-req="1" />
-          </div>
-          <div class="field">
-            <label class="field-label">Attachments to include</label>
-            <div class="attach-row">
-              <label class="checkbox-row"><input type="checkbox" id="extAttachGuide" name="extAttachGuide" checked /> Concur training guide</label>
-              <label class="checkbox-row"><input type="checkbox" id="extAttachContact" name="extAttachContact" checked /> Agent contact sheet</label>
-            </div>
-            <input type="text" id="extAttachOther" name="extAttachOther" class="field-input" placeholder="Other attachment(s), if any (optional)" />
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="section-header">
-            <span class="section-num">IV.</span>
-            <h2 class="section-title">Email Preview</h2>
-            <span class="section-tag">Updates as you type</span>
-          </div>
-          <div class="letter-wrap"><div class="mailwin" id="letterPreview"></div></div>
-          <div class="letter-note">This is exactly what opens in Outlook when you submit. Gold = still to fill in. Outlook may wrap long lines slightly differently. Attach the files above before you hit Send — a mail link can't attach them for you.</div>
-        </section>
-
-      </div><!-- /externalSections -->
-
-      <div class="form-footer">
-        <button type="submit" class="submit-btn">Submit Communication</button>
-        <p class="footer-note">This opens a pre-filled email in your default mail app. Review the recipients and content, then hit Send.</p>
-      </div>
-    </form>
-
-    <div class="form-card success" id="success">
-      <div class="success-icon">✓</div>
-      <h2 class="success-title">Almost done — <em>send your email</em></h2>
-      <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> If the draft didn't open, check the recipients you entered and email them directly.</p>
-      <div id="extActions" style="display:none;margin-top:26px;"><a id="extOpenDraft" class="submit-btn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;margin-bottom:14px;">Open your draft in Outlook</a><br><button type="button" class="success-restart" id="extDownloadBtn" style="margin:0 12px;display:none;">Download the draft again</button><button type="button" class="success-restart" id="extCopyBtn" style="margin:0 12px;">Copy the formatted letter again</button><button type="button" class="success-restart" id="extPlainBtn" style="margin:0 12px;">Reopen the email draft</button></div>
-      <button type="button" class="success-restart" id="restartBtn">Submit another communication</button><button type="button" class="success-restart celebrate-btn" id="celebrateBtn">🎆 Celebrate again</button>
-    </div>
-  </div>
-
 <canvas id="fireworks"></canvas>
-<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
+
+<header class="hero">
+  <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" onerror="this.style.display='none'" />
+  <div class="hero-eyebrow">Implementations · Go-Live</div>
+  <h1 class="hero-title">Go-Live <em>Communications</em></h1>
+  <p class="hero-sub">Fill in the account once. The internal communication, the client welcome letter and the Travel Manager next steps are all written for you, ready to open in Outlook.</p>
+</header>
+
+<div class="bar">
+  <button type="button" class="pill" id="newBtn">+ New account</button>
+  <a class="pill" href="go-live-admin.html" title="Add dropdowns, change labels, edit the email wording">⚙ Customize form &amp; emails</a>
+  <span class="pill saved" id="savedNote">Draft saves on this computer</span>
+</div>
+
+<div class="layout">
+  <form id="goLiveForm" novalidate><div class="loading" id="loading">Loading…</div></form>
+
+  <aside class="preview" id="previewCol" style="display:none;">
+    <div class="tabs" id="tabs"></div>
+    <div class="mailwin" id="mailwin"></div>
+    <div class="blank-list" id="blankList"></div>
+    <div class="actions">
+      <button type="button" class="btn" id="createBtn">Create email in Outlook</button>
+      <button type="button" class="btn ghost" id="copyBtn">Copy text</button>
+    </div>
+    <div class="banner" id="banner"></div>
+    <p class="note">Outlook opens with the To, CC, subject and the email already written. Gold = still to fill in. Outlook may wrap long lines slightly differently, and adds your own signature.</p>
+  </aside>
+</div>
+
+<script src="go-live-engine.js"></script>
 <script>
 (function () {
-  var form = document.getElementById('goLiveForm');
-  var success = document.getElementById('success');
+  var G = window.GoLive;
+  var REMOTE = 'https://link-portal-alpha.vercel.app/api/golive-config';
+  var DRAFT_KEY = 'golive-draft-v2';
+  var cfg = null, values = {}, active = 'internal';
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function validCfg(c) { return c && Array.isArray(c.sections) && c.emails && c.emails.internal && c.emails.welcome && c.emails.tm; }
 
-  // ── Internal / External mode ───────────────────────────────────────
-  // Fixed recipients on every submission, either mode -- BDM and CSM change
-  // per account, so those are entered in the form and added on top of this
-  // list (see the "BDM Email" / "CSM Email" fields below).
-  var FIXED_RECIPIENTS = [
-    'michael.beaucage@kensingtoncorporate.com',
-    'patricia.alzate@traveledge.com',
-    'sandra.marias@kensingtoncorporate.com',
-    'corporate.reporting@traveledge.com',
-  ];
-  var mode = 'internal';
-  var modeSwitch = document.getElementById('modeSwitch');
-  var recipientsTag = document.getElementById('recipientsTag');
-  var recipientsNotice = document.getElementById('recipientsNotice');
-  var gridInternal = document.getElementById('recipientGridInternal');
-  var gridExternal = document.getElementById('recipientGridExternal');
-
-  function setMode(next) {
-    mode = next;
-    applyModeView();
-    modeSwitch.querySelectorAll('.mode-btn').forEach(function (b) {
-      b.classList.toggle('active', b.getAttribute('data-mode') === mode);
-    });
-    var isInternal = mode === 'internal';
-    gridInternal.style.display = isInternal ? '' : 'none';
-    gridExternal.style.display = isInternal ? 'none' : '';
-    recipientsTag.textContent = isInternal ? 'Internal Distribution' : 'External Distribution';
-    recipientsNotice.innerHTML = isInternal
-      ? '<strong>Standard internal distribution list.</strong> Check who this go-live applies to — this is included in the email body for reference.'
-      : '<strong>External distribution list</strong> (copied from Internal for now — will be updated once the real external list is provided).';
+  function loadConfig() {
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 6000);
+    return fetch(REMOTE, ctl ? { signal: ctl.signal } : {}).then(function (r) { if (!r.ok) throw new Error('remote'); return r.json(); })
+      .then(function (c) { clearTimeout(timer); if (!validCfg(c)) throw new Error('bad'); return c; })
+      .catch(function () { clearTimeout(timer); return fetch('go-live-default-config.json').then(function (r) { return r.json(); }); });
   }
-  modeSwitch.addEventListener('click', function (e) {
-    var btn = e.target.closest('.mode-btn');
-    if (!btn) return;
-    setMode(btn.getAttribute('data-mode'));
+
+  function allFields() { var a = []; cfg.sections.forEach(function (s) { (s.fields || []).forEach(function (f) { a.push(f); }); }); return a; }
+  function applyDefaults() { allFields().forEach(function (f) { if ((values[f.id] === undefined || values[f.id] === '') && f.default) values[f.id] = f.default; }); }
+  function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(values)); } catch (e) {} }
+  function loadDraft() { try { var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); if (d && typeof d === 'object') values = d; } catch (e) {} }
+
+  // ---------- form ----------
+  var ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  function renderForm() {
+    var form = $('goLiveForm'); form.innerHTML = '';
+    cfg.sections.forEach(function (s, si) {
+      var card = document.createElement('section'); card.className = 'card section';
+      card.innerHTML = '<div class="section-header"><span class="section-num">' + (ROMAN[si] || (si + 1)) + '.</span><h2 class="section-title">' + esc(s.title) + '</h2></div>';
+      var grid = document.createElement('div'); grid.className = 'grid2'; card.appendChild(grid);
+      (s.fields || []).forEach(function (f) {
+        var wrap = document.createElement('div'); wrap.className = 'field';
+        if (f.type === 'textarea') wrap.style.gridColumn = '1 / -1';
+        var lab = document.createElement('label'); lab.className = 'field-label'; lab.htmlFor = 'f_' + f.id;
+        lab.innerHTML = esc(f.label) + (f.required ? '<span class="req">*</span>' : '');
+        wrap.appendChild(lab);
+        if (f.help) { var h = document.createElement('div'); h.className = 'field-help'; h.textContent = f.help; wrap.appendChild(h); }
+        var el;
+        if (f.type === 'select') {
+          el = document.createElement('select'); el.className = 'field-input';
+          var o0 = document.createElement('option'); o0.value = ''; o0.textContent = '— Select —'; el.appendChild(o0);
+          (f.options || []).forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = o; el.appendChild(op); });
+        } else if (f.type === 'textarea') {
+          el = document.createElement('textarea'); el.className = 'field-textarea'; el.rows = f.rows || 3;
+        } else {
+          el = document.createElement('input'); el.className = 'field-input';
+          el.type = f.type === 'date' ? 'date' : (f.type === 'email' ? 'email' : (f.type === 'url' ? 'url' : 'text'));
+        }
+        el.id = 'f_' + f.id; el.dataset.fid = f.id;
+        if (f.placeholder) el.placeholder = f.placeholder;
+        el.value = values[f.id] || '';
+        el.addEventListener('input', onEdit); el.addEventListener('change', onEdit);
+        wrap.appendChild(el);
+        grid.appendChild(wrap);
+      });
+      form.appendChild(card);
+    });
+  }
+  function onEdit(e) {
+    var el = e.target; values[el.dataset.fid] = el.value; el.classList.remove('err');
+    saveDraft(); renderPreview();
+  }
+
+  // ---------- preview ----------
+  function emailKeys() { return ['internal', 'welcome', 'tm'].filter(function (k) { return cfg.emails[k]; }); }
+  function renderTabs() {
+    var t = $('tabs'); t.innerHTML = '';
+    emailKeys().forEach(function (k) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'tab' + (k === active ? ' active' : ''); b.textContent = cfg.emails[k].label || k;
+      b.addEventListener('click', function () { active = k; $('banner').className = 'banner'; renderTabs(); renderPreview(); });
+      t.appendChild(b);
+    });
+  }
+  function hi(text) { return esc(text).replace(/\[[^\]\n]{1,80}\]/g, function (m) { return '<span class="miss">' + m + '</span>'; }); }
+  function current() { return G.renderEmail(cfg.emails[active], values, cfg); }
+  function renderPreview() {
+    var r = current();
+    var h = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div><div class="mailwin-head">'
+      + '<div class="mailwin-row"><b>To</b><span>' + (r.to.length ? esc(r.to.join('; ')) : '<span class="miss">[recipients]</span>') + '</span></div>'
+      + (r.cc.length ? '<div class="mailwin-row"><b>Cc</b><span>' + esc(r.cc.join('; ')) + '</span></div>' : '')
+      + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div></div>'
+      + '<div class="mailwin-body">' + hi(r.body) + '</div>';
+    $('mailwin').innerHTML = h;
+    $('blankList').textContent = r.missing.length ? 'Still blank: ' + r.missing.join(', ') : '';
+  }
+
+  // ---------- create ----------
+  function requiredMissing() {
+    var bad = [];
+    allFields().forEach(function (f) { if (f.required && !String(values[f.id] || '').trim()) bad.push(f); });
+    return bad;
+  }
+  function banner(msg, warn) { var b = $('banner'); b.innerHTML = msg; b.className = 'banner show' + (warn ? ' warn' : ''); }
+
+  function logTracker(mode) {
+    var v = function (k) { return String(values[k] || ''); };
+    fetch('/api/finance-tracker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      action: 'proxy-flow',
+      body: { mode: mode, submittedBy: v('submittedBy'), accountName: v('accountName'), contractedValue: v('contractedValue'), accountLocation: v('accountLocation'),
+              bdmEmail: v('bdmEmail'), csmEmail: v('csmEmail'), implementationsLead: v('implementationsLead'), csm: v('csm'), csim: v('csim'),
+              goLiveDate: v('goLiveDate'), cutoverDate: v('cutoverDate'), launchType: v('launchType') } }) }).catch(function () {});
+  }
+
+  function text(r) { return 'To: ' + r.to.join('; ') + (r.cc.length ? '\nCc: ' + r.cc.join('; ') : '') + '\nSubject: ' + r.subject + '\n\n' + r.body; }
+  function copyText(t) {
+    try { return navigator.clipboard.writeText(t).then(function () { return true; }, function () { return false; }); } catch (e) { return Promise.resolve(false); }
+  }
+
+  $('createBtn').addEventListener('click', function () {
+    var bad = requiredMissing();
+    if (bad.length) {
+      bad.forEach(function (f) { var el = $('f_' + f.id); if (el) el.classList.add('err'); });
+      var first = $('f_' + bad[0].id); if (first) { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { first.focus({ preventScroll: true }); } catch (e) {} }
+      alert('Please complete the required fields (marked *): ' + bad.map(function (f) { return f.label; }).join(', ') + '.');
+      return;
+    }
+    var r = current();
+    if (r.missing.length && !confirm('These are still blank and will show as [placeholders] in the email:\n\n' + r.missing.join('\n') + '\n\nCreate the email anyway?')) return;
+    if (!r.to.length && !confirm('There are no recipients yet (check the contacts and their "Travel Manager" role). Create the email anyway?')) return;
+
+    var url = 'mailto:' + encodeURIComponent(r.to.join(',')) + '?subject=' + encodeURIComponent(r.subject)
+      + (r.cc.length ? '&cc=' + encodeURIComponent(r.cc.join(',')) : '') + '&body=' + encodeURIComponent(r.body);
+    var em = cfg.emails[active];
+    if (em.tracker) logTracker(em.tracker);
+    var attach = G.render(em.attachments || '', values, cfg).text;
+    var reminder = attach ? ' <strong>Remember to attach ' + esc(attach) + '</strong> before you send.' : '';
+
+    if (url.length > 8000) {   // very long: some mail apps cut the body off, so give the text as a safety net
+      copyText(r.body).then(function (ok) {
+        banner('This email is very long, so Outlook may cut it off. ' + (ok ? 'The full text is copied: press Ctrl+V in the body if anything is missing.' : 'Use "Copy text" if anything is missing.') + reminder, true);
+        window.location.href = url; launchFireworks();
+      });
+      return;
+    }
+    banner('✓ Opening in Outlook with To, CC, subject and the email written.' + reminder, false);
+    launchFireworks();
+    window.location.href = url;
+  });
+  $('copyBtn').addEventListener('click', function () {
+    var b = this; copyText(text(current())).then(function (ok) { b.textContent = ok ? '✓ Copied' : 'Copy failed'; setTimeout(function () { b.textContent = 'Copy text'; }, 2500); });
+  });
+  $('newBtn').addEventListener('click', function () {
+    if (!confirm('Start a new account? This clears everything you have typed on this form.')) return;
+    values = {}; applyDefaults(); saveDraft(); renderForm(); renderPreview(); $('banner').className = 'banner'; window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ── External welcome letter ────────────────────────────────────────
-  var CANADA_HOURS = 'Monday – Friday 8:30am - 8:30pm EST | 855-249-8121 or 416-649-9091\n24/7 Emergency Support: 888-481-2012 or 647-288-3057';
-  var CANADA_EMAIL = 'canada@kensingtoncorporate.com';
-  var extHours = document.getElementById('extSupportHours');
-  var extEmail = document.getElementById('extSupportEmail');
-  var extRegion = document.getElementById('extRegion');
-  var extSupportNotice = document.getElementById('extSupportNotice');
-  var preview = document.getElementById('letterPreview');
-
-  function applyModeView() {
-    var ext = mode === 'external';
-    document.getElementById('internalSections').style.display = ext ? 'none' : '';
-    document.getElementById('externalSections').style.display = ext ? '' : 'none';
-    document.getElementById('heroEyebrow').textContent = ext ? 'Implementations · External Welcome Letter' : 'Implementations · Internal Communication';
-    document.getElementById('heroTitle').innerHTML = ext ? 'Go-Live <em>Welcome Letter</em>' : 'Go-Live <em>Internal Communication</em>';
-    document.getElementById('heroSub').textContent = ext
-      ? 'Fill in the account details and the client welcome letter writes itself. Submitting opens a pre-filled email from your own Outlook — attach the files, review and send.'
-      : 'Complete this form once an account is ready to go live. Submitting opens a pre-filled email from your own Outlook to the recipients you select below — review and send.';
-    document.getElementById('goLiveForm').querySelector('.submit-btn').textContent = ext ? 'Create Welcome Email' : 'Submit Communication';
-    if (ext) renderPreview();
-  }
-
-  function applyRegion(force) {
-    var region = extRegion.value;
-    var hoursIsPrefill = !extHours.value.trim() || extHours.value === CANADA_HOURS;
-    var emailIsPrefill = !extEmail.value.trim() || extEmail.value === CANADA_EMAIL;
-    if (region === 'Canada') {
-      if (force || hoursIsPrefill) extHours.value = CANADA_HOURS;
-      if (force || emailIsPrefill) extEmail.value = CANADA_EMAIL;
-      extSupportNotice.innerHTML = '<strong>Canada support details</strong> filled in from the standard welcome letter. Edit if this account differs.';
-    } else if (region === 'USA') {
-      if (force || hoursIsPrefill) extHours.value = '';
-      if (force || emailIsPrefill) extEmail.value = '';
-      extSupportNotice.innerHTML = '<strong>USA:</strong> the US hours, phone numbers and email are not on file yet — enter them below.';
-    }
-    renderPreview();
-  }
-  extRegion.addEventListener('change', function () { applyRegion(false); });
-
-  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-  function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
-
-  // Builds the letter once as structured data; rendered as styled HTML for the preview and as plain text for the email.
-  function buildLetter() {
-    var acct = val('extAccountName'), greet = val('extGreeting'), lead = val('extLeadAgent'), sign = val('extSignoff');
-    var domain = val('extDomain') || 'https://concursolutions.com';
-    var signOn = val('extSignOn'), loyalty = val('extLoyalty');
-    var hours = val('extSupportHours'), supEmail = val('extSupportEmail'), notes = val('extNotes');
-    var guide = document.getElementById('extAttachGuide').checked, contact = document.getElementById('extAttachContact').checked;
-    var leadFirst = lead.split(/\s+/)[0] || '';
-    var A = acct || '[Account name]';
-
-    var signInText = signOn === 'SSO'
-      ? 'You can log into Concur Travel at ' + domain + ' using your company single sign-on (SSO). Please use your usual company credentials.'
-      : 'You can log into Concur Travel at ' + domain + ' using your company email address. Two-factor authentication will need to be set up the first time you log in.';
-
-    var loyaltyText = loyalty === 'Migrated'
-      ? 'Your existing frequent flyer, hotel rewards and rental car loyalty numbers have been migrated into your Concur profile. Please review them to confirm they are accurate, and add or update anything that is missing directly in Concur.'
-      : 'Frequent flyer numbers, hotel rewards numbers, rental car loyalty numbers, and similar travel program details can be added or updated directly in Concur. We recommend ensuring that all information is up to date.';
-
-    var agentParas = [];
-    if (contact) agentParas.push('Attached is our contact sheet with our hours, phone numbers (including 24/7) and some helpful email addresses. This can be shared with anyone at ' + A + ' and/or posted on your intranet.');
-    agentParas.push('A reminder that 24/7 support is only available via phone. Our emails are not monitored outside of business hours.');
-
-    var items = [];
-    items.push({ head: 'Signing in to Concur', paras: [signInText] });
-    items.push({ head: 'Review and update your Concur profile', paras: ['Please go to your profile in the upper-right corner of Concur and confirm that all information is accurate. This includes your name, contact information, TSA/passport details, travel preferences, and any required profile fields, which now includes a mobile phone number. All mandatory fields are clearly marked and must be completed prior to making a reservation.'] });
-    items.push({ head: 'Loyalty and rewards program information', paras: [loyaltyText] });
-    if (guide) items.push({ head: 'Use the training guide if you need a refresher', paras: ['Attached is a quick Concur training guide that walks through updating your profile, booking air, hotel, and car reservations. This can be shared with anyone at ' + A + ' and/or posted on your intranet. Concur training videos are also available here: SAP Concur Travel'] });
-    items.push({
-      head: 'Agent Support', paras: agentParas, support: hours,
-      after: ['While our entire team is committed to helping ' + A + ', we have assigned ' + (lead || '[Lead agent]') + ' as the lead agent to support your travelers. When emailing ' + (supEmail || '[Support email]') + ' put ATTN: ' + (lead || '[Lead agent]') + ' at the top. If ' + (leadFirst || '[Lead agent]') + ' is unavailable or not working, another agent will step in to help. The purpose of assigning ' + (leadFirst || '[Lead agent]') + ' as your lead agent is to ensure we are learning as much as we can about ' + A + ' for a long and successful partnership.']
-    });
-    if (notes) items.push({ head: 'Specific to ' + A, paras: [notes] });
-    items.push({ head: 'Contact Online Support for site issues', paras: ['If you experience issues with the site or notice that something is not displaying correctly, please contact Kensington Corporate\'s Online Support Team: onlinesupport@kensingtoncorporate.com | 877-218-5388'] });
-
-    return {
-      greet: 'Hi ' + (greet || '[Names]') + ',',
-      intro: ['I\'m thrilled to officially welcome you and your Team at ' + A + ' to Kensington Corporate! Your Concur site is now up and running.',
-              'Here are some helpful details to get you started. Please do not hesitate to reach out to us with any questions.'],
-      items: items,
-      signoff: (sign || '[Team names]') + ', & the entire team here at Kensington Corporate'
-    };
-  }
-
-  function highlightMissing(html) { return html.replace(/\[[A-Za-z ]+\]/g, function (m) { return '<span class="lt-miss">' + m + '</span>'; }); }
-
-  function renderPreview() {
-    if (!preview) return;
-    var to = val('extToEmails') || '', cc = val('extCc'), acct = val('extAccountName');
-    var subject = 'Welcome to Kensington Corporate — ' + (acct || '[Account name]') + ' Go-Live';
-    var miss = function (h) { return highlightMissing(esc(h)); };
-    var html = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div>'
-      + '<div class="mailwin-head">'
-      + '<div class="mailwin-row"><b>To</b><span>' + (to ? esc(to) : '<span class="lt-miss">[Client email]</span>') + '</span></div>'
-      + (cc ? '<div class="mailwin-row"><b>Cc</b><span>' + esc(cc) + '</span></div>' : '')
-      + '<div class="mailwin-row"><b>Subject</b><span>' + miss(subject) + '</span></div>'
-      + '</div>'
-      + '<div class="mailwin-body">' + miss(letterAsText()) + '</div>';
-    preview.innerHTML = html;
-  }
-
-  // Designed plain text: no formatting tricks, so it works in every mail app. A header line, ruled sections with
-  // capitalised numbered headings, and the support hours set apart in an indented block.
-  function letterAsText() {
-    var L = buildLetter();
-    var thick = '──────────────────────────';
-    var thin = '──────────────────────────';
-    var t = ['KENSINGTON CORPORATE  |  WELCOME', thick, '', L.greet, ''];
-    L.intro.forEach(function (x) { t.push(x, ''); });
-    L.items.forEach(function (it, i) {
-      t.push(thin, (i + 1) + '.  ' + it.head.toUpperCase(), thin, '');
-      it.paras.forEach(function (x) { t.push(x, ''); });
-      if (it.support !== undefined) {
-        t.push('     SUPPORT HOURS & PHONE');
-        (it.support || '[Hours and phone numbers]').split('\n').forEach(function (line) { t.push('     ' + line); });
-        t.push('');
-      }
-      if (it.after) it.after.forEach(function (x) { t.push(x, ''); });
-    });
-    t.push(thick, '', 'Thank you,', L.signoff, '', 'KENSINGTON CORPORATE');
-    return t.join('\n');
-  }
-
-  var extWrap = document.getElementById('externalSections');
-  ['input', 'change'].forEach(function (ev) { extWrap.addEventListener(ev, renderPreview); });
-
-  // ── Fireworks ──────────────────────────────────────────────────────
+  // ---------- fireworks ----------
   function launchFireworks() {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    var cv = document.getElementById('fireworks'), ctx = cv.getContext('2d');
-    var W = cv.width = window.innerWidth, H = cv.height = window.innerHeight;
-    var colors = ['#c9b78f', '#e0c36a', '#8fbf9f', '#2f7a5c', '#fdf9ec', '#ffffff', '#d98c6a'];
-    var rockets = [], sparks = [], start = performance.now(), nextLaunch = 0;
-    function launch() {
-      rockets.push({ x: W * (0.15 + Math.random() * 0.7), y: H, ty: H * (0.15 + Math.random() * 0.35), vy: -(7 + Math.random() * 3), c: colors[(Math.random() * colors.length) | 0] });
-    }
-    function burst(x, y, c) {
-      var n = 70 + (Math.random() * 40 | 0);
-      for (var i = 0; i < n; i++) {
-        var a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 4.2;
-        sparks.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, d: 0.011 + Math.random() * 0.012, c: Math.random() < 0.7 ? c : colors[(Math.random() * colors.length) | 0] });
-      }
-    }
+    var cv = $('fireworks'), ctx = cv.getContext('2d'), W = cv.width = window.innerWidth, H = cv.height = window.innerHeight;
+    var colors = ['#c9b78f', '#e0c36a', '#8fbf9f', '#2f7a5c', '#fdf9ec', '#ffffff', '#d98c6a'], rockets = [], sparks = [], start = performance.now(), next = 0;
+    function launch() { rockets.push({ x: W * (0.15 + Math.random() * 0.7), y: H, ty: H * (0.15 + Math.random() * 0.35), vy: -(7 + Math.random() * 3), c: colors[(Math.random() * colors.length) | 0] }); }
+    function burst(x, y, c) { var n = 70 + (Math.random() * 40 | 0); for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, sp = 1.5 + Math.random() * 4.2; sparks.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, d: 0.011 + Math.random() * 0.012, c: Math.random() < 0.7 ? c : colors[(Math.random() * colors.length) | 0] }); } }
     function frame(now) {
       var t = now - start;
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(0, 0, W, H);
-      ctx.globalCompositeOperation = 'lighter';
-      if (t < 4200 && t >= nextLaunch) { launch(); if (Math.random() < 0.5) launch(); nextLaunch = t + 260 + Math.random() * 300; }
-      rockets = rockets.filter(function (r) {
-        r.y += r.vy; r.vy *= 0.985;
-        ctx.fillStyle = r.c; ctx.beginPath(); ctx.arc(r.x, r.y, 2.2, 0, 6.3); ctx.fill();
-        if (r.y <= r.ty || r.vy > -1.2) { burst(r.x, r.y, r.c); return false; }
-        return true;
-      });
-      sparks = sparks.filter(function (s) {
-        s.x += s.vx; s.y += s.vy; s.vy += 0.045; s.vx *= 0.99; s.life -= s.d;
-        if (s.life <= 0) return false;
-        ctx.globalAlpha = Math.max(s.life, 0); ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(s.x, s.y, 1.9, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1;
-        return true;
-      });
-      if (t < 7500 || sparks.length || rockets.length) requestAnimationFrame(frame);
-      else ctx.clearRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'lighter';
+      if (t < 3600 && t >= next) { launch(); if (Math.random() < 0.5) launch(); next = t + 260 + Math.random() * 300; }
+      rockets = rockets.filter(function (r) { r.y += r.vy; r.vy *= 0.985; ctx.fillStyle = r.c; ctx.beginPath(); ctx.arc(r.x, r.y, 2.2, 0, 6.3); ctx.fill(); if (r.y <= r.ty || r.vy > -1.2) { burst(r.x, r.y, r.c); return false; } return true; });
+      sparks = sparks.filter(function (s) { s.x += s.vx; s.y += s.vy; s.vy += 0.045; s.vx *= 0.99; s.life -= s.d; if (s.life <= 0) return false; ctx.globalAlpha = Math.max(s.life, 0); ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(s.x, s.y, 1.9, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1; return true; });
+      if (t < 6500 || sparks.length || rockets.length) requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
     }
     requestAnimationFrame(frame);
   }
-  document.getElementById('celebrateBtn').addEventListener('click', launchFireworks);
 
-  // ── Formatted (HTML) email ─────────────────────────────────────────
-  // mailto: can only carry plain text, so on submit the styled letter is copied to the clipboard (rich HTML) and the
-  // Outlook compose window pops up with To / CC / subject filled in -- the user just presses Ctrl+V in the body.
-  function buildEmailHtml(L, logoSrc) {
-    var INK = '#222222', SOFT = '#444444', MUTE = '#777777', LINE = '#dddddd', BOX = '#f5f3ee';
-    var serif = "Georgia,'Times New Roman',serif";
-    var p = function (t) { return '<p style="margin:0 0 12px 0;font-family:' + serif + ';font-size:15px;line-height:1.7;color:' + INK + ';">' + esc(t) + '</p>'; };
-    var rows = [];
-    L.items.forEach(function (it, i) {
-      var body = it.paras.map(p).join('');
-      if (it.support) body += '<div style="margin:0 0 12px 0;padding:10px 14px;background:' + BOX + ';border-left:3px solid ' + MUTE + ';font-family:' + serif + ';font-size:13.5px;line-height:1.6;color:' + SOFT + ';">' + esc(it.support).replace(/\n/g, '<br>') + '</div>';
-      if (it.after) body += it.after.map(p).join('');
-      rows.push(
-        '<tr><td valign="top" width="30" style="padding:14px 0 0 0;font-family:' + serif + ';font-size:16px;font-weight:bold;color:' + INK + ';">' + (i + 1) + '.</td>' +
-        '<td valign="top" style="padding:14px 0 0 0;"><div style="font-family:' + serif + ';font-size:16px;font-weight:bold;color:' + INK + ';margin:0 0 6px 0;">' + esc(it.head) + '</div>' + body + '</td></tr>'
-      );
-    });
-    var logo = logoSrc ? '<img src="' + logoSrc + '" alt="Kensington Corporate" height="46" style="height:46px;width:auto;display:block;margin:0 auto;border:0;">'
-                       : '<div style="font-family:' + serif + ';letter-spacing:4px;font-size:15px;color:' + MUTE + ';text-align:center;">KENSINGTON CORPORATE</div>';
-    return '<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;background:#ffffff;border:1px solid ' + LINE + ';">' +
-      '<tr><td style="padding:30px 40px 8px 40px;">' + logo +
-      '<div style="height:1px;background:' + LINE + ';margin:18px 0 22px 0;line-height:1px;font-size:1px;">&nbsp;</div>' +
-      '<p style="margin:0 0 14px 0;font-family:' + serif + ';font-size:18px;color:' + INK + ';">' + esc(L.greet) + '</p>' +
-      L.intro.map(p).join('') +
-      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows.join('') + '</table>' +
-      '<p style="margin:26px 0 0 0;font-family:' + serif + ';font-size:15px;line-height:1.7;color:' + INK + ';">Thank you,<br>' + esc(L.signoff) + '</p>' +
-      '</td></tr><tr><td style="padding:10px 40px 26px 40px;"></td></tr></table>';
-  }
-
-  var lastExternal = null; // remembered so the success-screen buttons can re-use it
-
-  function openDraft(withBody) {
-    var x = lastExternal;
-    window.location.href = 'mailto:' + encodeURIComponent(x.to) + (x.cc ? '?cc=' + encodeURIComponent(x.cc) + '&' : '?')
-      + 'subject=' + encodeURIComponent(x.subject) + (withBody ? '&body=' + encodeURIComponent(letterAsText()) : '');
-  }
-
-  function copyFormatted() {
-    var x = lastExternal;
-    var html = buildEmailHtml(x.L, location.origin + '/kensington-logo-taupe.png');
-    try {
-      return navigator.clipboard.write([new ClipboardItem({
-        'text/html': new Blob([html], { type: 'text/html' }),
-        'text/plain': new Blob([letterAsText()], { type: 'text/plain' })
-      })]).then(function () { return true; }, function () { return false; });
-    } catch (e) { return Promise.resolve(false); }
-  }
-
-  // ── Automatic Outlook draft (Microsoft Graph) ─────────────────────
-  // The person signs in once with their work Microsoft account; after that every submit creates the formatted
-  // welcome email as a DRAFT in their own mailbox (To / CC / subject / styled body / logo) and opens it. Nothing is
-  // sent automatically. Needs the Azure "SPA" app registration -- paste its Application (client) ID below.
-  // While MS_CLIENT_ID is blank, or if anything fails, the page falls back to: copy to clipboard + open a mailto draft.
-  var MS_CLIENT_ID = '';  // OFF: tenant needs admin consent for Mail.ReadWrite (Azure app 774d5cbc-5253-4432-b7a7-9deccc2170ae exists; set this to turn the automatic route on after an admin grants consent)
-  var MS_TENANT = '51cb5df4-df05-4e5b-b20c-17d576ab85e3';
-  var MS_SCOPES = ['Mail.ReadWrite'];
-  var msalApp = null, msalReady = false;
-
-  function getMsal() {
-    if (!MS_CLIENT_ID || !window.msal) return null;
-    if (!msalApp) {
-      msalApp = new msal.PublicClientApplication({
-        auth: { clientId: MS_CLIENT_ID, authority: 'https://login.microsoftonline.com/' + MS_TENANT, redirectUri: location.origin + '/auth-redirect.html' },
-        cache: { cacheLocation: 'localStorage' }
-      });
-      msalApp.initialize().then(function () { msalReady = true; });
-    }
-    return msalApp;
-  }
-  getMsal(); // warm up on page load so it is ready by the time someone clicks submit
-
-  function gfetch(method, path, token, body) {
-    return fetch('https://graph.microsoft.com/v1.0' + path, {
-      method: method,
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined
-    }).then(function (r) {
-      return r.text().then(function (t) {
-        if (!r.ok) throw new Error('Graph ' + r.status + ': ' + t.slice(0, 200));
-        return t ? JSON.parse(t) : {};
-      });
-    });
-  }
-
-  function fetchLogoBase64() {
-    return fetch('kensington-logo-taupe.png').then(function (r) { if (!r.ok) throw new Error('no logo'); return r.blob(); })
-      .then(function (blob) { return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result).split(',')[1]); }; fr.onerror = rej; fr.readAsDataURL(blob); }); })
-      .catch(function () { return ''; });
-  }
-
-  function addrs(list) {
-    return String(list || '').split(/[;,]\s*/).map(function (a) { return a.trim(); }).filter(Boolean).map(function (a) { return { emailAddress: { address: a } }; });
-  }
-
-  function createDraft(token) {
-    var x = lastExternal;
-    return fetchLogoBase64().then(function (logo) {
-      var msg = {
-        subject: x.subject,
-        body: { contentType: 'HTML', content: '<div>' + buildEmailHtml(x.L, logo ? 'cid:kclogo' : '') + '</div>' },
-        toRecipients: addrs(x.to), ccRecipients: addrs(x.cc)
-      };
-      return gfetch('POST', '/me/messages', token, msg).then(function (m) {
-        if (!logo) return m;
-        return gfetch('POST', '/me/messages/' + m.id + '/attachments', token, {
-          '@odata.type': '#microsoft.graph.fileAttachment', name: 'kensington-logo.png', contentType: 'image/png',
-          contentBytes: logo, isInline: true, contentId: 'kclogo'
-        }).then(function () { return m; });
-      });
-    });
-  }
-
-  function attachReminder() {
-    var attach = [];
-    if (document.getElementById('extAttachGuide').checked) attach.push('the Concur training guide');
-    if (document.getElementById('extAttachContact').checked) attach.push('the agent contact sheet');
-    if (val('extAttachOther')) attach.push(val('extAttachOther'));
-    return attach.length ? ' Then <strong>attach ' + esc(attach.join(', ')) + '</strong> and hit Send.' : ' Then hit Send.';
-  }
-
-  // ── Outlook draft file (.eml) ──────────────────────────────────────
-  // No-admin route: the page builds a real HTML email as an Outlook draft file (X-Unsent: 1). Opened in Outlook it is a
-  // compose window with To / CC / subject / styled letter / logo already filled in. The browser asks once; ticking
-  // "Always open files of this type" makes every later submit open Outlook straight away.
-  function b64(str) { // UTF-8 safe base64
-    var bytes = new TextEncoder().encode(str), bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin);
-  }
-  function wrap76(s) { return s.replace(/(.{76})/g, '$1\r\n'); }
-
-  function buildEml(to, cc, subject, html, logoB64) {
-    var B = '----=_KC_' + Date.now().toString(36);
-    var h = ['X-Unsent: 1', 'To: ' + to];
-    if (cc) h.push('Cc: ' + cc);
-    h.push('Subject: =?UTF-8?B?' + b64(subject) + '?=', 'MIME-Version: 1.0', 'Content-Type: multipart/related; type="text/html"; boundary="' + B + '"', '');
-    var parts = ['--' + B, 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', wrap76(b64(html))];
-    if (logoB64) parts.push('--' + B, 'Content-Type: image/png; name="kensington-logo.png"', 'Content-Transfer-Encoding: base64', 'Content-ID: <kclogo>', 'Content-Disposition: inline; filename="kensington-logo.png"', '', wrap76(logoB64));
-    parts.push('--' + B + '--', '');
-    return h.concat(parts).join('\r\n');
-  }
-
-  function downloadFile(name, content, type) {
-    var url = URL.createObjectURL(new Blob([content], { type: type }));
-    var a = document.createElement('a');
-    a.href = url; a.download = name; document.body.appendChild(a); a.click();
-    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
-  }
-
-  function downloadDraft() {
-    var x = lastExternal;
-    if (!x) return;
-    fetchLogoBase64().then(function (logo) {
-      var html = '<html><body>' + buildEmailHtml(x.L, logo ? 'cid:kclogo' : '') + '</body></html>';
-      downloadFile('Welcome Email - ' + x.acct.replace(/[\\/:*?"<>|]+/g, ' ') + '.eml', buildEml(x.to, x.cc, x.subject, html, logo), 'message/rfc822');
-    });
-  }
-  document.getElementById('extDownloadBtn').addEventListener('click', downloadDraft);
-
-  // Default route: a normal email draft. Outlook opens by itself (mailto) with To / CC / subject and the letter as plain text.
-  function fallbackDraft() {
-    document.querySelector('#success .success-text').innerHTML =
-      'Your email to <strong>' + esc(lastExternal.to) + '</strong> is opening in Outlook with the welcome letter already written.' + attachReminder();
-    ['extDownloadBtn', 'extCopyBtn'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
-    document.getElementById('extPlainBtn').style.display = '';
-    openDraft(true);
-  }
-
-  function submitExternal() {
-    var toList = val('extToEmails').split(/[;,]\s*/).map(function (x) { return x.trim(); }).filter(Boolean).join(', ');
-    var acct = val('extAccountName');
-    lastExternal = { to: toList, cc: val('extCc'), subject: 'Welcome to Kensington Corporate — ' + acct + ' Go-Live', L: buildLetter(), acct: acct };
-
-    // Same tracker as the internal form (mode = External), best-effort like the internal path.
-    fetch('/api/finance-tracker', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'proxy-flow',
-        body: { mode: 'External', submittedBy: val('extSubmittedBy'), accountName: acct, contractedValue: '', accountLocation: val('extRegion'),
-                bdmEmail: '', csmEmail: '', implementationsLead: '', csm: '', csim: '', goLiveDate: val('extGoLive'), cutoverDate: '', launchType: '' }
-      })
-    }).catch(function () {});
-
-    document.getElementById('extActions').style.display = '';
-    document.getElementById('extDownloadBtn').style.display = 'none';
-    document.getElementById('extCopyBtn').style.display = 'none';
-    document.getElementById('extPlainBtn').style.display = 'none';
-    document.getElementById('extOpenDraft').style.display = 'none';
-    form.style.display = 'none';
-    success.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    launchFireworks();
-
-    var ms = getMsal();
-    if (!ms || !msalReady) { fallbackDraft(); return; }
-
-    document.querySelector('#success .success-text').innerHTML = 'Creating your formatted email in Outlook…';
-    var accounts = ms.getAllAccounts();
-    var pre = null;                                   // window opened inside the click so the browser lets us navigate it later
-    if (accounts.length) { try { pre = window.open('about:blank', '_blank'); } catch (e) {} }
-
-    var tokenP = accounts.length
-      ? ms.acquireTokenSilent({ scopes: MS_SCOPES, account: accounts[0] }).catch(function () { return ms.acquireTokenPopup({ scopes: MS_SCOPES }); })
-      : ms.acquireTokenPopup({ scopes: MS_SCOPES });
-
-    tokenP.then(function (t) { return createDraft(t.accessToken); }).then(function (m) {
-      var link = document.getElementById('extOpenDraft');
-      link.href = m.webLink; link.style.display = '';
-      document.querySelector('#success .success-text').innerHTML =
-        'Your formatted email to <strong>' + esc(lastExternal.to) + '</strong> is saved as a draft in your Outlook (Drafts folder) and opening now.' + attachReminder();
-      if (pre) pre.location.href = m.webLink;
-    }).catch(function (err) {
-      if (pre) { try { pre.close(); } catch (e) {} }
-      fallbackDraft();
-    });
-  }
-
-  document.getElementById('extCopyBtn').addEventListener('click', function () {
-    var btn = this;
-    copyFormatted().then(function (ok) {
-      btn.textContent = ok ? '✓ Copied — press Ctrl+V in your email' : 'Copy failed in this browser';
-      setTimeout(function () { btn.textContent = 'Copy the formatted letter again'; }, 4000);
-    });
-  });
-  document.getElementById('extPlainBtn').addEventListener('click', function () { openDraft(false); });
-
-  var rebateSelect = document.getElementById('rebateProgram');
-  var rebateGroup = document.getElementById('rebateDetailsGroup');
-  rebateSelect.addEventListener('change', function () {
-    rebateGroup.classList.toggle('show', rebateSelect.value === 'Yes');
-  });
-
-  function visible(el) { return !!(el.offsetParent !== null); }
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var firstInvalid = null;
-
-    form.querySelectorAll('[data-req="1"]').forEach(function (f) {
-      if (!visible(f)) { f.classList.remove('field-error'); return; }
-      if (!String(f.value).trim()) { f.classList.add('field-error'); if (!firstInvalid) firstInvalid = f; }
-      else f.classList.remove('field-error');
-    });
-
-    if (firstInvalid) {
-      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      try { firstInvalid.focus({ preventScroll: true }); } catch (_) {}
-      alert('Please complete all required fields (marked with *) before submitting.');
-      return;
-    }
-
-    if (mode === 'external') { submitExternal(); return; }
-
-    var d = {};
-    new FormData(form).forEach(function (value, key) {
-      if (d[key] !== undefined) {
-        if (Array.isArray(d[key])) d[key].push(value); else d[key] = [d[key], value];
-      } else { d[key] = value; }
-    });
-    var g = function (k) { return d[k] || ''; };
-    var recipKey = mode === 'internal' ? 'recipInternal' : 'recipExternal';
-    var recips = Array.isArray(d[recipKey]) ? d[recipKey] : (d[recipKey] ? [d[recipKey]] : []);
-    var modeLabel = mode === 'internal' ? 'Internal' : 'External';
-
-    var lines = [
-      'Go-Live ' + modeLabel + ' Communication — ' + g('accountName'), '',
-      'Submitted By: ' + g('submittedBy'), '',
-      'Recipients: ' + (recips.length ? recips.join(', ') : '—'),
-      'BDM Email: ' + g('bdmEmail'),
-      'CSM Email: ' + g('csmEmail'), '',
-      'Contracted Value: ' + g('contractedValue'),
-      'Account Location: ' + g('accountLocation'), '',
-      'BDM/Clip Date: ' + g('bdmClipDate'),
-      'Implementations Lead: ' + g('implementationsLead'),
-      'CSM: ' + g('csm'),
-      'CSIM: ' + g('csim'),
-      'CSIM to CSM Handover Date: ' + g('csimHandoverDate'),
-      'Lead Agent (90 days): ' + g('leadAgent'), '',
-      'Main contacts:',
-      g('mainContacts') || '—', '',
-      'DK (Envoy, Entourage, Concierge): ' + g('dk'),
-      'Cutover Date: ' + g('cutoverDate'),
-      'Go-Live Date (Envoy, Entourage, Concierge): ' + g('goLiveDate'),
-      'Full or Partial Launch: ' + g('launchType'),
-      'Service fees: ' + (g('serviceFees') || '—'), '',
-      'Travel Policy Recap: ' + (g('travelPolicyLink') || '—'), '',
-      'OBT: ' + g('obt'),
-      'On-going yearly/monthly fees: ' + g('ongoingFees'),
-      'Contract expiration date: ' + g('contractExpiration'),
-      'Rebate program: ' + (g('rebateProgram') || '—') + (g('rebateProgram') === 'Yes' && g('rebateDetails') ? ' — ' + g('rebateDetails') : ''), '',
-      'General Population Training Date: ' + g('generalTrainingDate'),
-      'User Admin & Super User Training Date: ' + g('adminTrainingDate'),
-      'KCA training date: ' + g('kcaTrainingDate'),
-      'Ancillary services: ' + (g('ancillaryServices') || '—'),
-      'Other ancillary services training date (if applicable): ' + g('otherAncillaryTrainingDate'),
-      'Air Canada Contract: ' + (g('airCanadaContract') || '—'),
-      'Flight Passes: ' + (g('flightPasses') || '—'),
-      'OBT sign-on Method: ' + g('obtSignOnMethod'), '',
-      'Action Items:',
-      '- Ops to train agents',
-      '- Sr Dir BDM & CSM to add account to CSM incentive sheet',
-      '- Solutions to add account to CSM portfolio in Trams/BI',
-      '- finance to add to payroll tracker',
-      '- finance to add to tracker if applicable',
-    ];
-
-    var subject = 'Go-Live ' + modeLabel + ' Communication — ' + g('accountName');
-    var toList = FIXED_RECIPIENTS.concat([g('bdmEmail'), g('csmEmail')]).filter(Boolean).join(', ');
-    var mailto = 'mailto:' + encodeURIComponent(toList)
-      + (g('ccEmails') ? '?cc=' + encodeURIComponent(g('ccEmails')) + '&' : '?')
-      + 'subject=' + encodeURIComponent(subject)
-      + '&body=' + encodeURIComponent(lines.join('\n'));
-
-    // Logs this submission to the Excel tracker via the Power Automate flow
-    // (Excel Online "Add a row into a table", table GoLiveSubmissions).
-    // Routed through our own /api/finance-tracker (action: proxy-flow) rather
-    // than calling the Power Automate URL directly -- a browser fetch() to
-    // that URL hits CORS (Power Automate's HTTP trigger doesn't send the
-    // headers a cross-origin request needs), so it silently never arrives.
-    // A same-origin server-to-server call has no such restriction.
-    // Fire-and-forget -- never blocks or delays the real email below.
-    fetch('/api/finance-tracker', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'proxy-flow',
-        body: {
-          mode: modeLabel,
-          submittedBy: g('submittedBy'),
-          accountName: g('accountName'),
-          contractedValue: g('contractedValue'),
-          accountLocation: g('accountLocation'),
-          bdmEmail: g('bdmEmail'),
-          csmEmail: g('csmEmail'),
-          implementationsLead: g('implementationsLead'),
-          csm: g('csm'),
-          csim: g('csim'),
-          goLiveDate: g('goLiveDate'),
-          cutoverDate: g('cutoverDate'),
-          launchType: g('launchType'),
-        },
-      }),
-    }).catch(function () { /* best-effort -- the email is still the source of truth */ });
-
-    document.querySelector('#success .success-text').innerHTML =
-      'We\'ve opened a pre-filled email to <strong>' + toList + '</strong>. <strong>Review and hit Send.</strong> If the draft didn\'t open, check those addresses and email them directly.';
-    document.getElementById('extActions').style.display = 'none';
-    form.style.display = 'none';
-    success.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    launchFireworks();
-    window.location.href = mailto;
-  });
-
-  document.getElementById('restartBtn').addEventListener('click', function () {
-    form.reset();
-    rebateGroup.classList.remove('show');
-    applyRegion(true);
-    success.style.display = 'none';
-    form.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  // ---------- start ----------
+  loadConfig().then(function (c) {
+    cfg = c; loadDraft(); applyDefaults();
+    renderForm(); renderTabs(); $('previewCol').style.display = ''; renderPreview();
+  }).catch(function () { $('loading').textContent = 'Could not load the form settings. Please refresh the page.'; });
 })();
 </script>
 </body>

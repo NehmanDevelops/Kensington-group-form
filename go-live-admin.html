@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Go-Live Form Editor — Kensington Corporate</title>
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
+  :root { --ink:#3a2f3c; --soft:#524a54; --mute:#8b8678; --bone:#fdf9ec; --paper:#fffdf8; --cream:#f3eedf; --gold:#767260; --green:#1a3e32; --line:#e4ddcc; --err:#b03a3a; --shadow:0 12px 40px rgba(58,47,60,.10), 0 4px 12px rgba(58,47,60,.05); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'SangBleu Republic', Georgia, serif; background:var(--bone); color:var(--ink); line-height:1.55; -webkit-font-smoothing:antialiased; }
+  header { background:linear-gradient(135deg,#2a2230 0%,#3a2f3c 45%,#1a3e32 100%); padding:26px 24px; color:var(--bone); }
+  header .in { max-width:1180px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  header h1 { font-family:'SangBleu Sunrise', Georgia, serif; font-weight:400; font-size:24px; }
+  header h1 em { color:#c9b78f; }
+  header p { font-size:13px; color:rgba(245,241,232,.72); }
+  header a { color:#c9b78f; font-size:13px; }
+  main { max-width:1180px; margin:22px auto 80px; padding:0 20px; }
+  .card { background:var(--paper); border:1px solid var(--line); box-shadow:var(--shadow); padding:22px 26px; margin-bottom:16px; }
+  .gate { max-width:460px; margin:60px auto; }
+  .gate h2, h2.t { font-family:'SangBleu Sunrise', Georgia, serif; font-weight:400; font-size:21px; margin-bottom:10px; }
+  label.l { display:block; font-size:12px; font-weight:500; margin:12px 0 5px; color:var(--soft); }
+  input[type=text], input[type=password], select, textarea { width:100%; font-family:inherit; font-size:14px; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:6px; padding:9px 11px; }
+  textarea { resize:vertical; min-height:70px; }
+  textarea.mono { font-family:Consolas, 'Courier New', monospace; font-size:13px; line-height:1.5; min-height:360px; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(118,114,96,.15); }
+  .btn { font:inherit; font-size:14px; border:none; border-radius:6px; padding:10px 20px; cursor:pointer; background:var(--ink); color:var(--bone); }
+  .btn:hover { background:#4a3d4d; } .btn:disabled { opacity:.45; cursor:default; }
+  .btn.g { background:var(--green); } .btn.line { background:transparent; color:var(--soft); border:1px solid var(--line); } .btn.line:hover { background:var(--cream); }
+  .btn.sm { padding:6px 12px; font-size:12px; } .btn.danger { background:transparent; color:var(--err); border:1px solid var(--line); }
+  .topbar { position:sticky; top:0; z-index:5; background:var(--bone); padding:12px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); margin-bottom:16px; }
+  .topbar .grow { flex:1; }
+  .status { font-size:13px; color:var(--mute); }
+  .status.bad { color:var(--err); } .status.ok { color:var(--green); }
+  .tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .tab { font:inherit; font-size:14px; padding:10px 18px; border:1px solid var(--line); background:var(--paper); border-radius:8px; cursor:pointer; color:var(--soft); }
+  .tab.on { background:var(--green); color:var(--bone); border-color:var(--green); }
+  .sec-head { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+  .sec-head input { font-family:'SangBleu Sunrise', Georgia, serif; font-size:18px; max-width:340px; }
+  .grow { flex:1; }
+  .frow { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line); flex-wrap:wrap; }
+  .frow .lab { font-weight:500; min-width:200px; flex:1; }
+  .chip { font-size:11px; border:1px solid var(--line); border-radius:999px; padding:2px 9px; color:var(--mute); background:#fff; white-space:nowrap; }
+  .chip.id { font-family:Consolas, monospace; color:var(--green); cursor:pointer; } .chip.req { color:var(--err); }
+  .edit { background:var(--cream); border:1px solid var(--line); border-radius:8px; padding:6px 16px 16px; margin:4px 0 12px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:760px){ .two{ grid-template-columns:1fr; } }
+  .split { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,460px); gap:20px; align-items:start; } @media (max-width:1000px){ .split{ grid-template-columns:1fr; } }
+  .mailwin { background:#fff; border:1px solid #cfcfcf; border-radius:8px; overflow:hidden; font-family:Aptos, Calibri, 'Segoe UI', Arial, sans-serif; position:sticky; top:70px; }
+  .mailwin-bar { background:#f3f2f1; border-bottom:1px solid #e1dfdd; padding:7px 14px; font-size:12px; color:#605e5c; }
+  .mailwin-row { display:flex; gap:12px; padding:6px 16px; border-bottom:1px solid #f3f2f1; font-size:13px; } .mailwin-row b { width:50px; flex:none; font-weight:400; color:#605e5c; } .mailwin-row span { overflow-wrap:anywhere; }
+  .mailwin-body { padding:14px 18px 20px; font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; max-height:60vh; overflow:auto; }
+  .miss { background:#f6e9b8; color:#7a5b00; border-radius:3px; padding:0 3px; }
+  .snips { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; align-items:center; }
+  .warn { background:#fbeaea; border-left:3px solid var(--err); padding:9px 12px; font-size:13px; margin:8px 0; color:#7a2a2a; }
+  .tip { background:var(--cream); border-left:3px solid var(--green); padding:10px 14px; font-size:13px; margin:10px 0; color:var(--soft); }
+  code { font-family:Consolas, monospace; background:#fff; border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:12px; }
+  .vrow { display:flex; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--line); flex-wrap:wrap; } .vrow .grow { min-width:200px; }
+  small { color:var(--mute); }
+  pre.help { white-space:pre-wrap; font-family:Consolas, monospace; font-size:12.5px; background:#fff; border:1px solid var(--line); padding:12px; border-radius:6px; line-height:1.5; }
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><h1>Go-Live <em>Form Editor</em></h1><p>Add dropdowns and labels, change options, and edit the wording of all three emails.</p></div>
+  <a href="go-live-communication.html">← Back to the form</a>
+</div></header>
+<main id="app"><div class="card gate"><p>Loading…</p></div></main>
+
+<script src="go-live-engine.js"></script>
+<script>
+(function () {
+  var G = window.GoLive;
+  var API = 'https://link-portal-alpha.vercel.app/api/golive-config';
+  var $app = document.getElementById('app');
+  var cfg = null, orig = '', pass = '', tab = 'fields', emailKey = 'internal', open = {}, sampleOn = true, dirty = false;
+  var TYPES = [['text', 'Text'], ['textarea', 'Long text'], ['select', 'Dropdown'], ['date', 'Date'], ['email', 'Email'], ['url', 'Link']];
+  var SAMPLE = { submittedBy: 'Jenna Davidson', accountName: 'Example Company', region: 'Canada', accountLocation: 'Calgary, AB', contractedValue: '$80k USD', serviceLevel: 'Envoy', dk: '6475550100', launchType: 'Full', goLiveDate: '2026-10-06', handoverDate: '2026-10-06', implementationsLead: 'Kathy Boyken', csim: 'Jenna Davidson', csm: 'Mira Seagram', csmEmail: 'mira.seagram@kensingtoncorporate.com', csmPhone: '647-329-4045', leadAgent: 'Melissa Sawicki', bdm: 'Tammy Jule-Ganne', bdmEmail: 'tammy@kensingtoncorporate.com', signoffNames: 'Jenna, Kathy, Mira, Melissa', tmSignoff: 'Jenna & Kathy', contacts: 'Heidi Berger | Special Projects Lead | heidi@example.com | Travel Manager\nDyllan Lough | EA | dyllan@example.com | Travel Manager', selfRegLink: 'https://example.com/self-registration', adminTraining: '2026-09-24', generalTraining: '2026-10-06', contractExpiry: '2028-07-30', policyLink: 'https://example.com/policy' };
+
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function el(html) { var d = document.createElement('div'); d.innerHTML = html; return d.firstElementChild; }
+  function snap() { return JSON.stringify(cfg); }
+  function markDirty() { dirty = snap() !== orig; var b = document.getElementById('saveBtn'); if (b) b.disabled = !dirty; var s = document.getElementById('status'); if (s && dirty) { s.className = 'status'; s.textContent = 'Unsaved changes'; } }
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  function post(body) {
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ('Error ' + r.status)); return j; }); });
+  }
+  function getJson(u) { return fetch(u).then(function (r) { return r.json(); }); }
+
+  // ---------------- gate ----------------
+  function gate() {
+    fetch(API + '?status=1').then(function (r) { return r.json(); }).then(function (s) {
+      if (!s.passcodeSet) {
+        $app.innerHTML = '<div class="card gate"><h2>Create the editor passcode</h2><p>Anyone with this passcode can change the form and the emails, so share it only with the people who should. Minimum 6 characters.</p>'
+          + '<label class="l">New passcode</label><input type="password" id="p1" autocomplete="new-password"><label class="l">Type it again</label><input type="password" id="p2" autocomplete="new-password">'
+          + '<p id="gmsg" class="status bad" style="margin:10px 0"></p><button class="btn g" id="gbtn">Create passcode</button></div>';
+        document.getElementById('gbtn').onclick = function () {
+          var a = document.getElementById('p1').value, b = document.getElementById('p2').value, m = document.getElementById('gmsg');
+          if (a.length < 6) { m.textContent = 'Use at least 6 characters.'; return; }
+          if (a !== b) { m.textContent = 'The two passcodes do not match.'; return; }
+          post({ action: 'setPasscode', newPasscode: a }).then(function () { pass = a; try { sessionStorage.setItem('golive-pass', a); } catch (e) {} load(); }).catch(function (e) { m.textContent = e.message; });
+        };
+      } else {
+        var saved = ''; try { saved = sessionStorage.getItem('golive-pass') || ''; } catch (e) {}
+        if (saved) { pass = saved; post({ action: 'check', passcode: pass }).then(load).catch(function () { pass = ''; askPass(); }); } else askPass();
+      }
+    }).catch(function () { $app.innerHTML = '<div class="card gate"><h2>Could not reach the settings service</h2><p>Please refresh the page and try again.</p></div>'; });
+  }
+  function askPass(msg) {
+    $app.innerHTML = '<div class="card gate"><h2>Editor passcode</h2><label class="l">Passcode</label><input type="password" id="p1" autocomplete="current-password"><p id="gmsg" class="status bad" style="margin:10px 0">' + esc(msg || '') + '</p><button class="btn g" id="gbtn">Unlock</button></div>';
+    var go = function () { var a = document.getElementById('p1').value; post({ action: 'check', passcode: a }).then(function () { pass = a; try { sessionStorage.setItem('golive-pass', a); } catch (e) {} load(); }).catch(function (e) { document.getElementById('gmsg').textContent = e.message; }); };
+    document.getElementById('gbtn').onclick = go; document.getElementById('p1').onkeydown = function (e) { if (e.key === 'Enter') go(); };
+  }
+  function load() {
+    getJson(API).then(function (c) { cfg = c; orig = snap(); dirty = false; render(); }).catch(function () { $app.innerHTML = '<div class="card gate"><h2>Could not load the settings</h2></div>'; });
+  }
+
+  // ---------------- shell ----------------
+  function render() {
+    $app.innerHTML = '';
+    var top = el('<div class="topbar"><button class="btn g" id="saveBtn" disabled>Save changes</button><button class="btn line" id="revertBtn">Discard unsaved changes</button><span id="status" class="status"></span><span class="grow"></span><button class="btn line sm" id="pwBtn">Change passcode</button></div>');
+    $app.appendChild(top);
+    var tabs = el('<div class="tabs"></div>');
+    [['fields', 'Fields & dropdowns'], ['emails', 'Email wording'], ['history', 'History / undo'], ['help', 'How it works']].forEach(function (t) {
+      var b = el('<button class="tab' + (tab === t[0] ? ' on' : '') + '">' + t[1] + '</button>'); b.onclick = function () { tab = t[0]; render(); }; tabs.appendChild(b);
+    });
+    $app.appendChild(tabs);
+    var body = el('<div id="body"></div>'); $app.appendChild(body);
+    ({ fields: renderFields, emails: renderEmails, history: renderHistory, help: renderHelp })[tab](body);
+    document.getElementById('saveBtn').disabled = !dirty;
+    document.getElementById('saveBtn').onclick = save;
+    document.getElementById('revertBtn').onclick = function () { if (!dirty || confirm('Throw away your unsaved changes?')) load(); };
+    document.getElementById('pwBtn').onclick = changePass;
+    if (dirty) { var s = document.getElementById('status'); s.textContent = 'Unsaved changes'; }
+  }
+  function status(msg, cls) { var s = document.getElementById('status'); if (s) { s.textContent = msg; s.className = 'status ' + (cls || ''); } }
+
+  function problems() {
+    var out = [];
+    ['internal', 'welcome', 'tm'].forEach(function (k) {
+      var e = cfg.emails[k]; var bad = G.unknownRefs([e.subject, e.to, e.cc, e.body, e.attachments].join('\n'), cfg);
+      if (bad.length) out.push('"' + e.label + '" uses fields that do not exist: ' + bad.join(', '));
+    });
+    var seen = {}; cfg.sections.forEach(function (s) { s.fields.forEach(function (f) { if (f.type === 'select' && (!f.options || !f.options.length)) out.push('Dropdown "' + f.label + '" has no options'); }); });
+    return out;
+  }
+  function save() {
+    var p = problems();
+    if (p.length && !confirm('Some things look wrong:\n\n' + p.join('\n') + '\n\nSave anyway?')) return;
+    var msg = prompt('Short note about what you changed (shown in History):', 'Updated settings'); if (msg === null) return;
+    status('Saving…');
+    post({ action: 'save', passcode: pass, config: cfg, message: msg || 'Updated settings' }).then(function () { orig = snap(); dirty = false; document.getElementById('saveBtn').disabled = true; status('✓ Saved. The form uses the new settings straight away.', 'ok'); })
+      .catch(function (e) { status(e.message, 'bad'); });
+  }
+  function changePass() {
+    var n = prompt('New passcode (at least 6 characters):'); if (!n) return;
+    post({ action: 'setPasscode', passcode: pass, newPasscode: n }).then(function () { pass = n; try { sessionStorage.setItem('golive-pass', n); } catch (e) {} status('✓ Passcode changed.', 'ok'); }).catch(function (e) { status(e.message, 'bad'); });
+  }
+
+  // ---------------- fields ----------------
+  function allIds() { var a = []; cfg.sections.forEach(function (s) { s.fields.forEach(function (f) { a.push(f.id); }); }); return a; }
+  function slug(label) {
+    var w = String(label).replace(/[^A-Za-z0-9 ]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+    var id = w.map(function (x, i) { x = x.toLowerCase(); return i ? x.charAt(0).toUpperCase() + x.slice(1) : x; }).join('') || 'field';
+    if (!/^[a-z]/.test(id)) id = 'f' + id;
+    id = id.slice(0, 30); var base = id, n = 2, ids = allIds(); while (ids.indexOf(id) !== -1) id = base + n++;
+    return id;
+  }
+  function usedIn(id) {
+    var out = []; ['internal', 'welcome', 'tm'].forEach(function (k) { var e = cfg.emails[k]; if (G.refs([e.subject, e.to, e.cc, e.body, e.attachments].join('\n')).indexOf(id) !== -1) out.push(e.label); });
+    return out;
+  }
+  function move(arr, i, d) { var j = i + d; if (j < 0 || j >= arr.length) return; var t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+
+  function renderFields(body) {
+    body.appendChild(el('<div class="tip">Each field becomes a box on the form. To <b>use a field in an email</b>, open <b>Email wording</b> and insert it (the grey code next to each field, like <code>{{accountName}}</code>, is how emails refer to it). A dropdown\'s options are the choices people pick from.</div>'));
+    cfg.sections.forEach(function (s, si) {
+      var card = el('<div class="card"></div>');
+      var head = el('<div class="sec-head"><input type="text" value="' + esc(s.title) + '"><span class="grow"></span></div>');
+      head.querySelector('input').oninput = function (e) { s.title = e.target.value; markDirty(); };
+      [['↑', function () { move(cfg.sections, si, -1); }], ['↓', function () { move(cfg.sections, si, 1); }]].forEach(function (b) { var x = el('<button class="btn line sm">' + b[0] + '</button>'); x.onclick = function () { b[1](); markDirty(); render(); }; head.appendChild(x); });
+      var del = el('<button class="btn danger sm">Delete section</button>'); del.onclick = function () { if (s.fields.length) { alert('Delete or move this section\'s fields first.'); return; } cfg.sections.splice(si, 1); markDirty(); render(); }; head.appendChild(del);
+      card.appendChild(head);
+      s.fields.forEach(function (f, fi) { card.appendChild(fieldRow(s, si, f, fi)); if (open[f.id]) card.appendChild(fieldEditor(s, f)); });
+      var add = el('<button class="btn line sm" style="margin-top:12px">+ Add a field</button>');
+      add.onclick = function () {
+        var label = prompt('Name of the new field (what people see), e.g. "Preferred hotel":'); if (!label) return;
+        var type = (prompt('Type? Enter: text, longtext, dropdown, date, email or link', 'text') || 'text').toLowerCase().replace(/\s/g, '');
+        var map = { text: 'text', longtext: 'textarea', textarea: 'textarea', dropdown: 'select', select: 'select', date: 'date', email: 'email', link: 'url', url: 'url' };
+        var f = { id: slug(label), label: label.trim(), type: map[type] || 'text' };
+        if (f.type === 'select') { var o = prompt('Dropdown options, separated by commas:', 'Yes, No'); f.options = (o || 'Yes, No').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
+        s.fields.push(f); open[f.id] = true; markDirty(); render();
+      };
+      card.appendChild(add);
+      body.appendChild(card);
+    });
+    var addS = el('<button class="btn line">+ Add a section</button>'); addS.onclick = function () { var t = prompt('Section title:'); if (!t) return; cfg.sections.push({ id: 's' + Date.now(), title: t.trim(), fields: [] }); markDirty(); render(); }; body.appendChild(addS);
+  }
+  function fieldRow(s, si, f, fi) {
+    var typeName = (TYPES.filter(function (t) { return t[0] === f.type; })[0] || ['', f.type])[1];
+    var row = el('<div class="frow"><span class="lab">' + esc(f.label) + (f.required ? ' <span class="chip req">required</span>' : '') + '</span><span class="chip">' + typeName + (f.type === 'select' ? ' · ' + (f.options || []).length + ' options' : '') + '</span><span class="chip id" title="Click to copy">{{' + f.id + '}}</span><span class="grow"></span></div>');
+    row.querySelector('.chip.id').onclick = function () { var t = '{{' + f.id + '}}'; try { navigator.clipboard.writeText(t); status('Copied ' + t, 'ok'); } catch (e) {} };
+    var acts = [['Edit', function () { open[f.id] = !open[f.id]; render(); }], ['↑', function () { move(s.fields, fi, -1); markDirty(); render(); }], ['↓', function () { move(s.fields, fi, 1); markDirty(); render(); }], ['Delete', function () {
+      var u = usedIn(f.id); if (!confirm('Delete the field "' + f.label + '"?' + (u.length ? '\n\nIt is used in: ' + u.join(', ') + '.\nThose emails will show [' + f.label + '] until you edit them.' : ''))) return;
+      s.fields.splice(fi, 1); markDirty(); render();
+    }]];
+    acts.forEach(function (a) { var b = el('<button class="btn ' + (a[0] === 'Delete' ? 'danger' : 'line') + ' sm">' + a[0] + '</button>'); b.onclick = a[1]; row.appendChild(b); });
+    return row;
+  }
+  function fieldEditor(s, f) {
+    var box = el('<div class="edit"></div>');
+    var typeOpts = TYPES.map(function (t) { return '<option value="' + t[0] + '"' + (f.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('');
+    var secOpts = cfg.sections.map(function (x) { return '<option value="' + esc(x.id) + '"' + (x === s ? ' selected' : '') + '>' + esc(x.title) + '</option>'; }).join('');
+    box.innerHTML = '<div class="two"><div><label class="l">Label (what people see)</label><input type="text" data-k="label" value="' + esc(f.label) + '"></div>'
+      + '<div><label class="l">Type</label><select data-k="type">' + typeOpts + '</select></div></div>'
+      + '<div id="optwrap" style="' + (f.type === 'select' ? '' : 'display:none') + '"><label class="l">Dropdown options (one per line)</label><textarea data-k="options" rows="5">' + esc((f.options || []).join('\n')) + '</textarea></div>'
+      + '<div class="two"><div><label class="l">Starting value (optional)</label><input type="text" data-k="default" value="' + esc(f.default || '') + '"></div>'
+      + '<div><label class="l">Hint inside the box (optional)</label><input type="text" data-k="placeholder" value="' + esc(f.placeholder || '') + '"></div></div>'
+      + '<label class="l">Help text under the label (optional)</label><input type="text" data-k="help" value="' + esc(f.help || '') + '">'
+      + '<div class="two"><div><label class="l">Section</label><select data-k="section">' + secOpts + '</select></div>'
+      + '<div><label class="l">&nbsp;</label><label style="font-size:14px"><input type="checkbox" data-k="required"' + (f.required ? ' checked' : '') + '> Required (must be filled in to create an email)</label></div></div>'
+      + '<p style="margin-top:10px"><small>Field ID: <code>' + f.id + '</code> — fixed, so emails that use it keep working even if you rename the label.</small></p>';
+    box.querySelectorAll('[data-k]').forEach(function (inp) {
+      var k = inp.dataset.k;
+      var h = function () {
+        if (k === 'required') f.required = inp.checked;
+        else if (k === 'options') f.options = inp.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+        else if (k === 'section') { if (inp.value !== s.id) { var to = cfg.sections.filter(function (x) { return x.id === inp.value; })[0]; s.fields.splice(s.fields.indexOf(f), 1); to.fields.push(f); markDirty(); render(); return; } }
+        else if (k === 'type') { f.type = inp.value; if (f.type !== 'select') delete f.options; else if (!f.options) f.options = ['Option 1', 'Option 2']; document.getElementById('optwrap').style.display = f.type === 'select' ? '' : 'none'; if (f.type === 'select') { box.querySelector('[data-k=options]').value = f.options.join('\n'); } }
+        else if (inp.value === '') delete f[k]; else f[k] = inp.value;
+        markDirty();
+      };
+      inp.addEventListener('input', h); inp.addEventListener('change', h);
+    });
+    return box;
+  }
+
+  // ---------------- emails ----------------
+  function previewValues() {
+    var v = {}; cfg.sections.forEach(function (s) { s.fields.forEach(function (f) { if (f.default) v[f.id] = f.default; }); });
+    if (sampleOn) Object.keys(SAMPLE).forEach(function (k) { v[k] = SAMPLE[k]; });
+    return v;
+  }
+  function insertAt(ta, text) { var s = ta.selectionStart, e = ta.selectionEnd; ta.value = ta.value.slice(0, s) + text + ta.value.slice(e); ta.focus(); ta.selectionStart = ta.selectionEnd = s + text.length; ta.dispatchEvent(new Event('input')); }
+
+  function renderEmails(body) {
+    var sel = el('<div class="tabs"></div>');
+    ['internal', 'welcome', 'tm'].forEach(function (k) { var b = el('<button class="tab' + (emailKey === k ? ' on' : '') + '">' + esc(cfg.emails[k].label) + '</button>'); b.onclick = function () { emailKey = k; render(); }; sel.appendChild(b); });
+    body.appendChild(sel);
+    var e = cfg.emails[emailKey];
+    var split = el('<div class="split"></div>'), left = el('<div class="card"></div>'), right = el('<div></div>');
+    left.innerHTML = '<div class="two"><div><label class="l">Name of this email (tab label)</label><input type="text" data-e="label" value="' + esc(e.label) + '"></div>'
+      + '<div><label class="l">Log to the tracker as (Internal / External, or blank for none)</label><input type="text" data-e="tracker" value="' + esc(e.tracker || '') + '"></div></div>'
+      + '<label class="l">Subject</label><input type="text" data-e="subject" value="' + esc(e.subject) + '">'
+      + '<div class="two"><div><label class="l">To (addresses and/or fields, comma separated)</label><textarea data-e="to" rows="3">' + esc(e.to) + '</textarea></div>'
+      + '<div><label class="l">CC</label><textarea data-e="cc" rows="3">' + esc(e.cc) + '</textarea></div></div>'
+      + '<label class="l">"Remember to attach…" reminder (shown after creating the email; blank for none)</label><input type="text" data-e="attachments" value="' + esc(e.attachments || '') + '">'
+      + '<label class="l">Email body</label><div class="snips" id="snips"></div><textarea class="mono" data-e="body" id="bodyTa">' + esc(e.body) + '</textarea><div id="warns"></div>';
+    var snips = left.querySelector('#snips');
+    var fieldSel = document.createElement('select'); fieldSel.style.maxWidth = '260px'; fieldSel.innerHTML = '<option value="">Insert a field…</option>' + cfg.sections.map(function (s) { return '<optgroup label="' + esc(s.title) + '">' + s.fields.map(function (f) { return '<option value="' + f.id + '">' + esc(f.label) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+    fieldSel.onchange = function () { if (fieldSel.value) { insertAt(left.querySelector('#bodyTa'), '{{' + fieldSel.value + '}}'); fieldSel.value = ''; } };
+    snips.appendChild(fieldSel);
+    [['Heading', '## Heading text\n'], ['Date', '{{date:goLiveDate}}'], ['If / else', '{{#if fieldId=Value}}\nShown when the field equals Value.\n{{else}}\nShown otherwise.\n{{/if}}\n'], ['Names', '{{names:contacts:Travel Manager}}'], ['Divider', '---\n']].forEach(function (s) {
+      var b = el('<button class="btn line sm">' + s[0] + '</button>'); b.onclick = function () { insertAt(left.querySelector('#bodyTa'), s[1]); }; snips.appendChild(b);
+    });
+    left.querySelectorAll('[data-e]').forEach(function (inp) { inp.addEventListener('input', function () { e[inp.dataset.e] = inp.value; markDirty(); paintPreview(); }); });
+
+    right.innerHTML = '<div class="snips"><label style="font-size:13px"><input type="checkbox" id="sampleCb"' + (sampleOn ? ' checked' : '') + '> Preview with example account details</label></div><div class="mailwin" id="pv"></div>';
+    right.querySelector('#sampleCb').onchange = function (ev) { sampleOn = ev.target.checked; paintPreview(); };
+    split.appendChild(left); split.appendChild(right); body.appendChild(split);
+
+    function paintPreview() {
+      var r = G.renderEmail(e, previewValues(), cfg);
+      var hi = function (t) { return esc(t).replace(/\[[^\]\n]{1,80}\]/g, function (m) { return '<span class="miss">' + m + '</span>'; }); };
+      right.querySelector('#pv').innerHTML = '<div class="mailwin-bar">Preview — what the form will produce</div><div class="mailwin-row"><b>To</b><span>' + (r.to.length ? esc(r.to.join('; ')) : '<span class="miss">[recipients]</span>') + '</span></div>'
+        + (r.cc.length ? '<div class="mailwin-row"><b>Cc</b><span>' + esc(r.cc.join('; ')) + '</span></div>' : '') + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div><div class="mailwin-body">' + hi(r.body) + '</div>';
+      var bad = G.unknownRefs([e.subject, e.to, e.cc, e.body, e.attachments].join('\n'), cfg);
+      left.querySelector('#warns').innerHTML = bad.length ? '<div class="warn">This email uses fields that do not exist: <b>' + esc(bad.join(', ')) + '</b>. Check the spelling, or add them under Fields.</div>' : '';
+    }
+    paintPreview();
+  }
+
+  // ---------------- history ----------------
+  function renderHistory(body) {
+    body.appendChild(el('<div class="tip">Every save is kept. If a change goes wrong, restore an earlier version below, or reset everything to the original settings.</div>'));
+    var card = el('<div class="card"><h2 class="t">Saved versions</h2><div id="vlist"><small>Loading…</small></div></div>'); body.appendChild(card);
+    getJson(API + '?versions=1').then(function (j) {
+      var list = card.querySelector('#vlist'); list.innerHTML = '';
+      (j.versions || []).forEach(function (v, i) {
+        var row = el('<div class="vrow"><span class="grow"><b>' + esc(v.message) + '</b><br><small>' + new Date(v.date).toLocaleString() + (i === 0 ? ' · current' : '') + '</small></span></div>');
+        if (i > 0) { var b = el('<button class="btn line sm">Restore this version</button>'); b.onclick = function () { if (!confirm('Restore this version? Your current settings are kept in History, so you can undo this too.')) return; post({ action: 'restore', passcode: pass, sha: v.sha }).then(function () { status('✓ Restored.', 'ok'); load(); }).catch(function (e) { status(e.message, 'bad'); }); }; row.appendChild(b); }
+        list.appendChild(row);
+      });
+    }).catch(function () { card.querySelector('#vlist').textContent = 'Could not load the history.'; });
+    var reset = el('<div class="card"><h2 class="t">Start over</h2><p style="font-size:14px;margin-bottom:10px">Load the original fields and email wording from Jenna\'s workbook. Nothing changes until you press Save.</p><button class="btn danger">Reset to the original settings</button></div>');
+    reset.querySelector('button').onclick = function () { if (!confirm('Replace all fields and emails here with the original ones? (Not saved until you press Save changes.)')) return; getJson('go-live-default-config.json').then(function (c) { cfg = c; markDirty(); tab = 'fields'; render(); status('Original settings loaded. Press Save changes to keep them.'); }); };
+    body.appendChild(reset);
+  }
+
+  // ---------------- help ----------------
+  function renderHelp(body) {
+    body.appendChild(el('<div class="card"><h2 class="t">How the email wording works</h2><p style="font-size:14px;margin-bottom:10px">Write the email as normal text. Anything in double curly brackets is filled in from the form.</p><pre class="help">'
+      + esc('{{accountName}}                    the value of a field\n{{cutoverDate|N/A}}                the value, or "N/A" if the box is empty\n{{date:goLiveDate}}               a date written out: Tuesday October 6th, 2026\n{{first:leadAgent}}               first word only: Melissa\n{{names:contacts:Travel Manager}} first names of the contacts with that role: Heidi and Dyllan\n{{emails:contacts:Travel Manager}} their email addresses\n{{contactLines:contacts}}         one line per contact: Name — Title — email\n\n{{#if loyalty=Migrated}}          show a part only when a dropdown has a value\nThis text only appears then.\n{{else}}\nThis text appears otherwise.\n{{/if}}\n\nConditions:  field  (is filled in)   !field  (is empty)   field=Value   field!=Value   field=A|B  (either)\n\n## Heading                        a ruled, capitalised heading\n---                               a divider line')
+      + '</pre><div class="tip">If a field is left empty on the form, the email shows it as <span class="miss">[Field name]</span> in gold so nobody sends it by accident.</div>'
+      + '<div class="tip"><b>Main Contacts</b> are typed one per line as <code>Name | Title | Email | Role</code>. People whose Role contains "Travel Manager" are who the welcome letter and Travel Manager email are addressed to.</div></div>'));
+  }
+
+  gate();
+})();
+</script>
+</body>
+</html>
