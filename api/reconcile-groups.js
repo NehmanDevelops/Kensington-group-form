@@ -266,6 +266,8 @@ export default async function handler(req, res) {
         if (bc.length) backUpdates.push({ id: tr.id, cells: bc, row: tr.rowNumber });
       }
     }
+    out.approvalValues = {}; for (const tr of theirs.rows || []) { const v = rawVal(tr, approvedCol.id) || '(blank)'; out.approvalValues[v] = (out.approvalValues[v] || 0) + 1; }
+    out.alreadyCopied = byKey.size;
     out.approvedNew = toCreate.length; out.rowsToUpdate = toUpdate.length; out.backSyncRows = backUpdates.length;
     out.skipped = skipped.length; out.skippedDetail = skipped;
     out.plannedNewRows = toCreate.map(c => ({ theirRow: c.row, fields: c.cells.length }));
