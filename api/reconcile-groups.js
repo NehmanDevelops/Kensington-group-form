@@ -199,7 +199,7 @@ export default async function handler(req, res) {
     const missingCols = ARB_NEW_COLS.filter(c => !O[tkey(c.title)]);
     out.columnsToAdd = missingCols.map(c => c.title);
     if (missingCols.length && commit) {
-      await w('POST', `/sheets/${ENVOY_SHEET}/columns`, missingCols.map((c, i) => ({ title: c.title, type: c.type, index: ours.columns.length + i, ...(c.options ? { options: c.options } : {}) })));
+      await w('POST', `/sheets/${ENVOY_SHEET}/columns`, missingCols.map(c => ({ title: c.title, type: c.type, index: ours.columns.length, ...(c.options ? { options: c.options } : {}) })));
       ours = await api(`/sheets/${ENVOY_SHEET}`); O = byTitle(ours);
       out.columnsAdded = missingCols.length;
     }
