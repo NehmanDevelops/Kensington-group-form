@@ -236,7 +236,7 @@ export default async function handler(req, res) {
         continue;
       }
       const gid = (theirGroupCol && rawVal(tr, theirGroupCol.id)) || ARB_DEFAULT_GROUP_ID;
-      if (!existing && !gid) { skipped.push({ row: tr.rowNumber, reason: 'approved but no Group ID (set ARB_DEFAULT_GROUP_ID or add a Group ID column on their sheet)' }); continue; }
+      if (!existing && !gid) out.noGroupId = (out.noGroupId || 0) + 1;   // still copied; Group ID stays blank until Arbonne supplies one
 
       if (!existing) {
         const cells = [];
@@ -251,6 +251,8 @@ export default async function handler(req, res) {
           const v = rawVal(tr, p.tc.id), cur = rawVal(existing, p.uc.id);
           if (v !== '' && v !== cur) cells.push({ columnId: p.uc.id, value: v });
         }
+        const gcol = O[tkey('Group ID')];
+        if (gcol && gid && gid !== rawVal(existing, gcol.id)) cells.push({ columnId: gcol.id, value: gid });
         if (cells.length) toUpdate.push({ id: existing.id, cells, row: tr.rowNumber });
       }
       // our -> theirs
