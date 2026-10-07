@@ -145,6 +145,28 @@ export default async function handler(req, res) {
     return { duplicatesDeleted: toDelete.length, duplicateGids: toDelete.map(d => d.gid) };
   }
 
+  // TEMPORARY read-only discovery (Arbonne project, 2026-10-07): ?peek=list&name=<text> lists sheets this token can
+  // see; ?peek=<sheetId> returns that sheet's column layout. Names / counts only -- NO row data. Remove after use.
+  if (req.query?.peek) {
+    try {
+      const q = String(req.query.peek);
+      const me = await api('/users/me');
+      const out = { tokenOwner: { email: me.email, name: [me.firstName, me.lastName].filter(Boolean).join(' ') } };
+      if (q === 'list') {
+        const needle = String(req.query.name || '').toLowerCase();
+        const all = await api('/sheets?includeAll=true');
+        out.sheets = (all.data || []).filter(s => !needle || (s.name || '').toLowerCase().includes(needle))
+          .map(s => ({ id: s.id, name: s.name, accessLevel: s.accessLevel, permalink: s.permalink }));
+        return res.status(200).json(out);
+      }
+      const sh = await api(`/sheets/${q}?pageSize=1`);
+      if (sh.errorCode) return res.status(200).json({ ...out, error: sh.errorCode, message: sh.message });
+      out.sheet = { id: sh.id, name: sh.name, accessLevel: sh.accessLevel, totalRowCount: sh.totalRowCount, permalink: sh.permalink,
+        columns: (sh.columns || []).map(c => ({ id: c.id, title: c.title, type: c.type, primary: !!c.primary, options: c.options, formula: !!c.formula, locked: !!c.locked })) };
+      return res.status(200).json(out);
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // Smartsheet webhook verification challenge — echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
   if (hookChallenge) {
