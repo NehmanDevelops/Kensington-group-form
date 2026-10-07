@@ -72,6 +72,12 @@
 <script>
 (function () {
   var G = window.GoLive;
+  // One page, one link: the editor lives inside the "Customize" tab of the form. Opened on its own, it forwards there.
+  var embedded = window.self !== window.top;
+  if (!embedded) { location.replace('go-live-communication.html#customize'); return; }
+  document.querySelector('header').style.display = 'none';
+  document.querySelector('main').style.margin = '0 auto 40px'; document.querySelector('main').style.paddingTop = '0';
+  function tellParent() { try { window.parent.postMessage({ type: 'golive-config-saved' }, location.origin); } catch (e) {} }
   var API = 'https://link-portal-alpha.vercel.app/api/golive-config';
   var $app = document.getElementById('app');
   var cfg = null, orig = '', pass = '', tab = 'fields', emailKey = 'internal', open = {}, sampleOn = true, dirty = false;
@@ -151,7 +157,7 @@
     if (p.length && !confirm('Some things look wrong:\n\n' + p.join('\n') + '\n\nSave anyway?')) return;
     var msg = prompt('Short note about what you changed (shown in History):', 'Updated settings'); if (msg === null) return;
     status('Saving…');
-    post({ action: 'save', passcode: pass, config: cfg, message: msg || 'Updated settings' }).then(function () { orig = snap(); dirty = false; document.getElementById('saveBtn').disabled = true; status('✓ Saved. The form uses the new settings straight away.', 'ok'); })
+    post({ action: 'save', passcode: pass, config: cfg, message: msg || 'Updated settings' }).then(function () { orig = snap(); dirty = false; document.getElementById('saveBtn').disabled = true; status('✓ Saved. The form uses the new settings straight away.', 'ok'); tellParent(); })
       .catch(function (e) { status(e.message, 'bad'); });
   }
   function changePass() {
@@ -290,7 +296,7 @@
       var list = card.querySelector('#vlist'); list.innerHTML = '';
       (j.versions || []).forEach(function (v, i) {
         var row = el('<div class="vrow"><span class="grow"><b>' + esc(v.message) + '</b><br><small>' + new Date(v.date).toLocaleString() + (i === 0 ? ' · current' : '') + '</small></span></div>');
-        if (i > 0) { var b = el('<button class="btn line sm">Restore this version</button>'); b.onclick = function () { if (!confirm('Restore this version? Your current settings are kept in History, so you can undo this too.')) return; post({ action: 'restore', passcode: pass, sha: v.sha }).then(function () { status('✓ Restored.', 'ok'); load(); }).catch(function (e) { status(e.message, 'bad'); }); }; row.appendChild(b); }
+        if (i > 0) { var b = el('<button class="btn line sm">Restore this version</button>'); b.onclick = function () { if (!confirm('Restore this version? Your current settings are kept in History, so you can undo this too.')) return; post({ action: 'restore', passcode: pass, sha: v.sha }).then(function () { status('✓ Restored.', 'ok'); tellParent(); load(); }).catch(function (e) { status(e.message, 'bad'); }); }; row.appendChild(b); }
         list.appendChild(row);
       });
     }).catch(function () { card.querySelector('#vlist').textContent = 'Could not load the history.'; });

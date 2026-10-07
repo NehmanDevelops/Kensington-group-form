@@ -71,6 +71,19 @@
   .blank-list { font-size:12px; color:#7a5b00; margin-top:8px; }
   #fireworks { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; }
   .loading { text-align:center; padding:60px 0; color:var(--ink-mute); }
+  .pill.on { background:var(--green); color:var(--bone); border-color:var(--green); }
+  .view { display:none; } .view.on { display:block; }
+  .wrap { max-width:1240px; margin:22px auto 70px; padding:0 20px; }
+  .tr-top { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  .tr-top input { flex:1; min-width:200px; max-width:380px; font:inherit; font-size:14px; padding:10px 13px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  table.tr { width:100%; border-collapse:collapse; font-size:14px; }
+  table.tr th { text-align:left; font-weight:500; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-mute); padding:12px 14px; border-bottom:1px solid var(--line); background:var(--cream); }
+  table.tr td { padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.tr tr:hover td { background:#fbf8ee; }
+  .tag { display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; background:var(--cream); color:var(--ink-soft); }
+  .tag.internal { background:#e6eef0; } .tag.welcome { background:#e4efe7; } .tag.tm { background:#f2ebdc; }
+  .empty { text-align:center; color:var(--ink-mute); padding:44px 10px; font-size:14px; }
+  #editorFrame { width:100%; height:calc(100vh - 150px); min-height:600px; border:1px solid var(--line); background:var(--bone); box-shadow:var(--shadow); }
 </style>
 </head>
 <body>
@@ -83,12 +96,15 @@
   <p class="hero-sub">Fill in the account once. The internal communication, the client welcome letter and the Travel Manager next steps are all written for you, ready to open in Outlook.</p>
 </header>
 
-<div class="bar">
+<nav class="bar" id="nav">
+  <button type="button" class="pill on" data-view="create">Create emails</button>
+  <button type="button" class="pill" data-view="tracker">Tracker</button>
+  <button type="button" class="pill" data-view="customize" title="Add dropdowns, change labels, edit the email wording">⚙ Customize</button>
   <button type="button" class="pill" id="newBtn">+ New account</button>
-  <a class="pill" href="go-live-admin.html" title="Add dropdowns, change labels, edit the email wording">⚙ Customize form &amp; emails</a>
   <span class="pill saved" id="savedNote">Draft saves on this computer</span>
-</div>
+</nav>
 
+<div class="view on" id="view-create">
 <div class="layout">
   <form id="goLiveForm" novalidate><div class="loading" id="loading">Loading…</div></form>
 
@@ -104,6 +120,20 @@
     <p class="note">Outlook opens with the To, CC, subject and the email already written. Gold = still to fill in. Outlook may wrap long lines slightly differently, and adds your own signature.</p>
   </aside>
 </div>
+</div>
+
+<div class="view" id="view-tracker"><div class="wrap">
+  <div class="card section">
+    <div class="section-header"><span class="section-num">&#9679;</span><h2 class="section-title">Tracker</h2></div>
+    <p class="field-help" style="margin-bottom:14px">Every email created from this form is logged here, and also added to the Excel tracker. “Reopen” brings back the account details on this computer so you can create the next email without retyping.</p>
+    <div class="tr-top"><input type="text" id="trSearch" placeholder="Search by account, person or email…"><a class="btn ghost" id="trXlsx" href="#" target="_blank" rel="noopener">Open the Excel tracker ↗</a><button type="button" class="btn ghost" id="trRefresh">Refresh</button></div>
+    <div id="trBody"><div class="empty">Loading…</div></div>
+  </div>
+</div></div>
+
+<div class="view" id="view-customize"><div class="wrap">
+  <iframe id="editorFrame" title="Customize the form and emails"></iframe>
+</div></div>
 
 <script src="go-live-engine.js"></script>
 <script>
@@ -231,6 +261,7 @@
       + (r.cc.length ? '&cc=' + encodeURIComponent(r.cc.join(',')) : '') + '&body=' + encodeURIComponent(r.body);
     var em = cfg.emails[active];
     if (em.tracker) logTracker(em.tracker);
+    logEntry(active, em); saveSnapshot();
     var attach = G.render(em.attachments || '', values, cfg).text;
     var reminder = attach ? ' <strong>Remember to attach ' + esc(attach) + '</strong> before you send.' : '';
 
@@ -271,10 +302,71 @@
     requestAnimationFrame(frame);
   }
 
+  // ---------- tracker (shared log + this computer's saved accounts) ----------
+  var TRACKER_XLSX = 'https://navigatrgroup-my.sharepoint.com/:x:/g/personal/nehman_rahimi_kensingtoncorporate_com/IQBGtB9zHIChS7mv-DckNTtgAcdxUw4UzE0JYEOAC0Lkoqc';
+  var SNAP_KEY = 'golive-accounts-v1', trEntries = null;
+  function snaps() { try { return JSON.parse(localStorage.getItem(SNAP_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function saveSnapshot() {   // full account details stay on THIS computer only (client contact details are not sent anywhere else)
+    var name = String(values.accountName || '').trim(); if (!name) return;
+    var all = snaps(); all[name.toLowerCase()] = { name: name, values: values, ts: Date.now() };
+    try { localStorage.setItem(SNAP_KEY, JSON.stringify(all)); } catch (e) {}
+  }
+  function logEntry(key, em) {
+    fetch(REMOTE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'log', entry: {
+      account: values.accountName || '', email: key, label: em.label || key, by: values.submittedBy || '', goLive: values.goLiveDate || '', region: values.region || '' } }) })
+      .then(function () { trEntries = null; }).catch(function () {});
+  }
+  function fmtWhen(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
+  function loadTracker(force) {
+    $('trXlsx').href = (cfg && cfg.trackerUrl) || TRACKER_XLSX;
+    if (trEntries && !force) return paintTracker();
+    $('trBody').innerHTML = '<div class="empty">Loading…</div>';
+    fetch(REMOTE + '?log=1').then(function (r) { return r.json(); }).then(function (j) { trEntries = j.entries || []; paintTracker(); })
+      .catch(function () { $('trBody').innerHTML = '<div class="empty">Could not load the tracker. Try Refresh.</div>'; });
+  }
+  function paintTracker() {
+    var q = ($('trSearch').value || '').toLowerCase(), all = snaps();
+    var rows = (trEntries || []).filter(function (e) { return !q || (e.account + ' ' + e.by + ' ' + e.label).toLowerCase().indexOf(q) !== -1; });
+    if (!rows.length) { $('trBody').innerHTML = '<div class="empty">' + (trEntries && trEntries.length ? 'Nothing matches your search.' : 'No emails created yet. They will appear here as you create them.') + '</div>'; return; }
+    var h = '<table class="tr"><thead><tr><th>When</th><th>Account</th><th>Email</th><th>Created by</th><th>Go-live</th><th></th></tr></thead><tbody>';
+    rows.forEach(function (e) {
+      var has = !!all[String(e.account).toLowerCase()];
+      h += '<tr><td>' + esc(fmtWhen(e.ts)) + '</td><td><b>' + esc(e.account) + '</b>' + (e.region ? '<br><small style="color:var(--ink-mute)">' + esc(e.region) + '</small>' : '') + '</td><td><span class="tag ' + esc(e.email) + '">' + esc(e.label || e.email) + '</span></td><td>' + esc(e.by) + '</td><td>' + esc(G.fmtDate(e.goLive) || e.goLive || '') + '</td><td>'
+        + (has ? '<button type="button" class="btn ghost" data-reopen="' + esc(String(e.account).toLowerCase()) + '" style="padding:8px 14px">Reopen</button>' : '') + '</td></tr>';
+    });
+    $('trBody').innerHTML = h + '</tbody></table>';
+    $('trBody').querySelectorAll('[data-reopen]').forEach(function (b) { b.addEventListener('click', function () {
+      var s = snaps()[b.dataset.reopen]; if (!s) return;
+      values = s.values; applyDefaults(); saveDraft(); renderForm(); renderPreview(); showView('create'); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }); });
+  }
+  $('trSearch').addEventListener('input', paintTracker);
+  $('trRefresh').addEventListener('click', function () { loadTracker(true); });
+
+  // ---------- one page, three views ----------
+  function showView(v) {
+    if (['create', 'tracker', 'customize'].indexOf(v) === -1) v = 'create';
+    document.querySelectorAll('.view').forEach(function (x) { x.classList.toggle('on', x.id === 'view-' + v); });
+    document.querySelectorAll('#nav [data-view]').forEach(function (b) { b.classList.toggle('on', b.dataset.view === v); });
+    $('newBtn').style.display = v === 'create' ? '' : 'none'; $('savedNote').style.display = v === 'create' ? '' : 'none';
+    if (v === 'tracker') loadTracker(false);
+    if (v === 'customize' && !$('editorFrame').getAttribute('src')) $('editorFrame').setAttribute('src', 'go-live-admin.html?embed=1');
+    if (location.hash.replace('#', '') !== v) { try { history.replaceState(null, '', '#' + v); } catch (e) { location.hash = v; } }
+  }
+  document.querySelectorAll('#nav [data-view]').forEach(function (b) { b.addEventListener('click', function () { showView(b.dataset.view); }); });
+  window.addEventListener('hashchange', function () { showView(location.hash.replace('#', '')); });
+
+  // the editor (inside the Customize tab) tells us when it saved, so the form uses the new settings straight away
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'golive-config-saved') return;
+    loadConfig().then(function (c) { cfg = c; applyDefaults(); renderForm(); renderTabs(); renderPreview(); }).catch(function () {});
+  });
+
   // ---------- start ----------
   loadConfig().then(function (c) {
     cfg = c; loadDraft(); applyDefaults();
     renderForm(); renderTabs(); $('previewCol').style.display = ''; renderPreview();
+    showView(location.hash.replace('#', ''));
   }).catch(function () { $('loading').textContent = 'Could not load the form settings. Please refresh the page.'; });
 })();
 </script>
