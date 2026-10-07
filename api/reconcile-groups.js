@@ -158,7 +158,7 @@ export default async function handler(req, res) {
   const ARB_DEFAULT_GROUP_ID = '';         // used when Arbonne's sheet has no (or a blank) "Group ID" column
   const ARB_SOURCE = 'Arbonne NVPLM 2027';
   const ARB_THEM_TO_US = [
-    ['Notes from Arbonne', 'Additional Notes'], ['Consultant ID #', 'Expense Account/Employee Id'], ['Email Address', 'Email'],
+    ['Notes from Arbonne', 'Client Notes'], ['Consultant ID #', 'Expense Account/Employee Id'], ['Email Address', 'Email'],
     ['On-Site Phone Number', 'Phone Number'], ['Departure City or Airport', 'Departure Airport'], ['Arrival Date', 'Departure Date'],
     ['Date of Return', 'Return Date'], ['Preferred Departure Time', 'Departure Time'], ['Preferred Return Time', 'Return Time'],
     ['Seat Preference', 'Seat Preference'], ['Preferred Airline', 'Airline Preference 1'],
@@ -170,12 +170,13 @@ export default async function handler(req, res) {
     ['NVP Approved by Arbonne', 'NVP Approved by Arbonne'], ['Guest Approved by Arbonne', 'Guest Approved by Arbonne'],
     ['Did you achieve a guest?', 'Did you achieve a guest?'], ['Assistance with flight booking? (Unearned guest)', 'Assistance with flight booking? (Unearned guest)'],
   ];
-  const ARB_US_TO_THEM = [['Agent Notes', 'Notes From Travel Edge'], ['Agent Assigned:', 'Travel Edge Team Member']];
+  const ARB_US_TO_THEM = [['Agent Notes', 'Notes From Travel Edge'], ['Agent Assigned:', 'Travel Edge Team Member'], ['In progress', 'In Progress'], ['Completed', 'Completed']];
   const ARB_NEW_COLS = [
     { title: 'NVP Approved by Arbonne', type: 'PICKLIST', options: ['YES', 'NO', 'HOLD', 'Duplicate'] },
     { title: 'Guest Approved by Arbonne', type: 'PICKLIST', options: ['YES', 'NO', 'HOLD', 'Duplicate'] },
     { title: 'Did you achieve a guest?', type: 'PICKLIST', options: ['Yes', 'No'] },
     { title: 'Assistance with flight booking? (Unearned guest)', type: 'PICKLIST', options: ['Yes', 'No'] },
+    { title: 'Client Notes', type: 'TEXT_NUMBER' },
     { title: 'Arbonne Row ID', type: 'TEXT_NUMBER' },
   ];
   const tkey = s => String(s == null ? '' : s).toLowerCase().replace(/[‘’'`]/g, '').replace(/\s+/g, ' ').trim();
@@ -235,7 +236,7 @@ export default async function handler(req, res) {
         if (cells.length) toUpdate.push({ id: existing.id, cells, row: tr.rowNumber });
         continue;
       }
-      const gid = (theirGroupCol && rawVal(tr, theirGroupCol.id)) || ARB_DEFAULT_GROUP_ID;
+      const gid = String((theirGroupCol && rawVal(tr, theirGroupCol.id)) || ARB_DEFAULT_GROUP_ID).trim().split(/[s=]/)[0];   // dropdown may read 'MLTIARBJAN27OGGC = Canadian'
       if (!existing && !gid) out.noGroupId = (out.noGroupId || 0) + 1;   // still copied; Group ID stays blank until Arbonne supplies one
 
       if (!existing) {
@@ -258,7 +259,10 @@ export default async function handler(req, res) {
       // our -> theirs
       if (existing) {
         const bc = [];
-        for (const b of back) { const v = rawVal(existing, b.uc.id), cur = rawVal(tr, b.tc.id); if (v !== cur) bc.push({ columnId: b.tc.id, value: v }); }
+        for (const b of back) {
+          if (b.tc.type === 'CHECKBOX') { const v = rawVal(existing, b.uc.id) === 'true', cur = rawVal(tr, b.tc.id) === 'true'; if (v !== cur) bc.push({ columnId: b.tc.id, value: v }); continue; }
+          const v = rawVal(existing, b.uc.id), cur = rawVal(tr, b.tc.id); if (v !== cur) bc.push({ columnId: b.tc.id, value: v });
+        }
         if (bc.length) backUpdates.push({ id: tr.id, cells: bc, row: tr.rowNumber });
       }
     }
