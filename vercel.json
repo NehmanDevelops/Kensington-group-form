@@ -1,9 +1,19 @@
 {
   "crons": [
-    { "path": "/api/reconcile-groups?commit=1", "schedule": "0 13 * * *" }
+    {
+      "path": "/api/reconcile-groups?commit=1",
+      "schedule": "0 13 * * *"
+    }
   ],
   "functions": {
-    "api/create-branch.js": { "maxDuration": 60 },
-    "api/amgine.js": { "maxDuration": 60 }
+    "api/create-branch.js": {
+      "maxDuration": 60
+    },
+    "api/amgine.js": {
+      "maxDuration": 60
+    },
+    "api/reconcile-groups.js": {
+      "maxDuration": 60
+    }
   }
 }

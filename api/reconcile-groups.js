@@ -145,6 +145,155 @@ export default async function handler(req, res) {
     return { duplicatesDeleted: toDelete.length, duplicateGids: toDelete.map(d => d.gid) };
   }
 
+  // ── Arbonne NVPLM sync (2026-10-07) ───────────────────────────────────────
+  // Arbonne's Smartsheet "Flights US/CA NVPLM 2027 Maui Trip" -> our "2. ENVOY Traveller MasterSheet".
+  // Rule (Vera/Jos): ONLY rows whose "NVP Approved by Arbonne" = YES are copied. Their data flows to us; our Agent Notes /
+  // Agent Assigned flow back to their "Notes From Travel Edge" / "Travel Edge Team Member". Their Status is ignored.
+  // Matching is by column TITLE (never column ids). Each synced row is keyed by "Arbonne Row ID" on our sheet, so a row
+  // is created once and then updated in place. Manual run: ?arbonne=1 (dry run) / ?arbonne=1&commit=1.
+  // Webhooks + the daily cron only run it when ARB_ENABLED is true.
+  const ARB_SHEET = '4224539799277444';
+  const ENVOY_SHEET = '8780932377956228';
+  const ARB_ENABLED = false;               // flip to true once the Group ID question is settled and a live test passed
+  const ARB_DEFAULT_GROUP_ID = '';         // used when Arbonne's sheet has no (or a blank) "Group ID" column
+  const ARB_SOURCE = 'Arbonne NVPLM 2027';
+  const ARB_THEM_TO_US = [
+    ['Notes from Arbonne', 'Additional Notes'], ['Consultant ID #', 'Expense Account/Employee Id'], ['Email Address', 'Email'],
+    ['On-Site Phone Number', 'Phone Number'], ['Departure City or Airport', 'Departure Airport'], ['Arrival Date', 'Departure Date'],
+    ['Date of Return', 'Return Date'], ['Preferred Departure Time', 'Departure Time'], ['Preferred Return Time', 'Return Time'],
+    ['Seat Preference', 'Seat Preference'], ['Preferred Airline', 'Airline Preference 1'],
+    ['NVP First Name', 'First Name'], ['NVP Middle Name', 'Middle Name'], ['NVP Last Name', 'Last Name'], ['NVP Date of Birth', 'Date of Birth'],
+    ['NVP Gender', 'Gender'], ['NVP Citizenship', 'Nationality'], ['NVP KTN/PASS ID', 'Global Entry Number'],
+    ["Guest's First Name", 'Guest First Name'], ["Guest's Middle Name", 'Guest Middle Name'], ["Guest's Last Name", 'Guest Last Name'],
+    ["Guest's Date of Birth", 'Guest DOB'], ["Guest's Gender", 'Guest Gender'], ['Guest KTN/PASS ID', 'Guest TSA Number'], ['Guest Citizenship', 'Guest Passport Nationality'],
+    // approval columns Vera asked us to add "the way it's written on theirs"
+    ['NVP Approved by Arbonne', 'NVP Approved by Arbonne'], ['Guest Approved by Arbonne', 'Guest Approved by Arbonne'],
+    ['Did you achieve a guest?', 'Did you achieve a guest?'], ['Assistance with flight booking? (Unearned guest)', 'Assistance with flight booking? (Unearned guest)'],
+  ];
+  const ARB_US_TO_THEM = [['Agent Notes', 'Notes From Travel Edge'], ['Agent Assigned:', 'Travel Edge Team Member']];
+  const ARB_NEW_COLS = [
+    { title: 'NVP Approved by Arbonne', type: 'PICKLIST', options: ['YES', 'NO', 'HOLD', 'Duplicate'] },
+    { title: 'Guest Approved by Arbonne', type: 'PICKLIST', options: ['YES', 'NO', 'HOLD', 'Duplicate'] },
+    { title: 'Did you achieve a guest?', type: 'PICKLIST', options: ['Yes', 'No'] },
+    { title: 'Assistance with flight booking? (Unearned guest)', type: 'PICKLIST', options: ['Yes', 'No'] },
+    { title: 'Arbonne Row ID', type: 'TEXT_NUMBER' },
+  ];
+  const tkey = s => String(s == null ? '' : s).toLowerCase().replace(/[‘’'`]/g, '').replace(/\s+/g, ' ').trim();
+  const byTitle = sheet => { const m = {}; for (const c of sheet.columns || []) m[tkey(c.title)] = c; return m; };
+  const rawVal = (row, colId) => { const c = row.cells?.find(c => c.columnId === colId); if (!c) return ''; const isContact = c.displayValue && /@/.test(String(c.value || '')); const v = isContact ? c.displayValue : (c.value != null ? c.value : c.displayValue); return v == null ? '' : String(v).replace(ZWSP, '').trim(); };
+
+  async function arbonneSync(commit) {
+    const w = async (method, path, body) => {
+      const r = await fetch(`https://api.smartsheet.com/2.0${path}`, { method, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok || (j.message && j.message !== 'SUCCESS')) throw new Error(`Smartsheet ${method} ${path}: ${j.message || r.status}`);
+      return j;
+    };
+    const out = { dryRun: !commit };
+    const [theirs, ours0] = await Promise.all([api(`/sheets/${ARB_SHEET}`), api(`/sheets/${ENVOY_SHEET}`)]);
+    if (theirs.error || !theirs.columns) throw new Error('Cannot read Arbonne sheet: ' + (theirs.message || theirs.errorCode));
+    if (ours0.error || !ours0.columns) throw new Error('Cannot read Envoy master: ' + (ours0.message || ours0.errorCode));
+    let ours = ours0, O = byTitle(ours), T = byTitle(theirs);
+
+    // 1) make sure the new columns exist on our sheet
+    const missingCols = ARB_NEW_COLS.filter(c => !O[tkey(c.title)]);
+    out.columnsToAdd = missingCols.map(c => c.title);
+    if (missingCols.length && commit) {
+      await w('POST', `/sheets/${ENVOY_SHEET}/columns`, missingCols.map((c, i) => ({ title: c.title, type: c.type, index: ours.columns.length + i, ...(c.options ? { options: c.options } : {}) })));
+      ours = await api(`/sheets/${ENVOY_SHEET}`); O = byTitle(ours);
+      out.columnsAdded = missingCols.length;
+    }
+    const need = n => O[tkey(n)];
+    const keyCol = need('Arbonne Row ID');
+
+    // 2) resolve the mappings (report anything that cannot be matched)
+    const pairs = [], unmatched = [];
+    for (const [t, u] of ARB_THEM_TO_US) { const tc = T[tkey(t)], uc = O[tkey(u)]; if (tc && uc) pairs.push({ t, u, tc, uc }); else unmatched.push(`${t} -> ${u}${!tc ? ' (their column missing)' : ''}${!uc ? ' (our column missing)' : ''}`); }
+    const back = [];
+    for (const [u, t] of ARB_US_TO_THEM) { const uc = O[tkey(u)], tc = T[tkey(t)]; if (uc && tc) back.push({ u, t, uc, tc }); else unmatched.push(`${u} -> ${t} (back-sync column missing)`); }
+    out.unmatchedMappings = unmatched;
+    const approvedCol = T[tkey('NVP Approved by Arbonne')], theirGroupCol = T[tkey('Group ID')];
+    if (!approvedCol) throw new Error('Their "NVP Approved by Arbonne" column not found');
+
+    // 3) our existing rows keyed by Arbonne Row ID
+    const byKey = new Map();
+    if (keyCol) for (const r of ours.rows || []) { const k = rawVal(r, keyCol.id); if (k) byKey.set(k, r); }
+
+    const sc = id => ours.columns.find(c => c.id === id);
+    const today = new Date().toISOString().slice(0, 10);
+    const toCreate = [], toUpdate = [], backUpdates = [], skipped = [];
+    for (const tr of theirs.rows || []) {
+      const key = 'ARB-' + tr.id;
+      const approved = tkey(rawVal(tr, approvedCol.id)) === 'yes';
+      const existing = byKey.get(key);
+      const name = rawVal(tr, (T[tkey('Consultant Name')] || {}).id);
+      if (!approved && !existing) { skipped.push({ row: tr.rowNumber, reason: 'not approved (YES)' }); continue; }
+
+      if (!approved && existing) {   // was copied before, no longer YES: only keep the approval columns current
+        const cells = [];
+        for (const p of pairs.filter(p => /Approved by Arbonne$/.test(p.u))) { const nv = rawVal(tr, p.tc.id); if (nv !== rawVal(existing, p.uc.id)) cells.push({ columnId: p.uc.id, value: nv }); }
+        if (cells.length) toUpdate.push({ id: existing.id, cells, row: tr.rowNumber });
+        continue;
+      }
+      const gid = (theirGroupCol && rawVal(tr, theirGroupCol.id)) || ARB_DEFAULT_GROUP_ID;
+      if (!existing && !gid) { skipped.push({ row: tr.rowNumber, reason: 'approved but no Group ID (set ARB_DEFAULT_GROUP_ID or add a Group ID column on their sheet)' }); continue; }
+
+      if (!existing) {
+        const cells = [];
+        for (const p of pairs) { const v = rawVal(tr, p.tc.id); if (v !== '') cells.push({ columnId: p.uc.id, value: v }); }
+        const add = (title, value) => { const c = O[tkey(title)]; if (c && value !== '') cells.push({ columnId: c.id, value }); };
+        add('Group ID', gid); add('Source', ARB_SOURCE); add('Traveller Type', 'Invitee'); add('Company Name', 'Arbonne'); add('Submission Date', today);
+        if (keyCol) cells.push({ columnId: keyCol.id, value: key });
+        toCreate.push({ toBottom: true, cells, row: tr.rowNumber, name });
+      } else {
+        const cells = [];   // update only what changed; never blank out something Arbonne left empty
+        for (const p of pairs) {
+          const v = rawVal(tr, p.tc.id), cur = rawVal(existing, p.uc.id);
+          if (v !== '' && v !== cur) cells.push({ columnId: p.uc.id, value: v });
+        }
+        if (cells.length) toUpdate.push({ id: existing.id, cells, row: tr.rowNumber });
+      }
+      // our -> theirs
+      if (existing) {
+        const bc = [];
+        for (const b of back) { const v = rawVal(existing, b.uc.id), cur = rawVal(tr, b.tc.id); if (v !== cur) bc.push({ columnId: b.tc.id, value: v }); }
+        if (bc.length) backUpdates.push({ id: tr.id, cells: bc, row: tr.rowNumber });
+      }
+    }
+    out.approvedNew = toCreate.length; out.rowsToUpdate = toUpdate.length; out.backSyncRows = backUpdates.length;
+    out.skipped = skipped.length; out.skippedDetail = skipped;
+    out.plannedNewRows = toCreate.map(c => ({ theirRow: c.row, fields: c.cells.length }));
+    if (!commit) return out;
+
+    if (toCreate.length) { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; }
+    if (toUpdate.length) { await w('PUT', `/sheets/${ENVOY_SHEET}/rows`, toUpdate.map(({ id, cells }) => ({ id, cells }))); out.updated = toUpdate.length; }
+    if (backUpdates.length) { await w('PUT', `/sheets/${ARB_SHEET}/rows`, backUpdates.map(({ id, cells }) => ({ id, cells }))); out.backSynced = backUpdates.length; }
+    return out;
+  }
+
+  if (req.query?.arbonne === '1') {
+    try { return res.status(200).json(await arbonneSync(commit)); } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // One-time: GET ?arbonneHooks=1 registers webhooks on Arbonne's sheet (their edits) and on the Envoy master (agent notes/assignment).
+  if (req.query?.arbonneHooks === '1') {
+    try {
+      const hooks = await api(`/webhooks?includeAll=true`);
+      const out = [];
+      for (const [name, sid] of [['Arbonne NVPLM sync (their sheet)', ARB_SHEET], ['Arbonne NVPLM sync (Envoy master)', ENVOY_SHEET]]) {
+        let hook = (hooks.data || []).find(h => String(h.scopeObjectId) === sid && (h.callbackUrl || '').includes('/api/reconcile-groups'));
+        if (!hook) {
+          const cr = await api(`/webhooks`, { method: 'POST', body: JSON.stringify({ name, callbackUrl: 'https://kensington-group-form.vercel.app/api/reconcile-groups', scope: 'sheet', scopeObjectId: Number(sid), events: ['*.*'], version: 1 }) });
+          hook = cr.result;
+          if (!hook) { out.push({ sheet: sid, error: cr.message || 'create failed' }); continue; }
+        }
+        const en = hook.enabled ? { result: hook } : await api(`/webhooks/${hook.id}`, { method: 'PUT', body: JSON.stringify({ enabled: true }) });
+        out.push({ sheet: sid, id: hook.id, enabled: en.result?.enabled ?? hook.enabled, status: en.result?.status ?? hook.status });
+      }
+      return res.status(200).json({ ok: true, webhooks: out });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // TEMPORARY read-only discovery (Arbonne project, 2026-10-07): ?peek=list&name=<text> lists sheets this token can
   // see; ?peek=<sheetId> returns that sheet's column layout. Names / counts only -- NO row data. Remove after use.
   if (req.query?.peek) {
@@ -179,6 +328,11 @@ export default async function handler(req, res) {
   // nothing blank and writes nothing, so it converges immediately.)
   const pbody = typeof req.body === 'string' ? (() => { try { return JSON.parse(req.body); } catch { return {}; } })() : (req.body || {});
   if (req.method === 'POST' && Array.isArray(pbody.events)) {
+    const scope = String(pbody.scopeObjectId || '');
+    if (scope === ARB_SHEET || scope === ENVOY_SHEET) {      // Arbonne sync webhooks (always answer 200 so Smartsheet never disables the hook)
+      if (!ARB_ENABLED) return res.status(200).json({ ok: true, arbonne: 'disabled' });
+      try { return res.status(200).json({ ok: true, ...(await arbonneSync(true)) }); } catch (e) { return res.status(200).json({ ok: true, error: e.message }); }
+    }
     const out = await backfillStatus();
     const dd = await dedupeMaster();
     return res.status(200).json({ ok: true, ...out, ...dd });
@@ -234,6 +388,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: err.message });
     }
   }
+
+  if (ARB_ENABLED && commit) { try { await arbonneSync(true); } catch (e) { console.error('arbonne cron sync failed', e.message); } }
 
   try {
     const heal = await backfillStatus();
