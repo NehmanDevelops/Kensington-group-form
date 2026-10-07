@@ -88,6 +88,12 @@
   .extras input { width:100%; font:inherit; font-size:14px; padding:8px 11px; border:1px solid var(--line); border-radius:6px; background:#fff; }
   .extras input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(118,114,96,.15); }
   .extras-bad { grid-column:1 / -1; font-size:12px; color:var(--error); }
+  .addwrap { margin-top:6px; }
+  .addbtn { font:inherit; font-size:13px; color:var(--green); background:transparent; border:1px dashed var(--gold); border-radius:6px; padding:9px 16px; cursor:pointer; }
+  .addbtn:hover { background:var(--cream); }
+  .addpanel { margin-top:12px; background:var(--cream); border:1px solid var(--line); border-radius:8px; padding:16px 18px 14px; }
+  .aem { display:flex; gap:16px; flex-wrap:wrap; font-size:14px; } .aem label { white-space:nowrap; }
+  .addact { display:flex; gap:10px; align-items:center; flex-wrap:wrap; } .addmsg { font-size:13px; color:var(--ink-mute); }
   #editorFrame { width:100%; height:calc(100vh - 150px); min-height:600px; border:1px solid var(--line); background:var(--bone); box-shadow:var(--shadow); }
 </style>
 </head>
@@ -202,7 +208,60 @@
         wrap.appendChild(el);
         grid.appendChild(wrap);
       });
+      card.appendChild(addFieldUI(si));
       form.appendChild(card);
+    });
+  }
+
+  // ---------- "+ Add a field" at the bottom of every section ----------
+  var TYPE_CHOICES = [['text', 'Short answer'], ['textarea', 'Long answer'], ['select', 'Dropdown'], ['date', 'Date']];
+  function slugify(label, ids) {
+    var w = String(label).replace(/[^A-Za-z0-9 ]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+    var id = w.map(function (x, i) { x = x.toLowerCase(); return i ? x.charAt(0).toUpperCase() + x.slice(1) : x; }).join('') || 'question';
+    if (!/^[a-z]/.test(id)) id = 'q' + id; id = id.slice(0, 30);
+    var base = id, n = 2; while (ids.indexOf(id) !== -1) id = base + n++;
+    return id;
+  }
+  function addFieldUI(si) {
+    var wrap = document.createElement('div'); wrap.className = 'addwrap';
+    wrap.innerHTML = '<button type="button" class="addbtn">+ Add a field</button><div class="addpanel" style="display:none">'
+      + '<div class="grid2"><div class="field"><label class="field-label">Question</label><input type="text" class="field-input aq" placeholder="e.g. Preferred hotel chain"></div>'
+      + '<div class="field"><label class="field-label">Answer type</label><select class="field-input at">' + TYPE_CHOICES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('') + '</select></div></div>'
+      + '<div class="field ac" style="display:none"><label class="field-label">Choices (one per line)</label><textarea class="field-textarea acx" rows="3" placeholder="Marriott&#10;Hilton&#10;Other"></textarea></div>'
+      + '<div class="field"><label class="field-label">Also mention the answer in</label><div class="aem">'
+      + ['internal', 'welcome', 'tm'].filter(function (k) { return cfg.emails[k]; }).map(function (k) { return '<label><input type="checkbox" data-em="' + k + '"> ' + esc(cfg.emails[k].label) + '</label>'; }).join('') + '</div></div>'
+      + '<div class="addact"><button type="button" class="btn go">Add field</button><button type="button" class="btn ghost cancel">Cancel</button><span class="addmsg"></span></div></div>';
+    var btn = wrap.querySelector('.addbtn'), panel = wrap.querySelector('.addpanel'), msg = wrap.querySelector('.addmsg');
+    btn.onclick = function () { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; if (panel.style.display === 'block') wrap.querySelector('.aq').focus(); };
+    wrap.querySelector('.cancel').onclick = function () { panel.style.display = 'none'; msg.textContent = ''; };
+    wrap.querySelector('.at').onchange = function (e) { wrap.querySelector('.ac').style.display = e.target.value === 'select' ? '' : 'none'; };
+    wrap.querySelector('.go').onclick = function () {
+      var label = wrap.querySelector('.aq').value.trim(), type = wrap.querySelector('.at').value;
+      var opts = wrap.querySelector('.acx').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!label) { msg.textContent = 'Type the question first.'; return; }
+      if (type === 'select' && !opts.length) { msg.textContent = 'Add at least one choice for the dropdown.'; return; }
+      var mention = [].slice.call(wrap.querySelectorAll('[data-em]:checked')).map(function (c) { return c.dataset.em; });
+      var go = wrap.querySelector('.go'); go.disabled = true; msg.textContent = 'Saving…';
+      addFieldEverywhere(cfg.sections[si].id, label, type, opts, mention).then(function (newId) {
+        renderForm(); renderPreview(); var el = $('f_' + newId); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { el.focus({ preventScroll: true }); } catch (e) {} }
+      }).catch(function (e) { go.disabled = false; msg.textContent = 'Could not save: ' + e.message; });
+    };
+    return wrap;
+  }
+  // Re-reads the latest settings first (so nobody's other changes are overwritten), adds the field, saves for everyone.
+  function addFieldEverywhere(sectionId, label, type, opts, mention) {
+    return fetch(REMOTE).then(function (r) { if (!r.ok) throw new Error('settings service unavailable'); return r.json(); }).then(function (fresh) {
+      var all = []; fresh.sections.forEach(function (s) { s.fields.forEach(function (f) { all.push(f); }); });
+      var l = label, n = 2; while (all.some(function (f) { return f.label.trim().toLowerCase() === l.toLowerCase(); })) l = label + ' ' + n++;
+      var f = { id: slugify(l, all.map(function (x) { return x.id; })), label: l, type: type }; if (type === 'select') f.options = opts;
+      var sec = fresh.sections.filter(function (s) { return s.id === sectionId; })[0] || fresh.sections[fresh.sections.length - 1];
+      sec.fields.push(f);
+      mention.forEach(function (k) {
+        var e = fresh.emails[k]; if (!e) return; var line = f.label + ': {{' + f.id + '}}', at = e.body.lastIndexOf('\nThank you,');
+        e.body = at === -1 ? e.body + '\n\n' + line : e.body.slice(0, at) + '\n' + line + '\n' + e.body.slice(at);
+      });
+      return fetch(REMOTE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', config: fresh, message: 'Added field: ' + f.label }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'save failed'); cfg = fresh; applyDefaults(); return f.id; }); });
     });
   }
   function onEdit(e) {
