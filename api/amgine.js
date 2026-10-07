@@ -183,7 +183,7 @@ function scanRows(master, M) {
 // Build + fire a New Request for one traveller row, then write the itinerary id
 // back. On any failure, write a visible "Booking failed: <reason>" onto the row
 // so an agent sees it (instead of a silent blank). Never throws.
-async function sendOne({ api, amgToken, mrow, M, groups, G }) {
+async function sendOne({ api, amgToken, mrow, M, groups, G, dryRun }) {
   const rowId = mrow.id;
   const setStatus = async (s) => {
     if (!M.id('Amgine Status')) return;
@@ -446,6 +446,12 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     Intent: { Nodes: intentNodes }, IntentOnly: false, ...flow,
   };
 
+  // Preview mode (2026-10-07): return the exact payload that WOULD be sent,
+  // without actually sending it or touching the row's status — lets us show
+  // the real JSON for any row live (e.g. on a screenshare with Amgine)
+  // without firing a real booking. Nothing below this point runs.
+  if (dryRun) return { rowId, traveller: who, dryRun: true, payload };
+
   let amgRes, amgJson;
   try {
     amgRes = await fetch(process.env.AMGINE_API_URL, {
@@ -668,6 +674,25 @@ export default async function handler(req, res) {
     } catch (err) {
       console.log('Smartsheet webhook error:', err.message);
       return res.status(200).json({ ok: false, error: err.message });
+    }
+  }
+
+  // ── PREVIEW (read-only): { __previewPayload: true, rowId } → build and
+  // return the exact booking payload for that row WITHOUT sending anything
+  // or touching its status. For showing the real JSON live (e.g. to Amgine
+  // on a screenshare) without firing a real booking each time.
+  if (isTrue(body.__previewPayload) && body.rowId) {
+    try {
+      const master = await (await api(`/sheets/${MASTER}`)).json();
+      const M = indexSheet(master);
+      const mrow = (master.rows || []).find(x => String(x.id) === String(body.rowId));
+      if (!mrow) return res.status(404).json({ ok: false, error: 'row not found' });
+      const groups = await (await api(`/sheets/${GROUPS}`)).json();
+      const G = indexSheet(groups);
+      const result = await sendOne({ api, amgToken: 'preview-only', mrow, M, groups, G, dryRun: true });
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err.message });
     }
   }
 
