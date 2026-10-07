@@ -236,7 +236,7 @@ export default async function handler(req, res) {
         if (cells.length) toUpdate.push({ id: existing.id, cells, row: tr.rowNumber });
         continue;
       }
-      const gid = String((theirGroupCol && rawVal(tr, theirGroupCol.id)) || ARB_DEFAULT_GROUP_ID).trim().split(/[s=]/)[0];   // dropdown may read 'MLTIARBJAN27OGGC = Canadian'
+      const gid = String((theirGroupCol && rawVal(tr, theirGroupCol.id)) || ARB_DEFAULT_GROUP_ID).trim().split(/[\s=]/)[0];   // dropdown may read 'MLTIARBJAN27OGGC = Canadian'
       if (!existing && !gid) out.noGroupId = (out.noGroupId || 0) + 1;   // still copied; Group ID stays blank until Arbonne supplies one
 
       if (!existing) {
