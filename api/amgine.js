@@ -513,60 +513,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: re-verification helpers for 3rd Airline/Snap/Tour slot (remove after use).
-  if (body.__addTestTraveller && body.__groupId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const cells = [];
-    if (M.id('Group ID')) cells.push({ columnId: M.id('Group ID'), value: String(body.__groupId) });
-    if (M.id('First Name')) cells.push({ columnId: M.id('First Name'), value: String(body.__first || 'External') });
-    if (M.id('Last Name')) cells.push({ columnId: M.id('Last Name'), value: String(body.__last || 'Test') });
-    if (M.id('Email')) cells.push({ columnId: M.id('Email'), value: String(body.__email || 'externaltest@example.com') });
-    const r = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
-    const j = await r.json().catch(() => ({}));
-    const newRowId = j.result && j.result[0] && j.result[0].id;
-    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
-  }
-  if (body.__tickReadyToBook && body.__rowId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    if (!M.id('Ready to Book')) return res.status(200).json({ ok: false, error: 'Ready to Book column not found' });
-    const r = await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: Number(body.__rowId), cells: [{ columnId: M.id('Ready to Book'), value: true }] }]) });
-    return res.status(200).json({ ok: r.ok });
-  }
-  if (norm(body.__checkTravellerRow) && body.__rowId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
-    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
-    return res.status(200).json({
-      ok: true, status: M.val(row, 'Amgine Status'), itineraryId: M.val(row, 'Amgine Itinerary ID'),
-      link: M.val(row, 'Amgine Link'), note: M.val(row, 'Amgine Note'),
-    });
-  }
-  if (body.__createTestGroup && body.__branchGuid) {
-    const groups = await (await api(`/sheets/${GROUPS}?pageSize=1`)).json();
-    const G = indexSheet(groups);
-    const cells = [];
-    if (G.id('GROUP ID')) cells.push({ columnId: G.id('GROUP ID'), value: String(body.__groupId) });
-    if (G.id('Amgine Branch GUID')) cells.push({ columnId: G.id('Amgine Branch GUID'), value: String(body.__branchGuid) });
-    if (G.id('Amgine Onboarded')) cells.push({ columnId: G.id('Amgine Onboarded'), value: true });
-    if (body.__airline3 && G.id('Airline 3')) cells.push({ columnId: G.id('Airline 3'), value: String(body.__airline3) });
-    if (body.__snap3 && G.id('Snap code 3')) cells.push({ columnId: G.id('Snap code 3'), value: String(body.__snap3) });
-    if (body.__tour3 && G.id('Tour Code 3')) cells.push({ columnId: G.id('Tour Code 3'), value: String(body.__tour3) });
-    const r = await api(`/sheets/${GROUPS}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
-    const j = await r.json().catch(() => ({}));
-    const newRowId = j.result && j.result[0] && j.result[0].id;
-    return res.status(200).json({ ok: r.ok, rowId: newRowId, raw: r.ok ? undefined : j });
-  }
-  if (body.__deleteTestRow && body.__sheetId) {
-    const r = await api(`/sheets/${body.__sheetId}/rows?ids=${body.__deleteTestRow}`, { method: 'DELETE' });
-    const j = await r.json().catch(() => ({}));
-    return res.status(200).json({ ok: r.ok, raw: r.ok ? undefined : j });
-  }
-
-
-
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
