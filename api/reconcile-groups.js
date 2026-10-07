@@ -154,7 +154,7 @@ export default async function handler(req, res) {
   // Webhooks + the daily cron only run it when ARB_ENABLED is true.
   const ARB_SHEET = '4224539799277444';
   const ENVOY_SHEET = '8780932377956228';
-  const ARB_ENABLED = false;               // flip to true once the Group ID question is settled and a live test passed
+  const ARB_ENABLED = true;                // ON (2026-10-07): live test passed, Group ID column added by Arbonne
   const ARB_DEFAULT_GROUP_ID = '';         // used when Arbonne's sheet has no (or a blank) "Group ID" column
   const ARB_SOURCE = 'Arbonne NVPLM 2027';
   const ARB_THEM_TO_US = [
@@ -217,8 +217,11 @@ export default async function handler(req, res) {
     if (!approvedCol) throw new Error('Their "NVP Approved by Arbonne" column not found');
 
     // 3) our existing rows keyed by Arbonne Row ID
-    const byKey = new Map();
-    if (keyCol) for (const r of ours.rows || []) { const k = rawVal(r, keyCol.id); if (k) byKey.set(k, r); }
+    // Two near-simultaneous webhook runs could both create the same Arbonne row: keep the OLDEST copy of each key, delete the rest.
+    const byKey = new Map(), dupes = [];
+    if (keyCol) for (const r of ours.rows || []) { const k = rawVal(r, keyCol.id); if (!k) continue; if (byKey.has(k)) dupes.push(r.id); else byKey.set(k, r); }
+    out.duplicateRows = dupes.length;
+    if (dupes.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${dupes.join(',')}&ignoreRowsNotFound=true`); out.duplicatesDeleted = dupes.length; }
 
     const sc = id => ours.columns.find(c => c.id === id);
     const today = new Date().toISOString().slice(0, 10);
