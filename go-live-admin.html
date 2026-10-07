@@ -238,9 +238,28 @@
     d.open = !!keepOpen.h; d.ontoggle = function () { keepOpen.h = d.open; };
     getJson(API + '?versions=1').then(function (j) {
       var vl = d.querySelector('#vl'); vl.innerHTML = '';
+      // "Undo my last save" = the most recent earlier version whose contents really differ from what is live now
+      // (the history list can lag a moment, so we compare contents instead of trusting its order).
+      var ub = el('<p style="margin-bottom:10px"><button class="btn g sm">Undo my last save</button> <small>Goes back to the most recent different version.</small></p>');
+      ub.querySelector('button').onclick = function () {
+        status('Looking for the previous version…');
+        getJson(API).then(function (cur) {
+          var curS = JSON.stringify(cur), list = (j.versions || []).slice(), tried = 0;
+          var nextOne = function () {
+            if (!list.length || tried++ > 8) return Promise.reject(new Error('There is no earlier version to go back to.'));
+            var v = list.shift();
+            return getJson(API + '?version=' + v.sha).then(function (c) { return JSON.stringify(c) === curS ? nextOne() : v; });
+          };
+          return nextOne();
+        }).then(function (v) {
+          if (!confirm('Go back to “' + v.message + '” (' + new Date(v.date).toLocaleString() + ')? You can undo this too.')) { status(''); return; }
+          return post({ action: 'restore', sha: v.sha }).then(function () { tellParent(); load(); status('✓ Went back one version.', 'ok'); });
+        }).catch(function (er) { status(er.message, 'bad'); });
+      };
+      vl.appendChild(ub);
       (j.versions || []).forEach(function (v, i) {
         var row = el('<div class="vrow"><span class="grow"><b>' + esc(v.message) + '</b><br><small>' + new Date(v.date).toLocaleString() + (i === 0 ? ' · current' : '') + '</small></span></div>');
-        if (i > 0) { var b = el('<button class="btn line sm">' + (i === 1 ? 'Undo my last save' : 'Go back to this') + '</button>'); b.onclick = function () { if (!confirm('Go back to this version? You can undo this too.')) return; post({ action: 'restore', sha: v.sha }).then(function () { tellParent(); load(); status('✓ Restored.', 'ok'); }).catch(function (er) { status(er.message, 'bad'); }); }; row.appendChild(b); }
+        if (i > 0) { var b = el('<button class="btn line sm">Go back to this</button>'); b.onclick = function () { if (!confirm('Go back to this version? You can undo this too.')) return; post({ action: 'restore', sha: v.sha }).then(function () { tellParent(); load(); status('✓ Restored.', 'ok'); }).catch(function (er) { status(er.message, 'bad'); }); }; row.appendChild(b); }
         vl.appendChild(row);
       });
     }).catch(function () { d.querySelector('#vl').textContent = 'Could not load the history.'; });
