@@ -513,6 +513,24 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: one-shot — add Airline 4 / Snap code 4 / Tour Code 4 columns to
+  // LIVE GROUP MASTERSHEET if missing (remove after use).
+  if (norm(body.__setupSlot4Cols) === 'kcg-slot4-2026') {
+    const groups = await (await api(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const existingTitles = new Set((groups.columns || []).map(c => c.title.trim().toLowerCase()));
+    const wanted = ['Airline 4', 'Snap code 4', 'Tour Code 4'];
+    const toAdd = wanted.filter(t => !existingTitles.has(t.toLowerCase()));
+    const results = [];
+    let idx = (groups.columns || []).length;
+    for (const title of toAdd) {
+      const r = await api(`/sheets/${GROUPS}/columns`, { method: 'POST', body: JSON.stringify([{ title, type: 'TEXT_NUMBER', index: idx }]) });
+      const j = await r.json().catch(() => ({}));
+      results.push({ title, ok: r.ok, raw: r.ok ? undefined : j });
+      idx++;
+    }
+    return res.status(200).json({ ok: true, alreadyExisted: wanted.filter(t => existingTitles.has(t.toLowerCase())), created: results });
+  }
+
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
