@@ -297,22 +297,31 @@ async function sendOne({ api, amgToken, mrow, M, groups, G }) {
     if (profs.length) bookingProfile = profs;
   }
 
-  // ── Negotiated rate codes / tour codes (Raymond, 2026-08-05) ────────────
+  // ── Negotiated rate codes / tour codes (Raymond, 2026-08-05; 3rd slot added
+  // 2026-10-07 per Vera's manager) ─────────────────────────────────────────
   // Sent at the ROOT of the booking payload as BranchInfo.AirConfig.NegotiatedRateCodes:
   //   { Airline, CorporateId }  = an airline snap code / contracted rate
   //   { Airline, TourCode }     = a tour code (same array, different key per entry)
   // Source: dedicated Airline column paired with its code column on the group row
-  // (LIVE GROUP MASTERSHEET) — two slots per group:
+  // (LIVE GROUP MASTERSHEET) — three slots per group:
   //   Airline1 + 'Snap Code/Contract Code' -> CorporateId, Airline1 + 'Tour Code' -> TourCode
   //   Airline2 + 'Snap/Contract Code 2'     -> CorporateId, Airline2 + 'Tour Code2' -> TourCode
+  //   'Airline 3' + 'Snap code 3'           -> CorporateId, 'Airline 3' + 'Tour Code 3' -> TourCode
+  // Note the 3rd slot's column names have different spacing/capitalization
+  // than slots 1/2 ("Airline 3" not "Airline3", "Snap code 3" not "Snap Code
+  // 3") — confirmed exact via a live column listing before wiring in, not
+  // guessed (lesson from the §38 PE Emails saga).
   // A slot is a no-op unless BOTH its airline and code are filled in.
   const airline1 = norm(G.val(grow, 'Airline1')).toUpperCase();
   const airline2 = norm(G.val(grow, 'Airline2')).toUpperCase();
+  const airline3 = norm(G.val(grow, 'Airline 3')).toUpperCase();
   const negotiatedRateCodes = [
     ...(airline1 && norm(G.val(grow, 'Snap Code/Contract Code')) ? [{ Airline: airline1, CorporateId: norm(G.val(grow, 'Snap Code/Contract Code')) }] : []),
     ...(airline1 && norm(G.val(grow, 'Tour Code')) ? [{ Airline: airline1, TourCode: norm(G.val(grow, 'Tour Code')) }] : []),
     ...(airline2 && norm(G.val(grow, 'Snap/Contract Code 2')) ? [{ Airline: airline2, CorporateId: norm(G.val(grow, 'Snap/Contract Code 2')) }] : []),
     ...(airline2 && norm(G.val(grow, 'Tour Code2')) ? [{ Airline: airline2, TourCode: norm(G.val(grow, 'Tour Code2')) }] : []),
+    ...(airline3 && norm(G.val(grow, 'Snap code 3')) ? [{ Airline: airline3, CorporateId: norm(G.val(grow, 'Snap code 3')) }] : []),
+    ...(airline3 && norm(G.val(grow, 'Tour Code 3')) ? [{ Airline: airline3, TourCode: norm(G.val(grow, 'Tour Code 3')) }] : []),
   ];
   const hasNegotiatedRateCodes = negotiatedRateCodes.length > 0;
 
@@ -504,11 +513,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: confirm exact new Airline3/Snap3/Tour3 column names on GROUPS (remove after use).
-  if (norm(body.__listGroupCols)) {
-    const groups = await (await api(`/sheets/${GROUPS}?pageSize=1`)).json();
-    return res.status(200).json({ ok: true, columns: (groups.columns || []).map(c => c.title) });
-  }
 
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
