@@ -224,6 +224,23 @@
   function renderEmails(body) {
     var sel = el('<div class="tabs"></div>');
     ['internal', 'welcome', 'tm'].forEach(function (k) { var b = el('<button class="tab' + (emailKey === k ? ' on' : '') + '">' + esc(cfg.emails[k].label) + '</button>'); b.onclick = function () { emailKey = k; render(); }; sel.appendChild(b); });
+    // How dates are written everywhere in the emails (e.g. a comma after the weekday)
+    var PRESETS = [['{weekday}, {month} {dayth}, {year}', 'Wednesday, October 21st, 2026'], ['{weekday} {month} {dayth}, {year}', 'Wednesday October 21st, 2026'], ['{month} {dayth}, {year}', 'October 21st, 2026'], ['{month} {day}, {year}', 'October 21, 2026'], ['{mon} {day}, {year}', 'Oct 21, 2026'], ['{day} {month} {year}', '21 October 2026'], ['{year}-{mm}-{dd}', '2026-10-21']];
+    var curFmt = cfg.dateFormat || G.DEFAULT_DATE_FORMAT;
+    var dcard = el('<div class="card" style="padding:16px 22px"><div class="two"><div><label class="l" style="margin-top:0">How dates are written in the emails</label><select id="dsel"></select></div><div><label class="l" style="margin-top:0">Style (you can type your own)</label><input type="text" id="dfmt"></div></div><p style="margin-top:8px;font-size:13px">Example: <b id="dex"></b></p><small>Pieces you can use: {weekday} Wednesday · {wk} Wed · {month} October · {mon} Oct · {dayth} 21st · {day} 21 · {dd} 21 (two digits) · {mm} 10 · {year} 2026 · {yy} 26</small></div>');
+    var dsel = dcard.querySelector('#dsel'), dfmt = dcard.querySelector('#dfmt');
+    dsel.innerHTML = PRESETS.map(function (p) { return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>'; }).join('') + '<option value="">Custom…</option>';
+    function syncDate(fromSelect) {
+      var f = fromSelect ? dsel.value || dfmt.value : dfmt.value;
+      if (fromSelect && dsel.value) dfmt.value = dsel.value;
+      cfg.dateFormat = dfmt.value || G.DEFAULT_DATE_FORMAT;
+      dsel.value = PRESETS.some(function (p) { return p[0] === dfmt.value; }) ? dfmt.value : '';
+      dcard.querySelector('#dex').textContent = G.fmtDate('2026-10-21', cfg.dateFormat);
+      markDirty(); paintPreview();
+    }
+    dfmt.value = curFmt; dsel.value = PRESETS.some(function (p) { return p[0] === curFmt; }) ? curFmt : ''; dcard.querySelector('#dex').textContent = G.fmtDate('2026-10-21', curFmt);
+    dsel.onchange = function () { syncDate(true); }; dfmt.oninput = function () { syncDate(false); };
+    body.appendChild(dcard);
     body.appendChild(sel);
     var e = cfg.emails[emailKey];
     var split = el('<div class="split"></div>'), left = el('<div class="card"></div>'), right = el('<div></div>');

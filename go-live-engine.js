@@ -20,12 +20,18 @@
   function str(v) { return v == null ? '' : String(v).trim(); }
   function ordinal(n) { var s = n % 100; if (s >= 11 && s <= 13) return n + 'th'; return n + (['th', 'st', 'nd', 'rd'][n % 10] || 'th'); }
 
-  function fmtDate(v) {
+  // How dates are written is a setting (cfg.dateFormat) so the team can change it in the editor.
+  // Tokens: {weekday} Wednesday  {wk} Wed  {month} October  {mon} Oct  {dayth} 21st  {day} 21  {dd} 21 (2 digits)  {mm} 10  {year} 2026  {yy} 26
+  var DEFAULT_DATE_FORMAT = '{weekday}, {month} {dayth}, {year}';
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDate(v, fmt) {
     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str(v));
     if (!m) return '';
     var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     if (isNaN(d.getTime())) return '';
-    return DAYS[d.getDay()] + ' ' + MONTHS[d.getMonth()] + ' ' + ordinal(d.getDate()) + ', ' + d.getFullYear();
+    var t = { weekday: DAYS[d.getDay()], wk: DAYS[d.getDay()].slice(0, 3), month: MONTHS[d.getMonth()], mon: MONTHS[d.getMonth()].slice(0, 3), dayth: ordinal(d.getDate()),
+              day: String(d.getDate()), dd: pad2(d.getDate()), mm: pad2(d.getMonth() + 1), year: String(d.getFullYear()), yy: String(d.getFullYear()).slice(-2) };
+    return String(fmt || DEFAULT_DATE_FORMAT).replace(/\{(\w+)\}/g, function (all, k) { return t[k] !== undefined ? t[k] : all; });
   }
 
   function parseContacts(text) {
@@ -54,14 +60,14 @@
   }
 
   // value of a "{{...}}" expression (before default handling)
-  function evalExpr(expr, values) {
+  function evalExpr(expr, values, dateFmt) {
     var parts = expr.split(':').map(function (x) { return x.trim(); });
     var fn = parts[0], id, role;
     if (parts.length === 1) return { id: fn, value: str(values[fn]) };
     id = parts[1]; role = parts.slice(2).join(':');
     var v = str(values[id]);
     switch (fn) {
-      case 'date': return { id: id, value: fmtDate(v) };
+      case 'date': return { id: id, value: fmtDate(v, dateFmt) };
       case 'first': return { id: id, value: v.split(/\s+/)[0] || '' };
       case 'upper': return { id: id, value: v.toUpperCase() };
       case 'names': return { id: id, value: joinNames(filterContacts(parseContacts(values[id]), role).map(function (c) { return c.name.split(/\s+/)[0]; })) };
@@ -113,7 +119,7 @@
       var bar = inner.indexOf('|');
       var expr = bar === -1 ? inner : inner.slice(0, bar);
       var dflt = bar === -1 ? null : inner.slice(bar + 1);
-      var r = evalExpr(expr, values);
+      var r = evalExpr(expr, values, cfg && cfg.dateFormat);
       if (r.value) return r.value;
       if (dflt !== null) return dflt;
       var label = (idx[r.id] && idx[r.id].label) || r.id;
@@ -159,6 +165,6 @@
   }
   function unknownRefs(tpl, cfg) { var idx = fieldIndex(cfg); return refs(tpl).filter(function (id) { return !idx[id]; }); }
 
-  var api = { RULE: RULE, fmtDate: fmtDate, parseContacts: parseContacts, render: render, renderEmail: renderEmail, unknownRefs: unknownRefs, refs: refs, fieldIndex: fieldIndex, condTrue: condTrue };
+  var api = { RULE: RULE, DEFAULT_DATE_FORMAT: DEFAULT_DATE_FORMAT, fmtDate: fmtDate, parseContacts: parseContacts, render: render, renderEmail: renderEmail, unknownRefs: unknownRefs, refs: refs, fieldIndex: fieldIndex, condTrue: condTrue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GoLive = api;
 })(typeof window !== 'undefined' ? window : this);

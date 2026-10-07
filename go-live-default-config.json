@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "dateFormat": "{weekday}, {month} {dayth}, {year}",
   "note": "Edit with the Go-Live editor (go-live-admin.html), not by hand.",
   "sections": [
     {

@@ -360,7 +360,7 @@
     var h = '<table class="tr"><thead><tr><th>When</th><th>Account</th><th>Email</th><th>Created by</th><th>Go-live</th><th></th></tr></thead><tbody>';
     rows.forEach(function (e) {
       var has = !!all[String(e.account).toLowerCase()];
-      h += '<tr><td>' + esc(fmtWhen(e.ts)) + '</td><td><b>' + esc(e.account) + '</b>' + (e.region ? '<br><small style="color:var(--ink-mute)">' + esc(e.region) + '</small>' : '') + '</td><td><span class="tag ' + esc(e.email) + '">' + esc(e.label || e.email) + '</span></td><td>' + esc(e.by) + '</td><td>' + esc(G.fmtDate(e.goLive) || e.goLive || '') + '</td><td>'
+      h += '<tr><td>' + esc(fmtWhen(e.ts)) + '</td><td><b>' + esc(e.account) + '</b>' + (e.region ? '<br><small style="color:var(--ink-mute)">' + esc(e.region) + '</small>' : '') + '</td><td><span class="tag ' + esc(e.email) + '">' + esc(e.label || e.email) + '</span></td><td>' + esc(e.by) + '</td><td>' + esc(G.fmtDate(e.goLive, cfg && cfg.dateFormat) || e.goLive || '') + '</td><td>'
         + (has ? '<button type="button" class="btn ghost" data-reopen="' + esc(String(e.account).toLowerCase()) + '" style="padding:8px 14px">Reopen</button>' : '') + '</td></tr>';
     });
     $('trBody').innerHTML = h + '</tbody></table>';
