@@ -295,7 +295,7 @@ export default async function handler(req, res) {
       const orow = (ours.rows || []).find(r => rawVal(r, keyCol.id) === 'ARB-' + tr.id);
       if (!orow) return res.status(200).json({ error: 'Envoy copy of their row 8 not found (is it approved + synced?)' });
       const put = async (sheet, body) => { const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${sheet}/rows`, { method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); return { ok: r.ok && (!j.message || j.message === 'SUCCESS'), message: j.message }; };
-      const a = await put(ARB_SHEET, [{ id: tr.id, cells: [{ columnId: T[tkey('Group ID')].id, value: 'MLTIARBJAN27OGGU (US)' }] }]);
+      const a = await put(ARB_SHEET, [{ id: tr.id, cells: [{ columnId: T[tkey('Group ID')].id, value: 'MLTIARBJAN27OGGU (US)' }, { columnId: T[tkey('NVP Approved by Arbonne')].id, value: 'YES' }] }]);
       const b = await put(ENVOY_SHEET, [{ id: orow.id, cells: [
         { columnId: O[tkey('Agent Notes')].id, value: 'TEST NOTE from Kensington agent (sync test)' },
         { columnId: O[tkey('Agent Assigned:')].id, objectValue: { objectType: 'CONTACT', email: 'nehman.rahimi@kensingtoncorporate.com', name: 'Nehman Rahimi' } },
