@@ -281,6 +281,28 @@ export default async function handler(req, res) {
     try { return res.status(200).json(await arbonneSync(commit)); } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMPORARY (Arbonne test, 2026-10-07): ?arbonneTest=1 fills in the TEST data on their row 8 and its Envoy copy so both
+  // sync directions can be checked. Hard-wired to those two rows only. REMOVE right after the test.
+  if (req.query?.arbonneTest === '1') {
+    try {
+      const [theirs, ours] = await Promise.all([api(`/sheets/${ARB_SHEET}`), api(`/sheets/${ENVOY_SHEET}`)]);
+      const T = byTitle(theirs), O = byTitle(ours);
+      const tr = (theirs.rows || []).find(r => r.rowNumber === 8);
+      if (!tr) return res.status(200).json({ error: 'their row 8 not found' });
+      const keyCol = O[tkey('Arbonne Row ID')];
+      const orow = (ours.rows || []).find(r => rawVal(r, keyCol.id) === 'ARB-' + tr.id);
+      if (!orow) return res.status(200).json({ error: 'Envoy copy of their row 8 not found (is it approved + synced?)' });
+      const put = async (sheet, body) => { const r = await fetch(`https://api.smartsheet.com/2.0/sheets/${sheet}/rows`, { method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); return { ok: r.ok && (!j.message || j.message === 'SUCCESS'), message: j.message }; };
+      const a = await put(ARB_SHEET, [{ id: tr.id, cells: [{ columnId: T[tkey('Group ID')].id, value: 'MLTIARBJAN27OGGU (US)' }] }]);
+      const b = await put(ENVOY_SHEET, [{ id: orow.id, cells: [
+        { columnId: O[tkey('Agent Notes')].id, value: 'TEST NOTE from Kensington agent (sync test)' },
+        { columnId: O[tkey('Agent Assigned:')].id, objectValue: { objectType: 'CONTACT', email: 'nehman.rahimi@kensingtoncorporate.com', name: 'Nehman Rahimi' } },
+        { columnId: O[tkey('In progress')].id, value: true },
+      ] }]);
+      return res.status(200).json({ theirGroupId: a, envoyAgentFields: b });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // One-time: GET ?arbonneHooks=1 registers webhooks on Arbonne's sheet (their edits) and on the Envoy master (agent notes/assignment).
   if (req.query?.arbonneHooks === '1') {
     try {
