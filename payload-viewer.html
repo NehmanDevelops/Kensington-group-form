@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kensington — Amgine Payload Viewer</title>
+<style>
+  @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'SangBleu Republic';src:url('fonts/SangBleuRepublic-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+  :root{--ink:#3a2f3c;--ink-mute:#8b8678;--bone:#fdf9ec;--paper:#fffdf8;--cream:#f3eedf;--gold:#767260;--green:#1a3e32;--line:#e4ddcc;--error:#b03a3a;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'SangBleu Republic',Georgia,-apple-system,serif;background:var(--bone);color:var(--ink);min-height:100vh;padding:40px 24px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(58,47,60,.10);max-width:900px;width:100%;margin:0 auto;padding:40px 36px;}
+  .eyebrow{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);font-weight:500;margin-bottom:12px;text-align:center;}
+  h1{font-family:'SangBleu Sunrise',Georgia,serif;font-weight:400;font-size:30px;margin-bottom:8px;text-align:center;}
+  h1 em{font-style:italic;color:var(--green);}
+  .sub{font-size:14px;color:var(--ink-mute);margin-bottom:28px;line-height:1.6;text-align:center;}
+  .inputs{display:flex;gap:10px;margin-bottom:8px;}
+  input{flex:1;font-family:inherit;font-size:16px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);}
+  input:focus{outline:none;border-color:var(--green);}
+  .btn{font-family:inherit;font-size:16px;font-weight:500;background:var(--green);color:var(--bone);border:none;border-radius:10px;padding:14px 28px;cursor:pointer;letter-spacing:.02em;transition:background .15s,transform .1s;white-space:nowrap;}
+  .btn:hover{background:#215040;}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .hint{font-size:12px;color:var(--ink-mute);margin-bottom:24px;}
+  .result{display:none;}
+  .result.show{display:block;}
+  .headline{font-family:'SangBleu Sunrise',Georgia,serif;font-size:19px;margin:24px 0 4px;}
+  .meta{font-size:13px;color:var(--ink-mute);margin-bottom:14px;}
+  .meta b{color:var(--ink);font-weight:500;}
+  pre{background:#201a21;color:#e8e3d8;border-radius:10px;padding:22px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.6;overflow-x:auto;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow-y:auto;}
+  .err{color:var(--error);font-weight:500;}
+  .copybar{display:flex;justify-content:flex-end;margin:10px 0;gap:10px;}
+  .copybar button{font-family:inherit;font-size:13px;background:var(--cream);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 16px;cursor:pointer;}
+  .copybar button:hover{background:var(--line);}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(253,249,236,.4);border-top-color:var(--bone);border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:8px;}
+  @keyframes s{to{transform:rotate(360deg);}}
+  @media(prefers-reduced-motion:reduce){.spin{animation:none;}}
+  @media(max-width:600px){.inputs{flex-direction:column;}}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow">Amgine · Internal Tool</div>
+    <h1>Payload <em>Viewer</em></h1>
+    <p class="sub">Shows the exact booking JSON for any traveller row — read-only, nothing gets sent or changed. Safe to run as many times as you want, live on a call.</p>
+
+    <div class="inputs">
+      <input id="rowId" type="text" placeholder="Traveller row ID (e.g. 6244519996030852)" />
+      <button class="btn" id="go">Show Payload</button>
+    </div>
+    <div class="hint">Don't have the row ID handy? Ask Nehman — he can pull it from the sheet by name or group.</div>
+
+    <div class="result" id="result"></div>
+  </div>
+
+<script>
+  var ENDPOINT = '/api/amgine';
+  var btn = document.getElementById('go');
+  var input = document.getElementById('rowId');
+  var out = document.getElementById('result');
+
+  function run() {
+    var rowId = input.value.trim();
+    if (!rowId) { input.focus(); return; }
+    btn.disabled = true;
+    var original = btn.textContent;
+    btn.innerHTML = '<span class="spin"></span>Loading…';
+    out.className = 'result';
+    out.innerHTML = '';
+
+    fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ __previewPayload: true, rowId: rowId })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        btn.disabled = false;
+        btn.textContent = original;
+        out.className = 'result show';
+        if (!d || d.error) {
+          out.innerHTML = '<p class="err">' + ((d && d.error) || 'Could not load that row.') + '</p>';
+          return;
+        }
+        var json = JSON.stringify(d.payload, null, 2);
+        out.innerHTML =
+          '<div class="headline">' + (d.traveller || 'Traveller') + '</div>' +
+          '<div class="meta">Row <b>' + d.rowId + '</b> &middot; read-only preview, nothing was sent</div>' +
+          '<div class="copybar"><button id="copyBtn">Copy JSON</button></div>' +
+          '<pre id="jsonOut"></pre>';
+        document.getElementById('jsonOut').textContent = json;
+        document.getElementById('copyBtn').addEventListener('click', function () {
+          navigator.clipboard.writeText(json).then(function () {
+            var b = document.getElementById('copyBtn');
+            var t = b.textContent;
+            b.textContent = 'Copied!';
+            setTimeout(function () { b.textContent = t; }, 1500);
+          });
+        });
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = original;
+        out.className = 'result show';
+        out.innerHTML = '<p class="err">Request failed: ' + err.message + '</p>';
+      });
+  }
+
+  btn.addEventListener('click', run);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') run(); });
+</script>
+</body>
+</html>
