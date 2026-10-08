@@ -424,8 +424,7 @@
       + '<script>document.getElementById("cp").onclick=function(){var e=document.getElementById("email"),s=getSelection(),g=document.createRange();g.selectNodeContents(e);s.removeAllRanges();s.addRange(g);var ok=false;try{ok=document.execCommand("copy")}catch(x){}s.removeAllRanges();document.getElementById("ok").textContent=ok?"✓ Copied: now paste it into Outlook":"Press Ctrl+A then Ctrl+C instead"};</script></body></html>';
   }
   function checkBeforeStyled() {
-    if (editing) { alert('You are editing the wording. Press “Save for everyone” (or Cancel) first.'); return null; }
-    var r = current();
+    var r = current();   // exactly what the preview shows right now, including form answers, extra recipients and unsaved wording edits
     if (r.missing.length && !confirm('These are still blank and will show as [placeholders]:
 
 ' + r.missing.join('
