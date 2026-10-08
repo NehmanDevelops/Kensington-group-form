@@ -133,6 +133,7 @@ All repos are under GitHub user `NehmanDevelops`. Deploys are on Vercel (`vercel
 ---
 
 ## 6. Open items (owner in brackets)
+0. **CVENT/Swoogo registrations missed Oct 7 11:15 → Oct 8 (Nehman / Power Automate flow owner):** the parser was offline (404), so Garada Villa, Maximo Zapata, Jose Robles, Anibal Beltran and Vince Pitocco (2 emails each, mailbox usa@) never reached the CVENT log, the Traveller MasterSheet or the agent copy. The parser is restored. In Power Automate open the CVENT parser flow → run history → failed runs since Oct 7 → Resubmit each (the parser skips duplicates, so re-running is safe). Then confirm all five appear on the master. Vince Pitocco has Group ID VQ9GMONFEB27CUN; the other four are "Reyes (West) FLO UFC 335 incentive" emails with no Group ID, so fill it by hand.
 1. **Vera:** confirm archived groups stayed archived after the reconcile fix (never confirmed).
 2. **Arbonne:** (a) prove a webhook fires on its own (type a note on their row 8, expect it in Client Notes without a manual run); (b) delete Envoy row 378 and clear their test row 8; (c) tell Vera it is live; (d) confirm the existing `sync-travellers` mirrors new Envoy rows to the agent copy; (e) confirm with Vera that Client Notes (not Additional Notes) is right and that In progress/Completed should flow ours → theirs.
 3. **Remove the temporary `?peek=` route** from `api/reconcile-groups.js` (Nehman).
@@ -155,6 +156,8 @@ All repos are under GitHub user `NehmanDevelops`. Deploys are on Vercel (`vercel
 ---
 
 ## 8. Gotchas
+- **Never run `git add -A` blindly in a repo that other sessions also push to. Always run `git status --short` and `git diff --cached --stat` first and look for deletions.** On 2026-10-07 11:15 a commit made this way deleted `api/parse-email.py` (plus `AMGINE_WEBHOOK_SPEC.txt` and two `.claude/` files); the CVENT/Swoogo parser then returned 404 for about a day until Vera noticed. Restored in commit `66feed1`. Safeguard added: `.github/workflows/api-health.yml` fails on any push that removes a required `api/` file and, every morning, checks the live parser, reconcile and Go-Live settings endpoints.
+- Do not put backticks inside a double-quoted shell string (the shell runs them as commands). Use the file/edit tools for any text that contains backticks.
 - Windows shell: big files with quotes break inline heredocs. Write files with an editor/file tool, then run a patch script. Use forward-slash absolute paths in node.
 - `api/reconcile-groups.js` has CRLF line endings; normalise before multi-line text replacement.
 - Smartsheet: adding several columns in one call needs the **same** `index` for all; the API token only exists in Vercel, so token-gated Smartsheet work is done through a deployed endpoint.

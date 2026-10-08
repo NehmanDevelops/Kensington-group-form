@@ -1,0 +1,48 @@
+name: API health
+
+# Added 2026-10-08 after api/parse-email.py was deleted by accident (a commit run with `git add -A`) and the CVENT/Swoogo
+# parser answered 404 for ~a day without anyone noticing. A failing run here emails the repo owner.
+#  - On every push: fail if a required api/ file is missing (catches an accidental deletion before it ships).
+#  - Every morning: fail if the live parser or the other key endpoints stop answering.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  required-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required api files exist
+        run: |
+          missing=0
+          for f in api/parse-email.py api/submit.js api/submit-profile.js api/submit-udid.js api/finance-tracker.js api/agentform.js \
+                   api/amgine.js api/create-branch.js api/reconcile-groups.js api/sync-groups.js api/sync-travellers.js api/upload-groups.js; do
+            if [ ! -f "$f" ]; then echo "::error::MISSING $f"; missing=1; fi
+          done
+          exit $missing
+
+  live-endpoints:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: CVENT / Swoogo parser answers
+        run: |
+          out=$(curl -s -m 60 -X POST https://kensington-group-form.vercel.app/api/parse-email -H 'Content-Type: application/json' -d '{}' -w '\n%{http_code}')
+          code=$(echo "$out" | tail -n1)
+          echo "parse-email -> HTTP $code"
+          if [ "$code" != "200" ] || ! echo "$out" | grep -q '"first_name"'; then echo "::error::parse-email is NOT answering correctly (HTTP $code)"; exit 1; fi
+      - name: Group reconcile endpoint answers (dry run, writes nothing)
+        run: |
+          code=$(curl -s -m 90 -o /tmp/r.json -w '%{http_code}' 'https://kensington-group-form.vercel.app/api/reconcile-groups')
+          echo "reconcile-groups -> HTTP $code"
+          if [ "$code" != "200" ]; then echo "::error::reconcile-groups is NOT answering (HTTP $code)"; exit 1; fi
+      - name: Go-Live settings service answers
+        run: |
+          code=$(curl -s -m 30 -o /tmp/g.json -w '%{http_code}' 'https://link-portal-alpha.vercel.app/api/golive-config')
+          echo "golive-config -> HTTP $code"
+          if [ "$code" != "200" ] || ! grep -q '"sections"' /tmp/g.json; then echo "::error::Go-Live settings service is NOT answering (HTTP $code)"; exit 1; fi
