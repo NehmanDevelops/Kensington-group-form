@@ -229,6 +229,49 @@
     return bad;
   }
 
-  var api = { toFriendly: toFriendly, toRaw: toRaw, unrecognised: unrecognised, idOfLabel: idOfLabel, RULE: RULE, DEFAULT_DATE_FORMAT: DEFAULT_DATE_FORMAT, fmtDate: fmtDate, parseContacts: parseContacts, render: render, renderEmail: renderEmail, unknownRefs: unknownRefs, refs: refs, fieldIndex: fieldIndex, condTrue: condTrue };
+  // ---------- styled (HTML) version of an email: logo banner, coloured headings, for copy-and-paste into Outlook ----------
+  // Works on the plain text the templates already produce: an underlined line is a heading, "- " lines are bullets.
+  var LOGO_URL = 'https://kensington-group-form.vercel.app/kensington-logo-cream.png';
+  function escH(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function inlineHtml(t) {
+    return escH(t)
+      .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" style="color:#1a3e32;">$1</a>')
+      .replace(/(^|[\s(;])([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, '$1<a href="mailto:$2" style="color:#1a3e32;">$2</a>')
+      .replace(/\[[^\]\n]{1,80}\]/g, function (m) { return '<span style="background:#f6e7a8;">' + m + '</span>'; });
+  }
+  function toHtml(body) {
+    var lines = String(body || '').replace(/\r/g, '').split('\n'), out = [], para = [], list = [], title = '';
+    var isRule = function (l) { return /^_{8,}\s*$/.test(l || ''); };
+    var P = 'margin:0 0 14px;font-family:Georgia,\'Times New Roman\',serif;font-size:15px;line-height:1.6;color:#3a2f3c;';
+    var flush = function () {
+      if (para.length) out.push('<p style="' + P + '">' + para.map(inlineHtml).join('<br>') + '</p>'); para = [];
+      if (list.length) out.push('<ul style="margin:0 0 14px;padding-left:22px;' + P.replace('margin:0 0 14px;', '') + '">' + list.map(function (x) { return '<li style="margin:0 0 4px;">' + inlineHtml(x) + '</li>'; }).join('') + '</ul>'); list = [];
+    };
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
+      if (i + 2 < lines.length + 1 && lines[i + 1] !== undefined && isRule(lines[i + 1]) && !isRule(l) && l.trim() && i > 0 && isRule(lines[i - 1])) continue;   // heading text (handled with its top rule)
+      if (isRule(l) && lines[i + 1] !== undefined && lines[i + 1].trim() && isRule(lines[i + 2])) {
+        flush();
+        var h = lines[i + 1].trim(); i += 2;
+        out.push('<h2 style="margin:26px 0 10px;padding:0 0 6px;border-bottom:2px solid #c9b78f;font-family:Georgia,\'Times New Roman\',serif;font-weight:normal;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#1a3e32;">' + inlineHtml(h) + '</h2>');
+        continue;
+      }
+      if (/^KENSINGTON CORPORATE\s*\|/.test(l) && isRule(lines[i + 1])) { title = l.split('|').slice(1).join('|').trim(); i += 1; continue; }
+      if (/^- /.test(l)) { if (para.length) flush(); list.push(l.slice(2)); continue; }
+      if (!l.trim()) { flush(); continue; }
+      if (list.length) flush();
+      para.push(l);
+    }
+    flush();
+    return '<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;background:#fdf9ec;border:1px solid #e4ddcc;">'
+      + '<tr><td align="center" bgcolor="#1a3e32" style="background:#1a3e32;padding:30px 24px 26px;">'
+      + '<img src="' + LOGO_URL + '" width="260" alt="Kensington Corporate" style="display:block;width:260px;max-width:80%;height:auto;margin:0 auto 14px;border:0;">'
+      + (title ? '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;color:#c9b78f;">' + escH(title) + '</div>' : '')
+      + '</td></tr><tr><td height="4" bgcolor="#c9b78f" style="background:#c9b78f;font-size:0;line-height:0;">&nbsp;</td></tr>'
+      + '<tr><td style="padding:28px 34px 8px;">' + out.join('') + '</td></tr>'
+      + '<tr><td bgcolor="#1a3e32" align="center" style="background:#1a3e32;padding:14px;font-family:Georgia,serif;font-size:11px;letter-spacing:2px;color:#c9b78f;">KENSINGTON CORPORATE</td></tr></table>';
+  }
+
+  var api = { toHtml: toHtml, toFriendly: toFriendly, toRaw: toRaw, unrecognised: unrecognised, idOfLabel: idOfLabel, RULE: RULE, DEFAULT_DATE_FORMAT: DEFAULT_DATE_FORMAT, fmtDate: fmtDate, parseContacts: parseContacts, render: render, renderEmail: renderEmail, unknownRefs: unknownRefs, refs: refs, fieldIndex: fieldIndex, condTrue: condTrue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GoLive = api;
 })(typeof window !== 'undefined' ? window : this);

@@ -33,5 +33,11 @@ const renamed = JSON.parse(JSON.stringify(cfg));
 renamed.sections[0].fields.find(f => f.id === 'accountName').label = 'Client Name';
 ok('renaming a question renames it everywhere; its id never changes', G.toFriendly('{{accountName}}', renamed) === '‹Client Name›' && G.toRaw('‹Client Name›', renamed) === '{{accountName}}');
 
+// styled (HTML) version for copy-and-paste into Outlook
+const sv = { accountName: 'Acme', region: 'USA', leadAgent: 'Mel Sawicki', csm: 'Mira', csmEmail: 'm@k.com', csmPhone: '1', signoffNames: 'Jenna', contacts: 'A B | EA | a@b.com | Travel Manager', signOn: 'SSO' };
+const hh = G.toHtml(G.renderEmail(cfg.emails.welcome, sv, cfg).body);
+ok('styled email: logo banner, headings, bullets, no leftover rules', /kensington-logo-cream.png/.test(hh) && (hh.match(/<h2/g) || []).length >= 6 && /<li/.test(hh) && !/____/.test(hh) && hh.indexOf('KENSINGTON CORPORATE |') === -1 && hh.indexOf('KENSINGTON CORPORATE  |') === -1);
+ok('styled email: emails and links become clickable, text is escaped', /href="mailto:m@k.com"/.test(hh) && G.toHtml('a <b> & https://x.com/y.').indexOf('&lt;b&gt; &amp; <a href="https://x.com/y"') !== -1);
+
 console.log(fails ? fails + ' FAILED' : 'ALL FRIENDLY TESTS PASSED');
 process.exit(fails ? 1 : 0);
