@@ -44,7 +44,7 @@
   .preview { position:sticky; top:14px; }
   .tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
   .tab { flex:1; min-width:120px; font:inherit; font-size:13px; padding:11px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink-soft); border-radius:8px; cursor:pointer; }
-  .tab.active { background:var(--green); color:var(--bone); border-color:var(--green); }
+  .tab.active { background:var(--ink); color:var(--bone); border-color:var(--ink); }
   .extras { display:grid; grid-template-columns:auto 1fr; gap:8px 10px; align-items:center; margin-bottom:10px; background:var(--paper); border:1px solid var(--line); padding:10px 12px; }
   .extras label { font-size:12px; color:var(--ink-soft); white-space:nowrap; }
   .extras input { width:100%; font:inherit; font-size:14px; padding:8px 11px; border:1px solid var(--line); border-radius:6px; background:#fff; }
@@ -56,6 +56,8 @@
   .mailwin-head { padding:4px 16px 0; border-bottom:1px solid #edebe9; }
   .mailwin-row { display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #f3f2f1; font-size:13px; color:#201f1e; } .mailwin-row:last-child { border-bottom:none; }
   .mailwin-row b { width:54px; flex:none; font-weight:400; color:#605e5c; } .mailwin-row span { min-width:0; overflow-wrap:anywhere; }
+  .viewtog { display:flex; gap:0; margin:0 0 8px; } .viewtog button { font:inherit; font-size:12px; padding:7px 14px; border:1px solid var(--line); background:var(--paper); color:var(--ink-soft); cursor:pointer; } .viewtog button:first-child { border-radius:6px 0 0 6px; } .viewtog button:last-child { border-radius:0 6px 6px 0; border-left:0; } .viewtog button.on { background:var(--ink); color:var(--bone); border-color:var(--ink); }
+  .mailwin-body.styled { white-space:normal; padding:12px; background:#e9e4d6; }
   .mailwin-body { padding:16px 18px 22px; font-size:13.5px; line-height:1.5; color:#201f1e; white-space:pre-wrap; word-break:break-word; max-height:58vh; overflow:auto; }
   .miss { background:#f6e9b8; color:#7a5b00; border-radius:3px; padding:0 3px; }
   .actions { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center; }
@@ -110,6 +112,7 @@
       <label for="extraCc">Also CC</label><input type="text" id="extraCc" placeholder="Type CC addresses, separated by commas" autocomplete="off" />
       <div class="extras-bad" id="extrasBad"></div>
     </div>
+    <div class="viewtog"><button type="button" id="vwStyled" class="on">Styled</button><button type="button" id="vwPlain">Plain text</button></div>
     <div class="mailwin" id="mailwin"></div>
     <div class="blank-list" id="blankList"></div>
     <div class="actions">
@@ -301,12 +304,18 @@
     r.cc = uniq(r.cc.concat(addrList(x.cc).filter(function (a) { return EMAIL_RE.test(a); })));
     return r;
   }
+  var viewStyled = true;
+  try { if (localStorage.getItem('golive-view') === 'plain') viewStyled = false; } catch (e) {}
+  function setView(styled) {
+    viewStyled = styled; try { localStorage.setItem('golive-view', styled ? 'styled' : 'plain'); } catch (e) {}
+    $('vwStyled').className = styled ? 'on' : ''; $('vwPlain').className = styled ? '' : 'on'; renderPreview();
+  }
   function renderPreview() {
     var r = current();
     $('mailwin').innerHTML = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div><div class="mailwin-head">'
       + '<div class="mailwin-row"><b>To</b><span>' + (r.to.length ? esc(r.to.join('; ')) : '<span class="miss">[recipients]</span>') + '</span></div>'
       + (r.cc.length ? '<div class="mailwin-row"><b>Cc</b><span>' + esc(r.cc.join('; ')) + '</span></div>' : '')
-      + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div></div><div class="mailwin-body">' + hi(r.body) + '</div>';
+      + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div></div><div class="mailwin-body' + (viewStyled ? ' styled' : '') + '">' + (viewStyled ? G.toHtml(r.body) : hi(r.body)) + '</div>';
     $('blankList').textContent = r.missing.length ? 'Still blank: ' + r.missing.join(', ') : '';
   }
 
@@ -428,6 +437,9 @@
     if (r.missing.length && !confirm('These are still blank and will show as [placeholders]:\n\n' + r.missing.join('\n') + '\n\nContinue anyway?')) return null;
     return r;
   }
+  $('vwStyled').addEventListener('click', function () { setView(true); });
+  $('vwPlain').addEventListener('click', function () { setView(false); });
+  $('vwStyled').className = viewStyled ? 'on' : ''; $('vwPlain').className = viewStyled ? '' : 'on';
   $('styledBtn').addEventListener('click', function () {
     var r = checkBeforeStyled(); if (!r) return;
     var html = '<html><body>' + G.toHtml(r.body) + '</body></html>', b = this;
