@@ -57,6 +57,8 @@ All repos are under GitHub user `NehmanDevelops`. Deploys are on Vercel (`vercel
 ### 3.2 Go-Live Communications (`go-live-communication.html`)
 **What users see:** one page. Fill in the account once; three email tabs (Internal communication, Welcome letter, Travel Manager next steps) show a live Outlook-style preview. "Create email in Outlook" opens a normal Outlook draft (mailto) with To, CC, subject and plain-text body; fireworks play; Internal and Welcome also log to the Excel tracker through Power Automate (`/api/finance-tracker`, action `proxy-flow`, Mode = Internal / External). You can type extra "Also send to / Also CC" addresses per email.
 
+**Styled email (added 2026-10-08, Michael wanted it "flashy"):** buttons *Copy styled email* and *Download styled email* next to Copy text. `GoLive.toHtml()` in `go-live-engine.js` turns the plain email into a branded HTML version (green banner, logo from `/kensington-logo-cream.png`, gold headings). It is built from exactly what the preview shows (form answers, extra recipients, unsaved wording edits). Outlook cannot receive HTML from a link, so the user pastes it (Ctrl+V) into a new email; the download is a page with a Copy button. US reservations email `usa@kensingtoncorporate.com` is now in the welcome letter. Lesson: never write a literal closing script tag inside a JS string in the page (it killed the whole page for ~10 minutes); always run `node --check` on the page script before pushing.
+
 **Customizing (everything happens in place, no separate page):**
 - **+ Add a field** at the bottom of every section (question, answer type, choices, tick which emails mention it).
 - **edit choices** next to each dropdown (e.g. add a third OBT).
