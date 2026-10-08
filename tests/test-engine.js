@@ -42,7 +42,7 @@ ok('no triple blank lines', !/\n\n\n/.test(w.body));
 ok('Concur videos line only for Concur', /SAP Concur/.test(w.body));
 
 const usa = G.renderEmail(cfg.emails.welcome, Object.assign({}, pfah, { region: 'USA', obt: 'Deem', accountNotes: 'Custom note here.' }), cfg);
-ok('USA shows placeholder + email placeholder', /\[US support details/.test(usa.body) && /\[US support email\]/.test(usa.body));
+ok('USA shows details placeholder + the usa@ reservations email', /\[US support details/.test(usa.body) && /When emailing usa@kensingtoncorporate.com, please put ATTN/.test(usa.body));
 ok('Deem shows editable placeholder + no SAP Concur line', /\[Deem sign-in instructions/.test(usa.body) && !/SAP Concur/.test(usa.body));
 ok('account notes section appears', /SPECIFIC TO PARTNERS FOR AFFORDABLE HOUSING/.test(usa.body) && /Custom note here\./.test(usa.body));
 
