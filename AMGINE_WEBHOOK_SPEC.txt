@@ -1,0 +1,127 @@
+//Turn word wrap off :), otherwise the notes added here will appear on the next line
+
+//The trip is ready to be worked on.  You can build a link to the trip for the agent using these parameters
+//Prod: https://app.amgine.ai/agentapp/transaction/{WorkspaceGuid}/{ItineraryId}
+//Staging: https://staging.amgine.ai/agentapp/transaction/{WorkspaceGuid}/{ItineraryId}
+{
+	"ItineraryState": "Ready",
+	"PreviousItineraryState": "Curating",
+	"ExternalId": "Your-System-Transaction-ID1",  //This is the id that was sent in with the request.  Use this to identify the trip your system
+    "ExternalThreadId": "Your-System-Thread-ID1", //This is the id that was sent in with the request.  Use this to identify the trip your system
+	"Environment": "prod", //"staging" for AMGiNE's staging environment
+	"TravelerCreatePnrOnAccept": true,
+	"WorkspaceGuid": "xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx",
+	"ItineraryId": 99999,
+	"ServicedEntityBranchGuid": "xxxxx7b9-xxxx-4eeb-8ab0-a6cc024xxxxx",
+	"TmcGuid": "xxxxx18c-6bef-xxxx-a46e-853c1exxxxx"
+}
+
+//The trip has been promoted directly to the traveler. "ItineraryState": "Ready" has been by-passed.
+//The "AgentEmailId" is the "To" field from the new request endpoint (https://app.amgine.ai/publicapi/api/TravelRequest/new)
+//You can build a link to the trip for the traveler using these parameters
+//Prod: https://app.amgine.ai/clienttool/approval/{WorkspaceGuid}/{ItineraryId}/{ItineraryId}/{AccessHash}
+//Staging: https://staging.amgine.ai/clienttool/approval/{WorkspaceGuid}/{ItineraryId}/{ItineraryId}/{AccessHash}
+{
+	"ItineraryState": "Direct_Traveler",
+	"PreviousItineraryState": "Curating",
+	"AccessHash": "c43ca787fcc1cf5009461b0c1bd89f909644b66fea58b1a191364ebefaedff00c11d151d60e0837054a7f953edb3dca9386f9677fe99d5e1f596a5bbebc9be80",
+	"Environment": "prod",
+	"AgentEmailId": "anyone@amgine.ai",
+	"TravelerCreatePnrOnAccept": true,
+	"WorkspaceGuid": "xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx",
+	"ItineraryId": 99999,
+	"ServicedEntityBranchGuid": "xxxxx7b9-xxxx-4eeb-8ab0-a6cc024xxxxx",
+	"TmcGuid": "xxxxx18c-6bef-xxxx-a46e-853c1exxxxx"
+}
+
+//The agent has promoted the trip to the traveler.  You can build a link to the trip for the traveler using these parameters
+//Prod: https://app.amgine.ai/clienttool/approval/{WorkspaceGuid}/{ItineraryId}/{ItineraryId}/{AccessHash}
+//Staging: https://staging.amgine.ai/clienttool/approval/{WorkspaceGuid}/{ItineraryId}/{ItineraryId}/{AccessHash}
+//The ItineraryId appears twice for backwards compatibility
+{
+	"ItineraryState": "Agent_Approved",
+	"PreviousItineraryState": "Ready",
+	"ExternalId": "Your-System-Transaction-ID1",
+    "ExternalThreadId": "Your-System-Thread-ID1",
+	"Note": "Send By Email",
+	"AccessHash": "ebed02eb8d867c15e49073c2e270b2c5d32c0e18e73cd45ff2827785a24c3771d0589c1ed1cc947a7ce3a7828ce4a68306150c64a9fb4af8f984505fa3e0b721",
+	"AgentBooked": false,
+	"Environment": "prod",
+	"AgentEmailId": "raymond@amgine.ai",
+	"SendByEmail": true,
+	"TravelerCreatePnrOnAccept": true,
+	"WorkspaceGuid": "xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx",
+	"ItineraryId": 99999,
+	"ServicedEntityBranchGuid": "xxxxx7b9-xxxx-4eeb-8ab0-a6cc024xxxxx",
+	"TmcGuid": "xxxxx18c-6bef-xxxx-a46e-853c1exxxxx"
+}
+
+//The agent has delcined the trip from Agent Experience.  This is an end state and the trip can no longer processed by AMGiNE.
+//The agent must process the trip manually.
+{
+	"ItineraryState": "Agent_Declined",
+	"PreviousItineraryState": "Ready",
+	"Note": "\n---Approval Form : https://app.amgine.ai/clienttool/approval/xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx/99999/99999/ebed02eb8d867c15e49073c2e270b2c5d32c0e18e73cd45ff2827785a24c3771d0589c1ed1cc947a7ce3a7828ce4a68306150c64a9fb4af8f984505fa3e0b721\n---Direct To Traveler : Agent Bypassed\n\n---Itinerary Recommendation Summary \n Flight Info\nOption 1\nAA  76           O MON 05APR27                New York/JFK               to San Francisco/SFO                 06:00   09:27\nDuration: 6h27m, Equipment: AIRBUS INDUSTRIE A321 SHARKLETS, Operated By: AA, Cabin Class: Economy, Brand Name: MAIN CABIN, Corporate Rate Code: N/A\n\nAA  276          O WED 07APR27                San Francisco/SFO          to New York/JFK                      21:23   06:00\nDuration: 5h37m, Equipment: AIRBUS INDUSTRIE A321 SHARKLETS, Operated By: AA, Cabin Class: Economy, Brand Name: MAIN CABIN, Corporate Rate Code: N/A\n\nTotal Fare  $ 408.79 USD\n\nOption 2\nAA  76           O MON 05APR27                New York/JFK               to San Francisco/SFO                 06:00   09:27\nDuration: 6h27m, Equipment: AIRBUS INDUSTRIE A321 SHARKLETS, Operated By: AA, Cabin Class: Economy, Brand Name: MAIN CABIN, Corporate Rate Code: N/A\n\nAA  148          O WED 07APR27                San Francisco/SFO          to New York/JFK                      15:09   23:50\nDuration: 5h41m, Equipment: AIRBUS A321NEO, Operated By: AA, Cabin Class: Economy, Brand Name: MAIN CABIN, Corporate Rate Code: N/A\n\nTotal Fare  $ 408.79 USD\n\n---------------------------------------------------------------------------------------------------------------------------------\n\n\nThis is a message the agent has entered from Agent Experience",
+	"Environment": "prod",
+	"AgentEmailId": "anyone@amgine.ai",
+	"TravelerCreatePnrOnAccept": true,
+	"WorkspaceGuid": "xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx",
+	"ItineraryId": 99999,
+	"ServicedEntityBranchGuid": "xxxxx7b9-xxxx-4eeb-8ab0-a6cc024xxxxx",
+	"TmcGuid": "xxxxx18c-6bef-xxxx-a46e-853c1exxxxx"
+}
+
+//The traveler has declined the trip in JENi.  Create a message to the Agent and a link to Agent Experience.
+//The agent can reopen the case and make changes according to the travelers feedback ("Note")
+{
+	"ItineraryState": "Client_Declined",
+	"PreviousItineraryState": "Agent_Approved",
+	"ExternalId": "Your-System-Transaction-ID1",
+    "ExternalThreadId": "Your-System-Thread-ID1",
+	"Note": "This is a note the traveler entered for the agent to read from JENi.  Use this message in a notification you build to the agent.",
+	"AgentBooked": false,
+	"Environment": "prod",
+	"AgentEmailId": "raymond@amgine.ai",
+	"TravelerCreatePnrOnAccept": true,
+	"WorkspaceGuid": "xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx",
+	"ItineraryId": 99999,
+	"ServicedEntityBranchGuid": "xxxxx7b9-xxxx-4eeb-8ab0-a6cc024xxxxx",
+	"TmcGuid": "xxxxx18c-6bef-xxxx-a46e-853c1exxxxx"
+}
+
+//The client has initiated booking from JENi
+//"ItineraryState": "Agnet_Booking" when booked by agent in AE
+{
+	"ItineraryState": "Client_Booking",
+	"PreviousItineraryState": "Client_Accepted",
+	"ExternalId": "Your-System-Transaction-ID1",
+    "ExternalThreadId": "Your-System-Thread-ID1",
+	"AgentBooked": false,
+	"Environment": "prod",
+	"AgentEmailId": "raymond@amgine.ai",  //The email of the agent who promoted the trip to the traveler or booked the trip when "ItineraryState": "Agnet_Booking"
+	"TravelerCreatePnrOnAccept": true,
+	"WorkspaceGuid": "xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx",
+	"ItineraryId": 99999,
+	"ServicedEntityBranchGuid": "xxxxx7b9-xxxx-4eeb-8ab0-a6cc024xxxxx",
+	"TmcGuid": "xxxxx18c-6bef-xxxx-a46e-853c1exxxxx"
+}
+
+//The trip has been booked successfully  This is an end state.
+{
+	"ItineraryState": "Booked", //"Booking_Failed" when something went wrong with the booking
+	"PreviousItineraryState": "Client_Booking",
+	"ExternalId": "Your-System-Transaction-ID1",
+    "ExternalThreadId": "Your-System-Thread-ID1",
+	"AgentBooked": false,
+	"Environment": "prod",
+	"AgentEmailId": "raymond@amgine.ai", //The email of the agent who promoted the trip to the traveler or booked if "PreviousItineraryState": "Agent_Booking",
+	"TravelerCreatePnrOnAccept": true,
+	"WorkspaceGuid": "xxxxx8bf-xxxx-4c58-9ffd-6f7ae28xxxxx",
+	"ItineraryId": 99999,
+	"ServicedEntityBranchGuid": "xxxxx7b9-xxxx-4eeb-8ab0-a6cc024xxxxx",
+	"TmcGuid": "xxxxx18c-6bef-xxxx-a46e-853c1exxxxx"
+}
+
+//Any other state received should be treated as what we call a Suspense state.
+//This is an end state and the trip can no longer processed by AMGiNE.
+//It is recommended to inform the agents with the ItineraryState
