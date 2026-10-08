@@ -263,7 +263,7 @@
       para.push(l);
     }
     flush();
-    return '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:16px 12px 20px 0;">'
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:676px;"><tr><td style="padding:16px 12px 20px 0;">'
       + '<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;border-collapse:separate;border-radius:14px;overflow:hidden;background-color:#fdf9ec;background-image:linear-gradient(#fdf9ec,#fdf9ec);border:1px solid #e4ddcc;color-scheme:light only;supported-color-schemes:light;">'
       + '<tr><td align="center" bgcolor="#3a2f3c" style="background-color:#3a2f3c;background-image:linear-gradient(#3a2f3c,#3a2f3c);padding:30px 24px 26px;">'
       + '<img src="' + LOGO_URL + '" width="260" alt="Kensington Corporate" style="display:block;width:260px;max-width:80%;height:auto;margin:0 auto 14px;border:0;">'

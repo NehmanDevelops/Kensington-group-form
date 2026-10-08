@@ -21,7 +21,7 @@
   .hero-title em { font-style:italic; color:#c9b78f; }
   .hero-sub { color:rgba(245,241,232,.72); font-size:14px; max-width:620px; margin:12px auto 0; }
 
-  .layout { max-width:1240px; margin:26px auto 30px; padding:0 20px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,520px); gap:24px; align-items:start; }
+  .layout { max-width:min(1900px,96vw); margin:26px auto 30px; padding:0 20px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,var(--pw,520px)); gap:24px; align-items:start; }
   @media (max-width:1000px){ .layout{ grid-template-columns:1fr; } .preview{ position:static !important; } }
 
   .card { background:var(--paper); border:1px solid var(--line); box-shadow:var(--shadow); margin-bottom:18px; }
@@ -42,6 +42,11 @@
   .minilink { font:inherit; font-size:12px; color:var(--green); background:none; border:none; cursor:pointer; text-decoration:underline; margin-left:8px; padding:0; font-weight:400; }
 
   .preview { position:sticky; top:14px; }
+  .pgrip { position:absolute; left:-17px; top:0; bottom:0; width:14px; cursor:col-resize; display:flex; align-items:center; justify-content:center; z-index:5; touch-action:none; }
+  .pgrip::before { content:''; width:4px; height:64px; border-radius:3px; background:var(--line); transition:background .15s; }
+  .pgrip:hover::before, .pgrip.drag::before { background:var(--gold); }
+  .pgrip-tip { position:absolute; left:-17px; top:-22px; font-size:11px; color:var(--ink-mute); white-space:nowrap; }
+  @media (max-width:1000px){ .pgrip, .pgrip-tip { display:none; } }
   .tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
   .tab { flex:1; min-width:120px; font:inherit; font-size:13px; padding:11px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink-soft); border-radius:8px; cursor:pointer; }
   .tab.active { background:var(--ink); color:var(--bone); border-color:var(--ink); }
@@ -106,6 +111,7 @@
   <form id="goLiveForm" novalidate><div class="loading" id="loading">Loading…</div></form>
 
   <aside class="preview" id="previewCol" style="display:none;">
+    <div class="pgrip" id="pgrip" title="Drag left or right to make the preview wider or narrower (double-click to reset)"></div>
     <div class="tabs" id="tabs"></div>
     <div class="extras">
       <label for="extraTo">Also send to</label><input type="text" id="extraTo" placeholder="Type more email addresses, separated by commas" autocomplete="off" />
@@ -432,6 +438,21 @@
     if (r.missing.length && !confirm('These are still blank and will show as [placeholders]:\n\n' + r.missing.join('\n') + '\n\nContinue anyway?')) return null;
     return r;
   }
+  // ---------- drag the left edge of the preview to make it wider or narrower ----------
+  (function () {
+    var grip = $('pgrip'), lay = document.querySelector('.layout'), MIN = 380;
+    function maxW() { return Math.max(MIN + 40, lay.clientWidth - 340 - 24); }
+    function setW(w) { w = Math.max(MIN, Math.min(maxW(), Math.round(w))); lay.style.setProperty('--pw', w + 'px'); return w; }
+    try { var saved = parseInt(localStorage.getItem('golive-pw'), 10); if (saved) setW(saved); } catch (e) {}
+    grip.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault(); grip.setPointerCapture(ev.pointerId); grip.classList.add('drag');
+      var startX = ev.clientX, startW = $('previewCol').getBoundingClientRect().width, w = startW;
+      var move = function (e) { w = setW(startW + (startX - e.clientX)); };
+      var up = function () { grip.classList.remove('drag'); grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); try { localStorage.setItem('golive-pw', String(w)); } catch (e) {} };
+      grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up);
+    });
+    grip.addEventListener('dblclick', function () { lay.style.removeProperty('--pw'); try { localStorage.removeItem('golive-pw'); } catch (e) {} });
+  })();
   $('styledBtn').addEventListener('click', function () {
     var r = checkBeforeStyled(); if (!r) return;
     var html = '<html><body>' + G.toHtml(r.body) + '</body></html>', b = this;
