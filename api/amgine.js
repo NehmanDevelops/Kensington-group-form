@@ -297,41 +297,38 @@ async function sendOne({ api, amgToken, mrow, M, groups, G, dryRun }) {
     if (profs.length) bookingProfile = profs;
   }
 
-  // ── Negotiated rate codes / tour codes (Raymond, 2026-08-05; 3rd slot added
-  // 2026-10-07 per Vera's manager; 4th slot added same day for Arbvonne's 4
-  // discounts) ─────────────────────────────────────────────────────────────
+  // ── Negotiated rate codes / tour codes (Raymond, 2026-08-05; 3rd/4th slots
+  // added 2026-10-07; refactored to a loop + 5th slot added 2026-10-08 per
+  // Vera — "they can't add it on their end" meant the Smartsheet column
+  // itself, not an Amgine-side limit, so same pattern as slot 4: create the
+  // column ourselves, then wire it in) ─────────────────────────────────────
   // Sent at the ROOT of the booking payload as BranchInfo.AirConfig.NegotiatedRateCodes:
   //   { Airline, CorporateId }  = an airline snap code / contracted rate
   //   { Airline, TourCode }     = a tour code (same array, different key per entry)
-  // Source: dedicated Airline column paired with its code column on the group row
-  // (LIVE GROUP MASTERSHEET) — four slots per group:
-  //   Airline1 + 'Snap Code/Contract Code' -> CorporateId, Airline1 + 'Tour Code' -> TourCode
-  //   Airline2 + 'Snap/Contract Code 2'     -> CorporateId, Airline2 + 'Tour Code2' -> TourCode
-  //   'Airline 3' + 'Snap code 3'           -> CorporateId, 'Airline 3' + 'Tour Code 3' -> TourCode
-  //   'Airline 4' + 'Snap code 4'           -> CorporateId, 'Airline 4' + 'Tour Code 4' -> TourCode
-  // Note slots 3/4's column names have different spacing/capitalization than
-  // slots 1/2 ("Airline 3"/"Airline 4" not "Airline3"/"Airline4", "Snap code
-  // 3"/"Snap code 4" not "Snap Code 3"/"Snap Code 4") — the 4th slot's
-  // columns ("Airline 4", "Snap code 4", "Tour Code 4") were created fresh
-  // by this same change, matching the 3rd slot's naming convention exactly
-  // since no precedent existed to confirm against. Confirmed exact spelling
-  // of slot 3 via a live column listing before wiring it in, not guessed
-  // (lesson from the §38 PE Emails saga).
-  // A slot is a no-op unless BOTH its airline and code are filled in.
-  const airline1 = norm(G.val(grow, 'Airline1')).toUpperCase();
-  const airline2 = norm(G.val(grow, 'Airline2')).toUpperCase();
-  const airline3 = norm(G.val(grow, 'Airline 3')).toUpperCase();
-  const airline4 = norm(G.val(grow, 'Airline 4')).toUpperCase();
-  const negotiatedRateCodes = [
-    ...(airline1 && norm(G.val(grow, 'Snap Code/Contract Code')) ? [{ Airline: airline1, CorporateId: norm(G.val(grow, 'Snap Code/Contract Code')) }] : []),
-    ...(airline1 && norm(G.val(grow, 'Tour Code')) ? [{ Airline: airline1, TourCode: norm(G.val(grow, 'Tour Code')) }] : []),
-    ...(airline2 && norm(G.val(grow, 'Snap/Contract Code 2')) ? [{ Airline: airline2, CorporateId: norm(G.val(grow, 'Snap/Contract Code 2')) }] : []),
-    ...(airline2 && norm(G.val(grow, 'Tour Code2')) ? [{ Airline: airline2, TourCode: norm(G.val(grow, 'Tour Code2')) }] : []),
-    ...(airline3 && norm(G.val(grow, 'Snap code 3')) ? [{ Airline: airline3, CorporateId: norm(G.val(grow, 'Snap code 3')) }] : []),
-    ...(airline3 && norm(G.val(grow, 'Tour Code 3')) ? [{ Airline: airline3, TourCode: norm(G.val(grow, 'Tour Code 3')) }] : []),
-    ...(airline4 && norm(G.val(grow, 'Snap code 4')) ? [{ Airline: airline4, CorporateId: norm(G.val(grow, 'Snap code 4')) }] : []),
-    ...(airline4 && norm(G.val(grow, 'Tour Code 4')) ? [{ Airline: airline4, TourCode: norm(G.val(grow, 'Tour Code 4')) }] : []),
+  // Source: dedicated Airline column paired with its code column on the group
+  // row (LIVE GROUP MASTERSHEET). Slots 1/2 predate this convention and use
+  // their own historical column names; slots 3+ follow 'Airline N'/'Snap
+  // code N'/'Tour Code N' (space before the number, lowercase "code") —
+  // confirmed exact via a live column listing before ever wiring a new slot
+  // in, never guessed (lesson from the §38 PE Emails saga). A slot is a
+  // no-op unless BOTH its airline and code are filled in.
+  const RATE_CODE_SLOTS = [
+    { airlineCol: 'Airline1', snapCol: 'Snap Code/Contract Code', tourCol: 'Tour Code' },
+    { airlineCol: 'Airline2', snapCol: 'Snap/Contract Code 2', tourCol: 'Tour Code2' },
+    { airlineCol: 'Airline 3', snapCol: 'Snap code 3', tourCol: 'Tour Code 3' },
+    { airlineCol: 'Airline 4', snapCol: 'Snap code 4', tourCol: 'Tour Code 4' },
+    { airlineCol: 'Airline 5', snapCol: 'Snap code 5', tourCol: 'Tour Code 5' },
   ];
+  const negotiatedRateCodes = RATE_CODE_SLOTS.flatMap(({ airlineCol, snapCol, tourCol }) => {
+    const airline = norm(G.val(grow, airlineCol)).toUpperCase();
+    if (!airline) return [];
+    const snap = norm(G.val(grow, snapCol));
+    const tour = norm(G.val(grow, tourCol));
+    return [
+      ...(snap ? [{ Airline: airline, CorporateId: snap }] : []),
+      ...(tour ? [{ Airline: airline, TourCode: tour }] : []),
+    ];
+  });
   const hasNegotiatedRateCodes = negotiatedRateCodes.length > 0;
 
   // ── Email Country (Raymond, 2026-08-15) — controls which localized content
@@ -527,6 +524,24 @@ export default async function handler(req, res) {
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+  // TEMP: one-shot — add Airline 5 / Snap code 5 / Tour Code 5 columns to
+  // LIVE GROUP MASTERSHEET if missing (remove after use).
+  if (norm(body.__setupSlot5Cols) === 'kcg-slot5-2026') {
+    const groups = await (await api(`/sheets/${GROUPS}?pageSize=1`)).json();
+    const existingTitles = new Set((groups.columns || []).map(c => c.title.trim().toLowerCase()));
+    const wanted = ['Airline 5', 'Snap code 5', 'Tour Code 5'];
+    const toAdd = wanted.filter(t => !existingTitles.has(t.toLowerCase()));
+    const results = [];
+    let idx = (groups.columns || []).length;
+    for (const title of toAdd) {
+      const r = await api(`/sheets/${GROUPS}/columns`, { method: 'POST', body: JSON.stringify([{ title, type: 'TEXT_NUMBER', index: idx }]) });
+      const j = await r.json().catch(() => ({}));
+      results.push({ title, ok: r.ok, raw: r.ok ? undefined : j });
+      idx++;
+    }
+    return res.status(200).json({ ok: true, alreadyExisted: wanted.filter(t => existingTitles.has(t.toLowerCase())), created: results });
+  }
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
