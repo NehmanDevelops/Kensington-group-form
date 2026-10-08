@@ -425,12 +425,7 @@
   }
   function checkBeforeStyled() {
     var r = current();   // exactly what the preview shows right now, including form answers, extra recipients and unsaved wording edits
-    if (r.missing.length && !confirm('These are still blank and will show as [placeholders]:
-
-' + r.missing.join('
-') + '
-
-Continue anyway?')) return null;
+    if (r.missing.length && !confirm('These are still blank and will show as [placeholders]:\n\n' + r.missing.join('\n') + '\n\nContinue anyway?')) return null;
     return r;
   }
   $('styledBtn').addEventListener('click', function () {
