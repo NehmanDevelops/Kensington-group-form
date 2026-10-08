@@ -418,8 +418,8 @@
     return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(r.subject) + '</title></head><body style="margin:0;background:#e9e4d6;font-family:Georgia,serif;">'
       + '<div style="max-width:640px;margin:18px auto;padding:0 12px;"><div style="background:#fff;border:1px solid #e4ddcc;padding:12px 16px;margin-bottom:14px;font-size:14px;color:#3a2f3c;">'
       + '<b>Subject:</b> ' + esc(r.subject) + (r.to.length ? '<br><b>To:</b> ' + esc(r.to.join('; ')) : '') + (r.cc.length ? '<br><b>Cc:</b> ' + esc(r.cc.join('; ')) : '')
-      + '<br><br><button id="cp" style="font:inherit;font-size:14px;padding:9px 18px;background:#1a3e32;color:#fdf9ec;border:0;border-radius:5px;cursor:pointer;">Copy email</button> '
-      + '<span id="ok" style="color:#1a3e32;"></span><br><span style="font-size:12px;color:#8b8678;">Then open a new Outlook email, click in the body and press Ctrl+V.</span></div>'
+      + '<br><br><button id="cp" style="font:inherit;font-size:14px;padding:9px 18px;background:#3a2f3c;color:#fdf9ec;border:0;border-radius:5px;cursor:pointer;">Copy email</button> '
+      + '<span id="ok" style="color:#3a2f3c;"></span><br><span style="font-size:12px;color:#8b8678;">Then open a new Outlook email, click in the body and press Ctrl+V.</span></div>'
       + '<div id="email">' + G.toHtml(r.body) + '</div></div>'
       + '<script>document.getElementById("cp").onclick=function(){var e=document.getElementById("email"),s=getSelection(),g=document.createRange();g.selectNodeContents(e);s.removeAllRanges();s.addRange(g);var ok=false;try{ok=document.execCommand("copy")}catch(x){}s.removeAllRanges();document.getElementById("ok").textContent=ok?"✓ Copied: now paste it into Outlook":"Press Ctrl+A then Ctrl+C instead"};<' + '/script></body></html>';
   }
