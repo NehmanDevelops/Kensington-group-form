@@ -112,19 +112,20 @@
       <label for="extraCc">Also CC</label><input type="text" id="extraCc" placeholder="Type CC addresses, separated by commas" autocomplete="off" />
       <div class="extras-bad" id="extrasBad"></div>
     </div>
-    <div class="viewtog"><button type="button" id="vwStyled" class="on">Styled</button><button type="button" id="vwPlain">Plain text</button></div>
     <div class="mailwin" id="mailwin"></div>
     <div class="blank-list" id="blankList"></div>
     <div class="actions">
-      <button type="button" class="btn" id="createBtn">Create email in Outlook</button>
+      <button type="button" class="btn" id="styledBtn" title="Copies the email exactly as shown above: paste it into a new Outlook email">Copy email</button>
+      <button type="button" class="btn ghost" id="dlBtn" title="Download the email as a page you can open, then copy into Outlook">Download email</button>
       <button type="button" class="btn ghost" id="editBtn">✎ Edit this email</button>
-      <button type="button" class="btn ghost" id="copyBtn">Copy text</button>
-      <button type="button" class="btn ghost" id="styledBtn" title="A designed version with the Kensington logo and colours: paste it into a new Outlook email">Copy styled email</button>
-      <button type="button" class="btn ghost" id="dlBtn" title="Download the designed email as a page you can open, then copy into Outlook">Download styled email</button>
+    </div>
+    <div class="actions" style="margin-top:6px"><span style="font-size:12px;color:var(--ink-mute);align-self:center">Plain-text backup (no design):</span>
+      <button type="button" class="btn ghost small" id="createBtn">Open plain draft in Outlook</button>
+      <button type="button" class="btn ghost small" id="copyBtn">Copy text</button>
     </div>
     <div class="banner" id="banner"></div>
     <div id="edHost"></div>
-    <p class="note">Outlook opens with the To, CC, subject and the email already written. Gold = still to fill in. Outlook may wrap long lines slightly differently, and adds your own signature.</p>
+    <p class="note">This is the email as it will look. Press <b>Copy email</b>, open a new Outlook email, put the subject and recipients in, click the body and press Ctrl+V. Yellow = still to fill in.</p>
   </aside>
 </div>
 
@@ -304,18 +305,12 @@
     r.cc = uniq(r.cc.concat(addrList(x.cc).filter(function (a) { return EMAIL_RE.test(a); })));
     return r;
   }
-  var viewStyled = true;
-  try { if (localStorage.getItem('golive-view') === 'plain') viewStyled = false; } catch (e) {}
-  function setView(styled) {
-    viewStyled = styled; try { localStorage.setItem('golive-view', styled ? 'styled' : 'plain'); } catch (e) {}
-    $('vwStyled').className = styled ? 'on' : ''; $('vwPlain').className = styled ? '' : 'on'; renderPreview();
-  }
   function renderPreview() {
     var r = current();
     $('mailwin').innerHTML = '<div class="mailwin-bar"><i></i><i></i><i></i>&nbsp; New message</div><div class="mailwin-head">'
       + '<div class="mailwin-row"><b>To</b><span>' + (r.to.length ? esc(r.to.join('; ')) : '<span class="miss">[recipients]</span>') + '</span></div>'
       + (r.cc.length ? '<div class="mailwin-row"><b>Cc</b><span>' + esc(r.cc.join('; ')) + '</span></div>' : '')
-      + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div></div><div class="mailwin-body' + (viewStyled ? ' styled' : '') + '">' + (viewStyled ? G.toHtml(r.body) : hi(r.body)) + '</div>';
+      + '<div class="mailwin-row"><b>Subject</b><span>' + hi(r.subject) + '</span></div></div><div class="mailwin-body styled">' + G.toHtml(r.body) + '</div>';
     $('blankList').textContent = r.missing.length ? 'Still blank: ' + r.missing.join(', ') : '';
   }
 
@@ -437,14 +432,11 @@
     if (r.missing.length && !confirm('These are still blank and will show as [placeholders]:\n\n' + r.missing.join('\n') + '\n\nContinue anyway?')) return null;
     return r;
   }
-  $('vwStyled').addEventListener('click', function () { setView(true); });
-  $('vwPlain').addEventListener('click', function () { setView(false); });
-  $('vwStyled').className = viewStyled ? 'on' : ''; $('vwPlain').className = viewStyled ? '' : 'on';
   $('styledBtn').addEventListener('click', function () {
     var r = checkBeforeStyled(); if (!r) return;
     var html = '<html><body>' + G.toHtml(r.body) + '</body></html>', b = this;
     var done = function (ok) {
-      b.textContent = ok ? '✓ Copied' : 'Copy failed'; setTimeout(function () { b.textContent = 'Copy styled email'; }, 2500);
+      b.textContent = ok ? '✓ Copied' : 'Copy failed'; setTimeout(function () { b.textContent = 'Copy email'; }, 2500);
       banner(ok ? '✓ Styled email copied. In Outlook: <strong>New email</strong>, put <strong>' + esc(r.subject) + '</strong> in the subject' + (r.to.length ? ' and the recipients in To' : '') + ', click in the body and press <strong>Ctrl+V</strong>.'
                 : 'The browser blocked copying. Use “Download styled email” instead.', !ok);
     };
