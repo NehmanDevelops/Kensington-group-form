@@ -263,13 +263,13 @@
       para.push(l);
     }
     flush();
-    return '<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;background:#fdf9ec;border:1px solid #e4ddcc;">'
-      + '<tr><td align="center" bgcolor="#3a2f3c" style="background:#3a2f3c;padding:30px 24px 26px;">'
+    return '<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;background-color:#fdf9ec;background-image:linear-gradient(#fdf9ec,#fdf9ec);border:1px solid #e4ddcc;color-scheme:light only;supported-color-schemes:light;">'
+      + '<tr><td align="center" bgcolor="#3a2f3c" style="background-color:#3a2f3c;background-image:linear-gradient(#3a2f3c,#3a2f3c);padding:30px 24px 26px;">'
       + '<img src="' + LOGO_URL + '" width="260" alt="Kensington Corporate" style="display:block;width:260px;max-width:80%;height:auto;margin:0 auto 14px;border:0;">'
       + (title ? '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;color:#c9c3b2;">' + escH(title) + '</div>' : '')
-      + '</td></tr><tr><td height="4" bgcolor="#c9c3b2" style="background:#c9c3b2;font-size:0;line-height:0;">&nbsp;</td></tr>'
-      + '<tr><td style="padding:28px 34px 8px;">' + out.join('') + '</td></tr>'
-      + '<tr><td bgcolor="#3a2f3c" align="center" style="background:#3a2f3c;padding:14px;font-family:Georgia,serif;font-size:11px;letter-spacing:2px;color:#c9c3b2;">KENSINGTON CORPORATE</td></tr></table>';
+      + '</td></tr><tr><td height="4" bgcolor="#c9c3b2" style="background-color:#c9c3b2;background-image:linear-gradient(#c9c3b2,#c9c3b2);font-size:0;line-height:0;">&nbsp;</td></tr>'
+      + '<tr><td bgcolor="#fdf9ec" style="background-color:#fdf9ec;background-image:linear-gradient(#fdf9ec,#fdf9ec);padding:28px 34px 8px;">' + out.join('') + '</td></tr>'
+      + '<tr><td bgcolor="#3a2f3c" align="center" style="background-color:#3a2f3c;background-image:linear-gradient(#3a2f3c,#3a2f3c);padding:14px;font-family:Georgia,serif;font-size:11px;letter-spacing:2px;color:#c9c3b2;">KENSINGTON CORPORATE</td></tr></table>';
   }
 
   var api = { toHtml: toHtml, toFriendly: toFriendly, toRaw: toRaw, unrecognised: unrecognised, idOfLabel: idOfLabel, RULE: RULE, DEFAULT_DATE_FORMAT: DEFAULT_DATE_FORMAT, fmtDate: fmtDate, parseContacts: parseContacts, render: render, renderEmail: renderEmail, unknownRefs: unknownRefs, refs: refs, fieldIndex: fieldIndex, condTrue: condTrue };
