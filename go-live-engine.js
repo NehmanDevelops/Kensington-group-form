@@ -266,11 +266,11 @@
     // banner + footer are IMAGES (plum, logo, title baked in): Outlook's dark mode recolours text and background colours, never pictures
     var slug = String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), KNOWN = { 'go-live': 1, 'welcome': 1, 'next-steps': 1 };
     var bannerUrl = SITE + '/banner-' + (KNOWN[slug] ? slug : 'plain') + '.png';
-    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:996px;"><tr><td style="padding:16px 12px 20px 0;">'
-      + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:960px;border-collapse:separate;border-radius:14px;overflow:hidden;background-color:#fdf9ec;background-image:linear-gradient(#fdf9ec,#fdf9ec);border:1px solid #e4ddcc;color-scheme:light only;supported-color-schemes:light;">'
-      + '<tr><td bgcolor="#3a2f3c" style="font-size:0;line-height:0;"><img src="' + bannerUrl + '" width="100%" alt="Kensington Corporate' + (title ? ' | ' + escH(title) : '') + '" style="display:block;width:100%;max-width:960px;height:auto;border:0;"></td></tr>'
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:none;"><tr><td style="padding:16px 12px 20px 0;">'
+      + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:none;border-collapse:separate;border-radius:14px;overflow:hidden;background-color:#fdf9ec;background-image:linear-gradient(#fdf9ec,#fdf9ec);border:1px solid #e4ddcc;color-scheme:light only;supported-color-schemes:light;">'
+      + '<tr><td bgcolor="#3a2f3c" style="font-size:0;line-height:0;"><img src="' + bannerUrl + '" width="100%" alt="Kensington Corporate' + (title ? ' | ' + escH(title) : '') + '" style="display:block;width:100%;max-width:100%;height:auto;border:0;"></td></tr>'
       + '<tr><td bgcolor="#fdf9ec" style="background-color:#fdf9ec;background-image:linear-gradient(#fdf9ec,#fdf9ec);padding:36px 56px 14px;">' + out.join('') + '</td></tr>'
-      + '<tr><td bgcolor="#3a2f3c" style="font-size:0;line-height:0;"><img src="' + SITE + '/banner-footer.png" width="100%" alt="Kensington Corporate" style="display:block;width:100%;max-width:960px;height:auto;border:0;"></td></tr></table>'
+      + '<tr><td bgcolor="#3a2f3c" style="font-size:0;line-height:0;"><img src="' + SITE + '/banner-footer.png" width="100%" alt="Kensington Corporate" style="display:block;width:100%;max-width:100%;height:auto;border:0;"></td></tr></table>'
       + '</td></tr></table>';
   }
 
