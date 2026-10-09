@@ -801,6 +801,20 @@ def parse_email(html_email_body, email_subject=''):
             elif arr_apt:
                 output['departure_trip'] = arr_apt
 
+    # ── Swoogo only: split the airports across their own columns (Vera, 2026-10-09) ──
+    # The "Departure Airport" column gets ONLY the departure airport (not "PHX → MIA"), and the
+    # "Arriving Airport" column is filled with MIA. The Swoogo alert body never says "swoogo", so it is
+    # recognised by its fixed wording (CVENT emails use "Departure Trip", never separate airport fields).
+    _low = combined_text.lower()
+    is_swoogo = source_form != 'CVENT' and (
+        source_form == 'Swoogo' or 'kensington group id' in _low
+        or 'someone has registered with travel' in _low or (dep_apt and arr_apt))
+    if is_swoogo:
+        output['departure_trip'] = dep_apt
+        # Autofill MIA when the registrant left it blank or chose Miami; a different destination is kept as typed.
+        if not arr_apt or re.search(r'\bmiami\b|\bMIA\b', arr_apt, re.IGNORECASE):
+            output['arrival_airport'] = 'MIA'
+
     # Departure date and the time-of-day window are kept in SEPARATE fields:
     #   departure_time      → the DATE        → master "Departure Time" column
     #   departure_time_pref → the window      → master "Departure Preference" column
@@ -983,6 +997,7 @@ MASTER_COLUMN_MAP = {
     'departure_time':           6797642721169284,   # "Departure Date" column (holds the date)
     'departure_time_pref':      2117685625524100,   # "Departure Time" column (time-of-day window)
     'departure_trip':           4882088347340676,   # "Departure City" (old "Departure Trip" col 1168143186956164 was deleted)
+    'arrival_airport':          5389074362044292,   # "Arriving Airport" (Swoogo only: filled with MIA; master sheet only, the Agent copy has no such column)
     'return_time':              5671742814326660,    # "Return Date" column (holds the date)
     'return_time_pref':         5554005685342084,    # "Return Time" column (time-of-day window)
     'return_trip':              3419943000641412,
