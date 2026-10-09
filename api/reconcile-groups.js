@@ -183,6 +183,7 @@ export default async function handler(req, res) {
   const byTitle = sheet => { const m = {}; for (const c of sheet.columns || []) m[tkey(c.title)] = c; return m; };
   const rawVal = (row, colId) => { const c = row.cells?.find(c => c.columnId === colId); if (!c) return ''; const isContact = c.displayValue && /@/.test(String(c.value || '')); const v = isContact ? c.displayValue : (c.value != null ? c.value : c.displayValue); return v == null ? '' : String(v).replace(ZWSP, '').trim(); };
 
+  const isTestName = (...parts) => /(^|[^a-z])test([^a-z]|$)/i.test(parts.filter(Boolean).join(' '));
   async function arbonneSync(commit) {
     const w = async (method, path, body) => {
       const r = await fetch(`https://api.smartsheet.com/2.0${path}`, { method, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -221,6 +222,14 @@ export default async function handler(req, res) {
     const byKey = new Map(), dupes = [];
     if (keyCol) for (const r of ours.rows || []) { const k = rawVal(r, keyCol.id); if (!k) continue; if (byKey.has(k)) dupes.push(r.id); else byKey.set(k, r); }
     out.duplicateRows = dupes.length;
+    // Our synced copies (they carry an Arbonne Row ID) of test rows: remove them, they are not real travellers.
+    const testCopies = [];
+    if (keyCol) for (const r of ours.rows || []) {
+      if (!rawVal(r, keyCol.id) || dupes.includes(r.id)) continue;
+      if (isTestName(rawVal(r, (O[tkey('First Name')] || {}).id), rawVal(r, (O[tkey('Last Name')] || {}).id))) testCopies.push(r.id);
+    }
+    out.testCopies = testCopies.length;
+    if (testCopies.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${testCopies.join(',')}&ignoreRowsNotFound=true`); out.testCopiesDeleted = testCopies.length; }
     if (dupes.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${dupes.join(',')}&ignoreRowsNotFound=true`); out.duplicatesDeleted = dupes.length; }
 
     const sc = id => ours.columns.find(c => c.id === id);
@@ -231,6 +240,8 @@ export default async function handler(req, res) {
       const approved = tkey(rawVal(tr, approvedCol.id)) === 'yes';
       const existing = byKey.get(key);
       const name = rawVal(tr, (T[tkey('Consultant Name')] || {}).id);
+      // A test row on Arbonne's sheet (name says "test") is never copied: deleting our copy used to make the next run re-create it.
+      if (isTestName(name, rawVal(tr, (T[tkey('NVP First Name')] || {}).id), rawVal(tr, (T[tkey('NVP Last Name')] || {}).id))) { skipped.push({ row: tr.rowNumber, reason: 'test row (name says test)' }); continue; }
       if (!approved && !existing) { skipped.push({ row: tr.rowNumber, reason: 'not approved (YES)' }); continue; }
 
       if (!approved && existing) {   // was copied before, no longer YES: only keep the approval columns current
