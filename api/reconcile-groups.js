@@ -191,6 +191,11 @@ export default async function handler(req, res) {
     const s = String(v == null ? '' : v).trim(); let m;
     if (!s) return null;
     if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|[T ])/.exec(s))) return `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+    if ((m = /^(\d{2})(\d{2})(\d{4})$/.exec(s))) {   // 05301975 = MMDDYYYY (no separators)
+      let mo = +m[1], d = +m[2];
+      if (mo > 12 && d <= 12) [mo, d] = [d, mo];
+      return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? `${m[3]}-${p2(mo)}-${p2(d)}` : null;
+    }
     if ((m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2}|\d{4})$/.exec(s))) {
       let mo = +m[1], d = +m[2], y = m[3].length === 2 ? (+m[3] > 30 ? '19' : '20') + m[3] : m[3];
       if (mo > 12 && d <= 12) [mo, d] = [d, mo];
