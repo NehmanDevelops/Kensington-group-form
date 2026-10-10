@@ -184,6 +184,23 @@ export default async function handler(req, res) {
   const rawVal = (row, colId) => { const c = row.cells?.find(c => c.columnId === colId); if (!c) return ''; const isContact = c.displayValue && /@/.test(String(c.value || '')); const v = isContact ? c.displayValue : (c.value != null ? c.value : c.displayValue); return v == null ? '' : String(v).replace(ZWSP, '').trim(); };
 
   const isTestName = (...parts) => /(^|[^a-z])test([^a-z]|$)/i.test(parts.filter(Boolean).join(' '));
+  // A Smartsheet DATE column only accepts yyyy-mm-dd. Arbonne's sheet can hold text dates (4/28/1992, April 28 1992, 28-Apr-92...).
+  // Returns the ISO date, or null when it cannot be read (the cell is then skipped, never sent: one bad date used to reject the WHOLE batch).
+  const p2 = n => String(n).padStart(2, '0');
+  const toIsoDate = v => {
+    const s = String(v == null ? '' : v).trim(); let m;
+    if (!s) return null;
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|[T ])/.exec(s))) return `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+    if ((m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2}|\d{4})$/.exec(s))) {
+      let mo = +m[1], d = +m[2], y = m[3].length === 2 ? (+m[3] > 30 ? '19' : '20') + m[3] : m[3];
+      if (mo > 12 && d <= 12) [mo, d] = [d, mo];
+      return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? `${y}-${p2(mo)}-${p2(d)}` : null;
+    }
+    const t = Date.parse(s + ' 12:00 UTC');
+    return isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
+  };
+  // value to send for a column: dates are normalised (null = skip), everything else unchanged
+  const fixVal = (col, v) => (col && col.type === 'DATE') ? toIsoDate(v) : v;
   async function arbonneSync(commit) {
     const w = async (method, path, body) => {
       const r = await fetch(`https://api.smartsheet.com/2.0${path}`, { method, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -255,7 +272,12 @@ export default async function handler(req, res) {
 
       if (!existing) {
         const cells = [];
-        for (const p of pairs) { const v = rawVal(tr, p.tc.id); if (v !== '') cells.push({ columnId: p.uc.id, value: v }); }
+        for (const p of pairs) {
+          const v = rawVal(tr, p.tc.id); if (v === '') continue;
+          const fv = fixVal(p.uc, v);
+          if (fv === null) { (out.unreadableDates = out.unreadableDates || []).push({ theirRow: tr.rowNumber, column: p.u, value: String(v).slice(0, 40) }); continue; }
+          cells.push({ columnId: p.uc.id, value: fv });
+        }
         const add = (title, value) => { const c = O[tkey(title)]; if (c && value !== '') cells.push({ columnId: c.id, value }); };
         add('Group ID', gid); add('Source', ARB_SOURCE); add('Traveller Type', 'Invitee'); add('Company Name', 'Arbonne'); add('Submission Date', today);
         if (keyCol) cells.push({ columnId: keyCol.id, value: key });
@@ -264,7 +286,10 @@ export default async function handler(req, res) {
         const cells = [];   // update only what changed; never blank out something Arbonne left empty
         for (const p of pairs) {
           const v = rawVal(tr, p.tc.id), cur = rawVal(existing, p.uc.id);
-          if (v !== '' && v !== cur) cells.push({ columnId: p.uc.id, value: v });
+          if (v === '') continue;
+          const fv = fixVal(p.uc, v);
+          if (fv === null) { (out.unreadableDates = out.unreadableDates || []).push({ theirRow: tr.rowNumber, column: p.u, value: String(v).slice(0, 40) }); continue; }
+          if (fv !== cur) cells.push({ columnId: p.uc.id, value: fv });
         }
         const gcol = O[tkey('Group ID')];
         if (gcol && gid && gid !== rawVal(existing, gcol.id)) cells.push({ columnId: gcol.id, value: gid });
@@ -287,7 +312,16 @@ export default async function handler(req, res) {
     out.plannedNewRows = toCreate.map(c => ({ theirRow: c.row, fields: c.cells.length }));
     if (!commit) return out;
 
-    if (toCreate.length) { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; }
+    if (toCreate.length) {
+      try { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; }
+      catch (e) {   // the batch was rejected: add the rows one by one so a single bad row cannot block the rest
+        out.batchError = e.message; out.created = 0; out.createFailed = [];
+        for (const c of toCreate) {
+          try { await w('POST', `/sheets/${ENVOY_SHEET}/rows`, [{ toBottom: c.toBottom, cells: c.cells }]); out.created++; }
+          catch (e2) { out.createFailed.push({ theirRow: c.row, error: e2.message.slice(0, 160) }); }
+        }
+      }
+    }
     if (toUpdate.length) { await w('PUT', `/sheets/${ENVOY_SHEET}/rows`, toUpdate.map(({ id, cells }) => ({ id, cells }))); out.updated = toUpdate.length; }
     if (backUpdates.length) { await w('PUT', `/sheets/${ARB_SHEET}/rows`, backUpdates.map(({ id, cells }) => ({ id, cells }))); out.backSynced = backUpdates.length; }
     return out;
@@ -353,7 +387,7 @@ export default async function handler(req, res) {
     const scope = String(pbody.scopeObjectId || '');
     if (scope === ARB_SHEET || scope === ENVOY_SHEET) {      // Arbonne sync webhooks (always answer 200 so Smartsheet never disables the hook)
       if (!ARB_ENABLED) return res.status(200).json({ ok: true, arbonne: 'disabled' });
-      try { return res.status(200).json({ ok: true, ...(await arbonneSync(true)) }); } catch (e) { return res.status(200).json({ ok: true, error: e.message }); }
+      try { return res.status(200).json({ ok: true, ...(await arbonneSync(true)) }); } catch (e) { console.error('arbonne webhook sync failed:', e.message); return res.status(200).json({ ok: true, error: e.message }); }
     }
     const out = await backfillStatus();
     const dd = await dedupeMaster();
