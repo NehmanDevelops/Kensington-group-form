@@ -342,9 +342,12 @@ async function sendOne({ api, amgToken, mrow, M, groups, G, dryRun }) {
 
   const origin = toIATA(t.depIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[0] || t.depTrip);
   const dest = toIATA(t.arrIATA) || toIATA(t.depTrip.split(/->|→|—|-/)[1] || '') || toIATA(t.retTrip);
+  // 'stops' was hardcoded to ['NonStop'] on every leg, forcing nonstop-only
+  // search results — removed per Vera 2026-10-14, she wants connections
+  // allowed too, not restricted to direct flights only.
   const intentNodes = [];
-  if (origin && dest && toISODate(t.depDate)) intentNodes.push({ Flight: { From: origin, To: dest, DepartureDate: toISODate(t.depDate), stops: ['NonStop'] } });
-  if (origin && dest && toISODate(t.retDate)) intentNodes.push({ Flight: { From: dest, To: origin, DepartureDate: toISODate(t.retDate), stops: ['NonStop'] } });
+  if (origin && dest && toISODate(t.depDate)) intentNodes.push({ Flight: { From: origin, To: dest, DepartureDate: toISODate(t.depDate) } });
+  if (origin && dest && toISODate(t.retDate)) intentNodes.push({ Flight: { From: dest, To: origin, DepartureDate: toISODate(t.retDate) } });
 
   // ── Email settings (optional, per group row) ────────────────────────────
   // TODO(Ray / email session): confirm Amgine's exact field name + shape for
