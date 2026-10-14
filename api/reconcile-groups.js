@@ -183,6 +183,9 @@ export default async function handler(req, res) {
   const byTitle = sheet => { const m = {}; for (const c of sheet.columns || []) m[tkey(c.title)] = c; return m; };
   const rawVal = (row, colId) => { const c = row.cells?.find(c => c.columnId === colId); if (!c) return ''; const isContact = c.displayValue && /@/.test(String(c.value || '')); const v = isContact ? c.displayValue : (c.value != null ? c.value : c.displayValue); return v == null ? '' : String(v).replace(ZWSP, '').trim(); };
 
+  // Travel details the Travel Edge team works on by hand after the row is copied (e.g. the manager turns "Regina, SK" into YQR). The sync only
+  // FILLS these when our cell is blank; it never overwrites them, otherwise the next run would put Arbonne's wording back (reported 2026-10-14).
+  const AGENT_OWNED = new Set(['departure airport', 'departure date', 'return date', 'departure time', 'return time', 'seat preference', 'airline preference 1']);
   const isTestName = (...parts) => /(^|[^a-z])test([^a-z]|$)/i.test(parts.filter(Boolean).join(' '));
   // A Smartsheet DATE column only accepts yyyy-mm-dd. Arbonne's sheet can hold text dates (4/28/1992, April 28 1992, 28-Apr-92...).
   // Returns the ISO date, or null when it cannot be read (the cell is then skipped, never sent: one bad date used to reject the WHOLE batch).
@@ -301,6 +304,7 @@ export default async function handler(req, res) {
           if (v === '') continue;
           const fv = fixVal(p.uc, v);
           if (fv === null) { (out.unreadableDates = out.unreadableDates || []).push({ theirRow: tr.rowNumber, column: p.u, value: String(v).slice(0, 40) }); continue; }
+          if (AGENT_OWNED.has(tkey(p.u)) && cur !== '') continue;   // agents own this column once it has a value
           if (fv !== cur) cells.push({ columnId: p.uc.id, value: fv });
         }
         const gcol = O[tkey('Group ID')];
