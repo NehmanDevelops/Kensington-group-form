@@ -355,6 +355,27 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMPORARY one-shot repair (2026-10-14, GROUPS Dashboard #INVALID REF): recreates the two cross-sheet references that were
+  // deleted, under the SAME names the existing formulas use. Needs a secret key (only its SHA-256 is in this file). Remove after use.
+  if (req.query?.fixDashboard) {
+    try {
+      if (require('crypto').createHash('sha256').update(String(req.query.key || '')).digest('hex') !== '45ba421263eb1931cd2db61e4e2a889f948cbe5e78b85f368bcd6f672ee92d96')
+        return res.status(403).json({ error: 'forbidden' });
+      const fixes = [
+        { sheetId: '1464420222848900', name: 'MasterStatus', sourceSheetId: 4820086761148292, columnId: 1930693015539588 },        // KPI Summary -> LIVE Groups "Status"
+        { sheetId: '4629439471112068', name: 'MasterTravAssigned', sourceSheetId: 8780932377956228, columnId: 5193466878660484 }, // Advisor Summary -> ENVOY "In progress"
+      ];
+      const results = [];
+      for (const f of fixes) {
+        const have = await api(`/sheets/${f.sheetId}/crosssheetreferences`);
+        if ((have.data || []).some(r => r.name === f.name)) { results.push({ name: f.name, result: 'already exists' }); continue; }
+        const r = await api(`/sheets/${f.sheetId}/crosssheetreferences`, { method: 'POST', body: JSON.stringify({ name: f.name, sourceSheetId: f.sourceSheetId, startColumnId: f.columnId, endColumnId: f.columnId }) });
+        results.push({ name: f.name, result: r.message || r.errorCode || 'created', status: r.result?.status });
+      }
+      return res.status(200).json({ ok: true, results });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // TEMPORARY read-only discovery (Arbonne project, 2026-10-07): ?peek=list&name=<text> lists sheets this token can
   // see; ?peek=<sheetId> returns that sheet's column layout. Names / counts only -- NO row data. Remove after use.
   if (req.query?.peek) {
