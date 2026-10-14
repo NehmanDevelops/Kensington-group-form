@@ -373,6 +373,16 @@ export default async function handler(req, res) {
       if (sh.errorCode) return res.status(200).json({ ...out, error: sh.errorCode, message: sh.message });
       out.sheet = { id: sh.id, name: sh.name, accessLevel: sh.accessLevel, totalRowCount: sh.totalRowCount, permalink: sh.permalink,
         columns: (sh.columns || []).map(c => ({ id: c.id, title: c.title, type: c.type, primary: !!c.primary, options: c.options, formula: !!c.formula, locked: !!c.locked })) };
+      // TEMPORARY (2026-10-14, GROUPS Dashboard #INVALID REF): ?formulas=1 on a SMALL sheet also returns each cell FORMULA (not values)
+      // and the sheet's cross-sheet references with their status. Read-only. Remove with the rest of ?peek=.
+      if (req.query?.formulas && sh.totalRowCount <= 60) {
+        const full = await api(`/sheets/${q}`);
+        const title = Object.fromEntries((full.columns || []).map(c => [c.id, c.title]));
+        out.formulaCells = [];
+        for (const r of full.rows || []) for (const c of r.cells || []) if (c.formula) out.formulaCells.push({ row: r.rowNumber, col: title[c.columnId], formula: c.formula, shows: c.displayValue });
+        const refs = await api(`/sheets/${q}/crosssheetreferences`);
+        out.refs = (refs.data || []).map(x => ({ name: x.name, status: x.status, sourceSheetId: x.sourceSheetId, startColumnId: x.startColumnId, endColumnId: x.endColumnId, startRowId: x.startRowId, endRowId: x.endRowId }));
+      }
       return res.status(200).json(out);
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
