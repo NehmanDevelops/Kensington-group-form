@@ -396,6 +396,40 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMPORARY (2026-10-14): key-gated one-shot fix of the KPI sheet's Ticketed MTD / YTD formulas (they counted by TRAVEL START date; Vera: wrong).
+  // New definition = completed travellers on the ENVOY master whose "Ticketed Date" falls in the period. Remove after use.
+  if (req.query?.tkfix) {
+    try {
+      if (require('crypto').createHash('sha256').update(String(req.query.key || '')).digest('hex') !== 'da50fd0554261cc89968ad7e2e92b5a18a13c19ee177533b4d014eb64ecdda12') return res.status(403).json({ error: 'forbidden' });
+      const KPI = '1464420222848900', ENVOY = 8780932377956228, out = {};
+      const refs = [{ name: 'EnvoyTicketedDate', col: 5260968422838148 }, { name: 'EnvoyCompleted', col: 2941667064975236 }];
+      const have = await api(`/sheets/${KPI}/crosssheetreferences`);
+      out.refs = [];
+      for (const r of refs) {
+        if ((have.data || []).some(x => x.name === r.name)) { out.refs.push({ name: r.name, result: 'already exists' }); continue; }
+        const c = await api(`/sheets/${KPI}/crosssheetreferences`, { method: 'POST', body: JSON.stringify({ name: r.name, sourceSheetId: ENVOY, startColumnId: r.col, endColumnId: r.col }) });
+        out.refs.push({ name: r.name, result: c.message || c.errorCode });
+      }
+      const sheet = await api(`/sheets/${KPI}`);
+      const valueCol = sheet.columns.find(c => c.title === 'Value').id, metricCol = sheet.columns.find(c => c.title === 'Metric').id;
+      const get = (n) => (sheet.rows || []).find(r => r.rowNumber === n);
+      const label = r => (r.cells.find(c => c.columnId === metricCol) || {}).value;
+      const mtd = get(10), ytd = get(11);
+      out.rows = { r10: label(mtd), r11: label(ytd) };
+      if (!/MTD/i.test(label(mtd)) || !/YTD/i.test(label(ytd))) return res.status(409).json({ ...out, error: 'rows 10/11 are not MTD/YTD, refusing to write' });
+      const fMtd = '=COUNTIFS({EnvoyTicketedDate}, >=DATE(YEAR(TODAY()), MONTH(TODAY()), 1), {EnvoyTicketedDate}, <=TODAY(), {EnvoyCompleted}, 1)';
+      const fYtd = '=COUNTIFS({EnvoyTicketedDate}, >=IF(MONTH(TODAY()) >= 6, DATE(YEAR(TODAY()), 6, 1), DATE(YEAR(TODAY()) - 1, 6, 1)), {EnvoyTicketedDate}, <=TODAY(), {EnvoyCompleted}, 1)';
+      out.before = { mtd: (mtd.cells.find(c => c.columnId === valueCol) || {}).displayValue, ytd: (ytd.cells.find(c => c.columnId === valueCol) || {}).displayValue };
+      const w = await api(`/sheets/${KPI}/rows`, { method: 'PUT', body: JSON.stringify([{ id: mtd.id, cells: [{ columnId: valueCol, formula: fMtd }] }, { id: ytd.id, cells: [{ columnId: valueCol, formula: fYtd }] }]) });
+      out.write = w.message || w.errorCode;
+      await new Promise(r => setTimeout(r, 4000));
+      const after = await api(`/sheets/${KPI}`);
+      const a = n => (after.rows.find(r => r.rowNumber === n).cells.find(c => c.columnId === valueCol) || {}).displayValue;
+      out.after = { mtd: a(10), ytd: a(11) };
+      return res.status(200).json(out);
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // Smartsheet webhook verification challenge — echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
   if (hookChallenge) {
