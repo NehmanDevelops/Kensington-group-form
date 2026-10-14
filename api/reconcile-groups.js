@@ -366,6 +366,36 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMPORARY (2026-10-14): key-gated READ-ONLY look at how "ticketed" is recorded (dashboard Ticketed MTD/YTD are wrong). Remove after use.
+  if (req.query?.tkcheck) {
+    try {
+      if (require('crypto').createHash('sha256').update(String(req.query.key || '')).digest('hex') !== 'da50fd0554261cc89968ad7e2e92b5a18a13c19ee177533b4d014eb64ecdda12') return res.status(403).json({ error: 'forbidden' });
+      const out = {};
+      const envoy = await api('/sheets/8780932377956228?pageSize=2000');
+      const live = await api('/sheets/4820086761148292');
+      const titles = envoy.columns.map(c => ({ id: c.id, title: c.title, type: c.type, formula: c.formula || undefined }));
+      out.envoyDateOrTicketColumns = titles.filter(c => c.type === 'DATE' || /ticket|complet|date|created|modified/i.test(c.title));
+      out.liveTicketColumns = (live.columns || []).filter(c => /ticket|contact|signed|date/i.test(c.title)).map(c => ({ id: c.id, title: c.title, type: c.type, formula: c.formula || undefined }));
+      const E = Object.fromEntries(envoy.columns.map(c => [c.title.trim().toLowerCase(), c.id]));
+      const cell = (r, id) => (r.cells || []).find(c => c.columnId === id) || {};
+      const rows = envoy.rows || [];
+      const done = rows.filter(r => cell(r, E['completed']).value === true);
+      out.envoyRows = rows.length; out.completed = done.length;
+      const byCol = {};
+      for (const c of out.envoyDateOrTicketColumns.filter(c => c.type === 'DATE')) {
+        const filled = done.filter(r => cell(r, c.id).value);
+        const month = {}; filled.forEach(r => { const k = String(cell(r, c.id).value).slice(0, 7); month[k] = (month[k] || 0) + 1; });
+        byCol[c.title] = { completedWithValue: filled.length, byMonth: month };
+      }
+      out.completedByDateColumn = byCol;
+      out.modifiedAtCompleted = (() => { const m = {}; done.forEach(r => { const k = String(r.modifiedAt || '').slice(0, 10); m[k] = (m[k] || 0) + 1; }); return Object.fromEntries(Object.entries(m).sort().slice(-8)); })();
+      const lastDays = rows.filter(r => cell(r, E['completed']).value === true && String(r.modifiedAt || '') >= '2026-10-13');
+      out.completedRowsModifiedSinceOct13 = lastDays.length;
+      out.loanDepotCompleted = done.filter(r => /1OEGLOAN/i.test(String(cell(r, E['group id']).value || ''))).length;
+      return res.status(200).json(out);
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // Smartsheet webhook verification challenge — echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
   if (hookChallenge) {
