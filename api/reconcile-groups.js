@@ -254,17 +254,11 @@ export default async function handler(req, res) {
     if (testCopies.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${testCopies.join(',')}&ignoreRowsNotFound=true`); out.testCopiesDeleted = testCopies.length; }
     if (dupes.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${dupes.join(',')}&ignoreRowsNotFound=true`); out.duplicatesDeleted = dupes.length; }
 
-    // Vera (2026-10-14): the yellow column is called "Client Notes" on Arbonne's side. It feeds OUR "Client Notes"; when it is empty we
-    // fall back to their "Notes from Arbonne" (the old mapping), so nothing that already came through is lost.
-    const theirClientNotes = T[tkey('Client Notes')];
-    out.theirClientNotesColumn = !!theirClientNotes;
-    { const cnt = (rows, col) => col ? (rows || []).filter(r => rawVal(r, col.id) !== '').length : null;   // counts only
-      const yesRows = (theirs.rows || []).filter(r => tkey(rawVal(r, approvedCol.id)) === 'yes');
-      out.notesStats = { approvedRows: yesRows.length, theirNotesFromArbonne: cnt(yesRows, T[tkey('Notes from Arbonne')]), theirComments: cnt(yesRows, T[tkey('Comments')]),
-        theirNotesFromTravelEdge: cnt(yesRows, T[tkey('Notes From Travel Edge')]), ourClientNotesFilled: cnt((ours.rows || []).filter(r => keyCol && rawVal(r, keyCol.id)), O[tkey('Client Notes')]) }; }
-    out.theirColumnTitles = (theirs.columns || []).map(c => c.title);   // titles only (no data): shown in the dry run so mappings can be checked
+    // Vera (2026-10-14): our yellow "Client Notes" column must be filled from Arbonne's sheet. On THEIR side the text lives in "Comments"
+    // ("Notes from Arbonne" is empty on every row), so Client Notes = their "Client Notes" / "Comments" / "Notes from Arbonne", first one with text.
+    const notesSources = ['Client Notes', 'Comments', 'Notes from Arbonne'].map(t => T[tkey(t)]).filter(Boolean);
     const srcVal = (tr, p) => {
-      if (p.u === 'Client Notes' && theirClientNotes) { const cn = rawVal(tr, theirClientNotes.id); if (cn !== '') return cn; }
+      if (p.u === 'Client Notes') for (const c of notesSources) { const v = rawVal(tr, c.id); if (v !== '') return v; }
       return rawVal(tr, p.tc.id);
     };
     const sc = id => ours.columns.find(c => c.id === id);
