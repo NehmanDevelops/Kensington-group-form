@@ -401,6 +401,9 @@ export default async function handler(req, res) {
       const graceRows = (envoy.rows || []).filter(r => /^grace northrup$/i.test(nm(r)) || /^grace\.northrop@kensingtoncorporate\.com$/i.test(nm(r)));
       out.graceRowsToFix = graceRows.length;
       const company = live.columns.find(c => c.title === 'Company Name');
+      { const spell = {}; (envoy.rows || []).forEach(r => { const c = (r.cells || []).find(x => x.columnId === ag.id) || {}; const k = /grace|northr/i.test(JSON.stringify([c.displayValue, c.value])) ? JSON.stringify({ display: c.displayValue, value: c.value }) : null; if (k) spell[k] = (spell[k] || 0) + 1; }); out.graceCellForms = spell; }
+      { const adv = await api('/sheets/4629439471112068'); const A = Object.fromEntries(adv.columns.map(c => [c.title.trim().toLowerCase(), c.id])); const rr = (adv.rows || []).find(r => /northrop/i.test(String((r.cells.find(c => c.columnId === A['advisor assigned']) || {}).value || '')));
+        out.graceAdvisorRow = rr ? Object.fromEntries(['total # of bookings', 'mgmt assigned', 'self assigned', 'assigned', 'ticketed'].map(t => [t, (rr.cells.find(c => c.columnId === A[t]) || {}).displayValue])) : null; }
       out.demoRows = (live.rows || []).filter(r => /GROUP DEMO/i.test(String((r.cells.find(c => c.columnId === company.id) || {}).value || ''))).length;
       if (!commitFix) return res.status(200).json(out);
       // --- write ---
