@@ -366,6 +366,64 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMPORARY (2026-10-14): key-gated data fixes for the GROUPS Dashboard. Dry run unless commit=1. Remove after use.
+  //  1) KPI sheet formulas ignore the two "GROUP DEMO" test rows; 2) "Quoting" becomes an option of LIVE Groups > Status;
+  //  3) Grace Northrop's bookings typed as "Grace Northrup" / her e-mail address are set to her proper contact.
+  if (req.query?.dfix) {
+    try {
+      if (require('crypto').createHash('sha256').update(String(req.query.key || '')).digest('hex') !== 'eba7451a9f5e2a1c61e65ae8b8382c3c7c1fa01a3a9052436a5c47819b9ba873') return res.status(403).json({ error: 'forbidden' });
+      const commitFix = req.query.commit === '1', out = { dryRun: !commitFix };
+      const KPI = '1464420222848900', LIVE = 4820086761148292, ENVOY = '8780932377956228';
+      const kpi = await api(`/sheets/${KPI}`);
+      const valueCol = kpi.columns.find(c => c.title === 'Value').id, metricCol = kpi.columns.find(c => c.title === 'Metric').id;
+      const rowBy = (label) => (kpi.rows || []).find(r => String((r.cells.find(c => c.columnId === metricCol) || {}).value || '').trim().toLowerCase() === label.toLowerCase());
+      const shows = r => (r.cells.find(c => c.columnId === valueCol) || {}).displayValue;
+      const D = ', {MasterCompany}, <>"GROUP DEMO")';
+      const cnt = (st) => `COUNTIFS({MasterStatus}, "${st}"${D}`;
+      const all5 = ['New', 'In Progress', 'Waiting for Launch', 'Quoting', 'Complete'].map(cnt).join(' + ');
+      const F = {
+        'Total Active Groups': '=' + ['New', 'In Progress', 'Waiting for Launch', 'Quoting'].map(cnt).join(' + '),
+        'New': '=' + cnt('New'), 'In Progress': '=' + cnt('In Progress'), 'Waiting for Launch': '=' + cnt('Waiting for Launch'), 'Quoting': '=' + cnt('Quoting'), 'Complete': '=' + cnt('Complete'),
+        'Completion Rate %': `=IFERROR(${cnt('Complete')} / (${all5}), 0)`,
+        'Launching in next 30 days': `=COUNTIFS({MasterExpectedLaunch}, >=TODAY(-7), {MasterExpectedLaunch}, <=TODAY(30), {MasterStatus}, <>"Complete"${D}`,
+        'Appr. # of pax launching in next 30 days': `=SUMIFS({MasterPassengers}, {MasterExpectedLaunch}, >=TODAY(-7), {MasterExpectedLaunch}, <=TODAY(30), {MasterStatus}, <>"Complete"${D}`,
+      };
+      out.kpiBefore = {}; Object.keys(F).forEach(k => { const r = rowBy(k); out.kpiBefore[k] = r ? shows(r) : 'ROW NOT FOUND'; });
+      if (Object.values(out.kpiBefore).includes('ROW NOT FOUND')) return res.status(409).json({ ...out, error: 'a KPI row label was not found; refusing' });
+      // 2) picklist option
+      const live = await api(`/sheets/${LIVE}`);
+      const st = live.columns.find(c => c.title === 'Status');
+      out.statusOptionsBefore = st.options; out.statusHasQuoting = (st.options || []).includes('Quoting');
+      // 3) Grace
+      const envoy = await api(`/sheets/${ENVOY}?pageSize=2000`);
+      const ag = envoy.columns.find(c => c.title === 'Agent Assigned:');
+      const nm = r => { const c = (r.cells || []).find(x => x.columnId === ag.id) || {}; return String(c.displayValue || c.value || '').trim(); };
+      const graceRows = (envoy.rows || []).filter(r => /^grace northrup$/i.test(nm(r)) || /^grace\.northrop@kensingtoncorporate\.com$/i.test(nm(r)));
+      out.graceRowsToFix = graceRows.length;
+      const company = live.columns.find(c => c.title === 'Company Name');
+      out.demoRows = (live.rows || []).filter(r => /GROUP DEMO/i.test(String((r.cells.find(c => c.columnId === company.id) || {}).value || ''))).length;
+      if (!commitFix) return res.status(200).json(out);
+      // --- write ---
+      const have = await api(`/sheets/${KPI}/crosssheetreferences`);
+      if (!(have.data || []).some(x => x.name === 'MasterCompany')) out.refCreated = (await api(`/sheets/${KPI}/crosssheetreferences`, { method: 'POST', body: JSON.stringify({ name: 'MasterCompany', sourceSheetId: LIVE, startColumnId: company.id, endColumnId: company.id }) })).message;
+      const rows = Object.entries(F).map(([k, f]) => ({ id: rowBy(k).id, cells: [{ columnId: valueCol, formula: f }] }));
+      out.kpiWrite = (await api(`/sheets/${KPI}/rows`, { method: 'PUT', body: JSON.stringify(rows) })).message;
+      if (!out.statusHasQuoting) {
+        const body = { title: st.title, type: 'PICKLIST', index: st.index, options: [...(st.options || []), 'Quoting'] };
+        const r = await api(`/sheets/${LIVE}/columns/${st.id}`, { method: 'PUT', body: JSON.stringify(body) });
+        out.statusWrite = r.message || r.errorCode;
+      }
+      if (graceRows.length) {
+        const w = await api(`/sheets/${ENVOY}/rows`, { method: 'PUT', body: JSON.stringify(graceRows.map(r => ({ id: r.id, cells: [{ columnId: ag.id, value: 'grace.northrop@kensingtoncorporate.com' }] }))) });
+        out.graceWrite = w.message || w.errorCode;
+      }
+      await new Promise(r => setTimeout(r, 5000));
+      const k2 = await api(`/sheets/${KPI}`);
+      out.kpiAfter = {}; Object.keys(F).forEach(k => { const r = (k2.rows || []).find(x => String((x.cells.find(c => c.columnId === metricCol) || {}).value || '').trim().toLowerCase() === k.toLowerCase()); out.kpiAfter[k] = r ? (r.cells.find(c => c.columnId === valueCol) || {}).displayValue : '?'; });
+      return res.status(200).json(out);
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // Smartsheet webhook verification challenge — echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
   if (hookChallenge) {
