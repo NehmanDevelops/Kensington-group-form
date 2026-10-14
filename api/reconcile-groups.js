@@ -366,6 +366,86 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMPORARY (2026-10-14): key-gated READ-ONLY fact check of the GROUPS Dashboard numbers. Recomputes each figure from the source sheets and
+  // returns it next to what the dashboard / its helper sheets show. Writes nothing. Remove after use.
+  if (req.query?.factcheck) {
+    try {
+      if (require('crypto').createHash('sha256').update(String(req.query.key || '')).digest('hex') !== '478301f12d56d1ba3a385478990adf1bddbb1602346d630cb335402480a77095')
+        return res.status(403).json({ error: 'forbidden' });
+      const out = {};
+      const titleMap = sheet => Object.fromEntries((sheet.columns || []).map(c => [String(c.title).trim().toLowerCase(), c.id]));
+      const cell = (row, id) => (row.cells || []).find(c => c.columnId === id) || {};
+      const num = v => (typeof v === 'number' ? v : (parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, '')) || 0));
+      const day = v => (v ? String(v).slice(0, 10) : '');
+      const today = new Date().toISOString().slice(0, 10);
+      const addDays = n => { const d = new Date(today + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+      out.today = today;
+
+      // 1) what the dashboard's metric boxes are linked to, and what they show
+      const sight = await api('/sights/8505054094223236?level=4');
+      out.dashboardBoxes = (sight.widgets || []).filter(w => w.type === 'CELLLINK').map(w => ({ title: w.title, error: w.error?.message,
+        cells: ((w.contents || {}).cellData || []).map(c => ({ sheetId: c.sheetId, rowId: c.rowId, shows: c.displayValue ?? c.value })) }));
+
+      // 2) KPI recompute from LIVE Groups
+      const live = await api('/sheets/4820086761148292');
+      const L = titleMap(live), rows = live.rows || [];
+      const g = (r, t) => cell(r, L[t]);
+      const status = r => String(g(r, 'status').value || '').trim();
+      const inList = (r, a) => a.includes(status(r));
+      const active = ['New', 'In Progress', 'Waiting for Launch', 'Quoting'];
+      const lo = addDays(-7), hi = addDays(30);
+      const launching = rows.filter(r => { const d = day(g(r, 'expected launch date').value); return d >= lo && d <= hi && status(r) !== 'Complete' && d !== ''; });
+      const monthStart = today.slice(0, 8) + '01', junStart = today.slice(0, 5) + '06-01';
+      const tk = (from) => rows.filter(r => { const d = day(g(r, 'travel start date').value); return d >= from && d <= today && d !== ''; }).reduce((n, r) => n + num(g(r, '# ticketed').value), 0);
+      out.liveGroups = { rows: rows.length, statusCounts: rows.reduce((m, r) => { const k = status(r) || '(blank)'; m[k] = (m[k] || 0) + 1; return m; }, {}) };
+      out.kpiRecomputed = {
+        'Total Active Groups': rows.filter(r => inList(r, active)).length, 'New': rows.filter(r => status(r) === 'New').length,
+        'In Progress': rows.filter(r => status(r) === 'In Progress').length, 'Waiting for Launch': rows.filter(r => status(r) === 'Waiting for Launch').length,
+        'Quoting': rows.filter(r => status(r) === 'Quoting').length, 'Complete': rows.filter(r => status(r) === 'Complete').length,
+        'Launching next 30 days': launching.length, 'Pax launching next 30 days': launching.reduce((n, r) => n + num(g(r, 'pax expected').value), 0),
+        'Ticketed MTD (# Ticketed of groups whose Travel Start Date is this month so far)': tk(monthStart),
+        'Ticketed YTD since June 1': tk(junStart),
+        'Sum of # Ticketed, ALL live groups (no date filter)': rows.reduce((n, r) => n + num(g(r, '# ticketed').value), 0),
+      };
+      out.liveGroupsWithoutStatus = rows.filter(r => !status(r)).length;
+      // per-group numbers for the chart / "Progress Breakdown by Agent" table
+      out.perGroup = rows.map(r => ({ id: g(r, 'group id').value, company: g(r, 'company name').value, contacted: num(g(r, '# contacted').value), ticketed: num(g(r, '# ticketed').value), pax: num(g(r, 'pax expected').value), status: status(r), start: day(g(r, 'travel start date').value) }));
+
+      // 3) KPI helper sheet values (what the boxes actually read)
+      const kpi = await api('/sheets/1464420222848900');
+      const K = titleMap(kpi);
+      out.kpiSheet = (kpi.rows || []).map(r => ({ row: r.rowNumber, metric: cell(r, K['metric']).value, value: cell(r, K['value']).displayValue ?? cell(r, K['value']).value }));
+
+      // 4) advisor table: recompute from the ENVOY master
+      const adv = await api('/sheets/4629439471112068');
+      const A = titleMap(adv);
+      const envoy = await api('/sheets/8780932377956228?pageSize=2000');
+      const E = titleMap(envoy), erows = envoy.rows || [];
+      const nameOf = r => { const c = cell(r, E['agent assigned:']); return String(c.displayValue || c.value || '').trim(); };
+      const chk = (r, t) => cell(r, E[t]).value === true;
+      out.envoyRows = erows.length;
+      out.advisorTable = (adv.rows || []).map(r => {
+        const name = String(cell(r, A['advisor assigned']).value || '').trim();
+        const mine = erows.filter(x => nameOf(x) === name);
+        const sh = t => cell(r, A[t]).displayValue ?? cell(r, A[t]).value;
+        return { advisor: name, sheet: { total: sh('total # of bookings'), mgmt: sh('mgmt assigned'), self: sh('self assigned'), assigned: sh('assigned'), ticketed: sh('ticketed') },
+          recomputed: { total: mine.length, self: mine.filter(x => chk(x, 'contacted via call/email')).length, inProgress: mine.filter(x => chk(x, 'in progress')).length, completed: mine.filter(x => chk(x, 'completed')).length } };
+      });
+      out.envoyUnassigned = erows.filter(x => !nameOf(x)).length;
+      out.envoyCompletedTotal = erows.filter(x => chk(x, 'completed')).length;
+      out.envoyDuplicateEmailChecked = erows.filter(x => chk(x, 'duplicate email')).length;
+
+      // 5) the two reports behind the chart and the tables
+      for (const [k, id] of [['report_chart_and_agent_table', 4889280496226180], ['report_advisor_table', 2981953635569540]]) {
+        const rep = await api('/reports/' + id + '?pageSize=500');
+        const cols = (rep.columns || []).map(c => ({ id: c.virtualId || c.id, title: c.title }));
+        out[k] = { name: rep.name, totalRows: rep.totalRowCount, columns: cols.map(c => c.title),
+          rows: (rep.rows || []).slice(0, 60).map(r => (r.cells || []).map(c => c.displayValue ?? c.value ?? '')) };
+      }
+      return res.status(200).json(out);
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // Smartsheet webhook verification challenge — echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
   if (hookChallenge) {
