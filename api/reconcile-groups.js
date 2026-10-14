@@ -434,6 +434,9 @@ export default async function handler(req, res) {
           recomputed: { total: mine.length, self: mine.filter(x => chk(x, 'contacted via call/email')).length, inProgress: mine.filter(x => chk(x, 'in progress')).length, completed: mine.filter(x => chk(x, 'completed')).length } };
       });
       out.agentSpellings = erows.reduce((m, x) => { const k = nameOf(x) || '(blank)'; m[k] = (m[k] || 0) + 1; return m; }, {});
+      { const sd = r => day(cell(r, E['submission date']).value), ok = r => chk(r, 'completed');
+        out.envoyCompleted = { all: erows.filter(ok).length, submittedSinceJun1: erows.filter(r => ok(r) && sd(r) >= junStart).length, submittedThisMonth: erows.filter(r => ok(r) && sd(r) >= monthStart).length,
+          noSubmissionDate: erows.filter(r => ok(r) && !sd(r)).length, rowsSinceJun1: erows.filter(r => sd(r) >= junStart).length, assignedAndCompletedSinceJun1: erows.filter(r => ok(r) && sd(r) >= junStart && nameOf(r)).length }; }
       out.envoyUnassigned = erows.filter(x => !nameOf(x)).length;
       out.envoyCompletedTotal = erows.filter(x => chk(x, 'completed')).length;
       out.envoyDuplicateEmailChecked = erows.filter(x => chk(x, 'duplicate email')).length;
