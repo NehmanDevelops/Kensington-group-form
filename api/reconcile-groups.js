@@ -372,6 +372,19 @@ export default async function handler(req, res) {
         const r = await api(`/sheets/${f.sheetId}/crosssheetreferences`, { method: 'POST', body: JSON.stringify({ name: f.name, sourceSheetId: f.sourceSheetId, startColumnId: f.columnId, endColumnId: f.columnId }) });
         results.push({ name: f.name, result: r.message || r.errorCode || 'created', status: r.result?.status });
       }
+      if (req.query.rewrite === '1') {   // re-save each broken formula with its own unchanged text so it re-links to the new reference
+        for (const f of fixes) {
+          const full = await api(`/sheets/${f.sheetId}`);
+          const rows = [];
+          for (const r of full.rows || []) {
+            const cells = (r.cells || []).filter(c => c.formula && /#INVALID|#REF/i.test(String(c.displayValue || c.value || ''))).map(c => ({ columnId: c.columnId, formula: c.formula }));
+            if (cells.length) rows.push({ id: r.id, cells });
+          }
+          let msg = 'nothing to rewrite';
+          if (rows.length) { const w = await api(`/sheets/${f.sheetId}/rows`, { method: 'PUT', body: JSON.stringify(rows) }); msg = w.message || w.errorCode; }
+          results.push({ sheet: f.sheetId, rewrittenRows: rows.length, rewrittenCells: rows.reduce((n, r) => n + r.cells.length, 0), result: msg });
+        }
+      }
       return res.status(200).json({ ok: true, results });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
