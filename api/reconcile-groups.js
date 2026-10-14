@@ -417,7 +417,7 @@ export default async function handler(req, res) {
         out.statusWrite = r.message || r.errorCode;
       }
       if (graceRows.length) {
-        const w = await api(`/sheets/${ENVOY}/rows`, { method: 'PUT', body: JSON.stringify(graceRows.map(r => ({ id: r.id, cells: [{ columnId: ag.id, value: 'grace.northrop@kensingtoncorporate.com' }] }))) });
+        const w = await api(`/sheets/${ENVOY}/rows`, { method: 'PUT', body: JSON.stringify(graceRows.map(r => ({ id: r.id, cells: [{ columnId: ag.id, value: 'grace.northrup@kensingtoncorporate.com' }] }))) });   // her real mailbox is spelled with a "u"
         out.graceWrite = w.message || w.errorCode;
       }
       await new Promise(r => setTimeout(r, 5000));
