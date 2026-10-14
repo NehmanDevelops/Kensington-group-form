@@ -383,6 +383,8 @@ export default async function handler(req, res) {
 
       // 1) what the dashboard's metric boxes are linked to, and what they show
       const sight = await api('/sights/8505054094223236?level=4');
+      if (sight.errorCode) out.sightError = { code: sight.errorCode, message: sight.message };
+      out.sightWidgets = (sight.widgets || []).map(w => w.type + ': ' + (w.title || ''));
       out.dashboardBoxes = (sight.widgets || []).filter(w => w.type === 'CELLLINK').map(w => ({ title: w.title, error: w.error?.message,
         cells: ((w.contents || {}).cellData || []).map(c => ({ sheetId: c.sheetId, rowId: c.rowId, shows: c.displayValue ?? c.value })) }));
 
@@ -426,11 +428,12 @@ export default async function handler(req, res) {
       out.envoyRows = erows.length;
       out.advisorTable = (adv.rows || []).map(r => {
         const name = String(cell(r, A['advisor assigned']).value || '').trim();
-        const mine = erows.filter(x => nameOf(x) === name);
+        const mine = erows.filter(x => nameOf(x).toLowerCase() === name.toLowerCase());
         const sh = t => cell(r, A[t]).displayValue ?? cell(r, A[t]).value;
         return { advisor: name, sheet: { total: sh('total # of bookings'), mgmt: sh('mgmt assigned'), self: sh('self assigned'), assigned: sh('assigned'), ticketed: sh('ticketed') },
           recomputed: { total: mine.length, self: mine.filter(x => chk(x, 'contacted via call/email')).length, inProgress: mine.filter(x => chk(x, 'in progress')).length, completed: mine.filter(x => chk(x, 'completed')).length } };
       });
+      out.agentSpellings = erows.reduce((m, x) => { const k = nameOf(x) || '(blank)'; m[k] = (m[k] || 0) + 1; return m; }, {});
       out.envoyUnassigned = erows.filter(x => !nameOf(x)).length;
       out.envoyCompletedTotal = erows.filter(x => chk(x, 'completed')).length;
       out.envoyDuplicateEmailChecked = erows.filter(x => chk(x, 'duplicate email')).length;
