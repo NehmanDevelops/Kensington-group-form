@@ -254,6 +254,14 @@ export default async function handler(req, res) {
     if (testCopies.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${testCopies.join(',')}&ignoreRowsNotFound=true`); out.testCopiesDeleted = testCopies.length; }
     if (dupes.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${dupes.join(',')}&ignoreRowsNotFound=true`); out.duplicatesDeleted = dupes.length; }
 
+    // Vera (2026-10-14): the yellow column is called "Client Notes" on Arbonne's side. It feeds OUR "Client Notes"; when it is empty we
+    // fall back to their "Notes from Arbonne" (the old mapping), so nothing that already came through is lost.
+    const theirClientNotes = T[tkey('Client Notes')];
+    out.theirClientNotesColumn = !!theirClientNotes;
+    const srcVal = (tr, p) => {
+      if (p.u === 'Client Notes' && theirClientNotes) { const cn = rawVal(tr, theirClientNotes.id); if (cn !== '') return cn; }
+      return rawVal(tr, p.tc.id);
+    };
     const sc = id => ours.columns.find(c => c.id === id);
     const today = new Date().toISOString().slice(0, 10);
     const toCreate = [], toUpdate = [], backUpdates = [], skipped = [];
@@ -278,7 +286,7 @@ export default async function handler(req, res) {
       if (!existing) {
         const cells = [];
         for (const p of pairs) {
-          const v = rawVal(tr, p.tc.id); if (v === '') continue;
+          const v = srcVal(tr, p); if (v === '') continue;
           const fv = fixVal(p.uc, v);
           if (fv === null) { (out.unreadableDates = out.unreadableDates || []).push({ theirRow: tr.rowNumber, column: p.u, value: String(v).slice(0, 40) }); continue; }
           cells.push({ columnId: p.uc.id, value: fv });
@@ -290,7 +298,7 @@ export default async function handler(req, res) {
       } else {
         const cells = [];   // update only what changed; never blank out something Arbonne left empty
         for (const p of pairs) {
-          const v = rawVal(tr, p.tc.id), cur = rawVal(existing, p.uc.id);
+          const v = srcVal(tr, p), cur = rawVal(existing, p.uc.id);
           if (v === '') continue;
           const fv = fixVal(p.uc, v);
           if (fv === null) { (out.unreadableDates = out.unreadableDates || []).push({ theirRow: tr.rowNumber, column: p.u, value: String(v).slice(0, 40) }); continue; }
