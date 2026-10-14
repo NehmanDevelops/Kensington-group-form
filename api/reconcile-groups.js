@@ -258,6 +258,7 @@ export default async function handler(req, res) {
     // fall back to their "Notes from Arbonne" (the old mapping), so nothing that already came through is lost.
     const theirClientNotes = T[tkey('Client Notes')];
     out.theirClientNotesColumn = !!theirClientNotes;
+    out.theirColumnTitles = (theirs.columns || []).map(c => c.title);   // titles only (no data): shown in the dry run so mappings can be checked
     const srcVal = (tr, p) => {
       if (p.u === 'Client Notes' && theirClientNotes) { const cn = rawVal(tr, theirClientNotes.id); if (cn !== '') return cn; }
       return rawVal(tr, p.tc.id);
