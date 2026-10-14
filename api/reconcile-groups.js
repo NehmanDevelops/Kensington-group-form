@@ -362,6 +362,23 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMPORARY (2026-10-14, GROUPS Dashboard layout): key-gated Smartsheet "Sights" (dashboard) probe. ?sight=list | ?sight=get&id=<sightId>
+  // | ?sight=call&method=PUT&path=/sights/<id>/...&body=<json>. Only the SHA-256 of the key is in this file. Remove after use.
+  if (req.query?.sight) {
+    try {
+      if (require('crypto').createHash('sha256').update(String(req.query.key || '')).digest('hex') !== '9cb292358f2272f0ea1ce8fb366f039fd8bc19d84e5eb1262b5c838eccf92ccc')
+        return res.status(403).json({ error: 'forbidden' });
+      const mode = String(req.query.sight);
+      if (mode === 'list') { const l = await api('/sights'); return res.status(200).json((l.data || []).map(s => ({ id: s.id, name: s.name, permalink: s.permalink, modifiedAt: s.modifiedAt }))); }
+      if (mode === 'get') { const s = await api(`/sights/${req.query.id}`); return res.status(200).json(s); }
+      if (mode === 'call') {
+        const r = await api(String(req.query.path), { method: String(req.query.method || 'GET'), ...(req.query.body ? { body: String(req.query.body) } : {}) });
+        return res.status(200).json(r);
+      }
+      return res.status(400).json({ error: 'unknown mode' });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // Smartsheet webhook verification challenge — echo it.
   const hookChallenge = req.headers['smartsheet-hook-challenge'];
   if (hookChallenge) {
