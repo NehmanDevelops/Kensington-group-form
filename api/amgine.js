@@ -528,6 +528,15 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: dump a row's own stored Amgine Note to compare with GetRequest's agentNotes (remove after use).
+  if (norm(body.__dumpRowNote) && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
+    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
+    return res.status(200).json({ ok: true, amgineNote: M.val(row, 'Amgine Note'), status: M.val(row, 'Amgine Status') });
+  }
+
   // TEMP: find real rows with a PNR/ticketed status to probe for pricing data (remove after use).
   if (norm(body.__findTicketedRows)) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
