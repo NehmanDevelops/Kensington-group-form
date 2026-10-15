@@ -563,24 +563,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: one-shot — move Booked Details/Amount to sit right after Amgine
-  // Note instead of out at the far end of the sheet (remove after use).
-  if (norm(body.__moveBookedCols) === 'kcg-move-booked-2026') {
-    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
-    const byTitle = {};
-    for (const c of master.columns || []) byTitle[c.title.trim().toLowerCase()] = c;
-    const details = byTitle['booked details'];
-    const amount = byTitle['booked amount'];
-    const noteCol = byTitle['amgine note'];
-    if (!details || !amount || !noteCol) return res.status(200).json({ ok: false, error: 'column(s) not found' });
-    const r1 = await fetch(`https://api.smartsheet.com/2.0/sheets/${MASTER}/columns/${details.id}`, {
-      method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ index: noteCol.index + 1 }),
-    });
-    const r2 = await fetch(`https://api.smartsheet.com/2.0/sheets/${MASTER}/columns/${amount.id}`, {
-      method: 'PUT', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ index: noteCol.index + 2 }),
-    });
-    return res.status(200).json({ ok: r1.ok && r2.ok, detailsMove: r1.ok, amountMove: r2.ok });
-  }
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
