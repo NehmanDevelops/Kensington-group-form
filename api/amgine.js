@@ -563,6 +563,15 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: check Booked Details/Amount on a row (remove after use, no writes).
+  if (norm(body.__checkBookedCols) && body.__rowId) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
+    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
+    return res.status(200).json({ ok: true, bookedDetails: M.val(row, 'Booked Details'), bookedAmount: M.val(row, 'Booked Amount') });
+  }
+
   // TEMP: one-shot — add "Booked Details"/"Booked Amount" columns to the
   // Traveller Profile MasterSheet if missing (remove after use).
   if (norm(body.__setupBookedCols) === 'kcg-booked-2026') {
