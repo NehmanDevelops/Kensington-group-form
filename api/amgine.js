@@ -532,7 +532,7 @@ export default async function handler(req, res) {
   if (norm(body.__findTicketedRows)) {
     const master = await (await api(`/sheets/${MASTER}`)).json();
     const M = indexSheet(master);
-    const rows = (master.rows || []).filter(r => norm(M.val(r, 'PNR')) || /ticket/i.test(norm(M.val(r, 'Amgine Status'))));
+    const rows = (master.rows || []).filter(r => norm(M.val(r, 'Amgine Itinerary ID')) && norm(M.val(r, 'Amgine Link')));
     return res.status(200).json({
       ok: true, count: rows.length,
       sample: rows.slice(0, 10).map(r => ({
