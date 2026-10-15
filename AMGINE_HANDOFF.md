@@ -60,7 +60,7 @@ Automated **Smartsheet → Amgine** travel-booking pipeline. Onboard a client fr
 | `branch-request.html` | **Create a branch** (onboard a client). Calls `/api/create-branch`. Required: client name, Group ID, address (Province/Country auto-convert to 2-letter), 1 cabin class. Air/Hotel/Car fields optional. |
 | `book-now.html` | **Demo/manual "Book Now" button** — fires `{scan:true}` instantly, bypassing Power Automate's polling delay. Shows itinerary IDs. |
 | `index.html` | Group Travel Request form (auto-creates group row + reporting email fields: mandatory Confirmation CC + conditional Reporting Recipient). |
-| `reporting-request.html` | Corporate Reporting Request (Vera/Jos). Has Destination field + repeatable **UDID # / Client data** list → renders as a table in the email to corporate.reporting@traveledge.com. |
+| `customer-success-templates.html` (was reporting-request.html, redirects) | Corporate Reporting Request (Vera/Jos). Has Destination field + repeatable **UDID # / Client data** list → renders as a table in the email to corporate.reporting@traveledge.com. |
 | `finance-request.html` | Finance Request (Jos). Dropdown: General / ADM (routes BSP vs ARC) / Payment Change / Payout / Refund. mailto to finance inboxes. |
 | `udid-update.html` | UDID finance form (mailto to finance.support@traveledge.com). |
 | `upload-excel.html` | Bulk group Excel upload (fixed dropzone rendering). |

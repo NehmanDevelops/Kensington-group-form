@@ -15,5 +15,17 @@
     "api/reconcile-groups.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/reporting-request.html",
+      "destination": "/customer-success-templates.html",
+      "permanent": true
+    },
+    {
+      "source": "/reporting-request",
+      "destination": "/customer-success-templates.html",
+      "permanent": true
+    }
+  ]
 }
