@@ -528,6 +528,20 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: find real rows with a PNR/ticketed status to probe for pricing data (remove after use).
+  if (norm(body.__findTicketedRows)) {
+    const master = await (await api(`/sheets/${MASTER}`)).json();
+    const M = indexSheet(master);
+    const rows = (master.rows || []).filter(r => norm(M.val(r, 'PNR')) || /ticket/i.test(norm(M.val(r, 'Amgine Status'))));
+    return res.status(200).json({
+      ok: true, count: rows.length,
+      sample: rows.slice(0, 10).map(r => ({
+        rowId: r.id, itinId: M.val(r, 'Amgine Itinerary ID'), status: M.val(r, 'Amgine Status'),
+        pnr: M.val(r, 'PNR'), link: M.val(r, 'Amgine Link'),
+      })),
+    });
+  }
+
   // TEMP: probe a real itinerary's full GetRequest payload to find exact
   // field names for booked-item/amount data (remove after use, read-only).
   if (norm(body.__probeGetRequest) && body.__workspaceGuid) {
