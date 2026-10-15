@@ -66,6 +66,7 @@ export default async function handler(req, res) {
     }
     if (req.query.sheetId) out.rules = await api(`/sheets/${req.query.sheetId}/automationrules`);
     if (req.query.sheetId) { out.shares = await api(`/sheets/${req.query.sheetId}/shares?includeWorkspaceShares=true&includeAll=true`); const sh = await api(`/sheets/${req.query.sheetId}?pageSize=1&include=ownerInfo`); out.sheet = { name: sh.name, owner: sh.owner, permalink: sh.permalink, accessLevel: sh.accessLevel }; }
+    if (req.query.sheetId && req.query.since) { const full = await api(`/sheets/${req.query.sheetId}?include=objectValue,discussions,attachments&rowsModifiedSince=${encodeURIComponent(req.query.since)}`); const cols = Object.fromEntries((full.columns || []).map(c => [c.id, c.title])); const needle = String(req.query.needle || '').toLowerCase(); out.recent = (full.rows || []).map(r => ({ rowNumber: r.rowNumber, createdAt: r.createdAt, modifiedAt: r.modifiedAt, createdBy: r.createdBy, modifiedBy: r.modifiedBy, hit: needle ? JSON.stringify(r).toLowerCase().includes(needle) : null, cells: r.cells.filter(c => c.displayValue || c.value).map(c => [cols[c.columnId], c.displayValue || c.value]) })); out.wholeSheetHit = needle ? JSON.stringify(full).toLowerCase().includes(needle) : null; }
     return res.status(200).json(out);
   }
 
