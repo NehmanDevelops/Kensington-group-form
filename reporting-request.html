@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kensington Corporate — Corporate Reporting Request</title>
+<title>Kensington Corporate — Customer Success Templates</title>
 <!-- Official Kensington brand fonts (SangBleu) loaded locally via @font-face -->
 <style>
   @font-face{font-family:'SangBleu Sunrise';src:url('fonts/SangBleuSunrise-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
@@ -132,18 +132,41 @@
   .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
   .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
   .success-text { color: var(--ink-soft); max-width: 460px; margin: 0 auto; }
+
+  /* Template switcher */
+  .tpl-tabs { display: flex; gap: 0; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-lg); margin-bottom: 18px; }
+  .tpl-tab { flex: 1; font-family: 'SangBleu Republic', Georgia, serif; font-size: 15px; font-weight: 500; color: var(--ink-soft); background: transparent; border: none; border-bottom: 3px solid transparent; padding: 18px 12px; cursor: pointer; }
+  .tpl-tab:hover { color: var(--ink); background: var(--cream); }
+  .tpl-tab.active { color: var(--ink); border-bottom-color: var(--gold-deep); background: var(--cream); }
+  .tpl-panel { display: none; }
+  .tpl-panel.active { display: block; }
+  .rb-options { display: flex; flex-direction: column; gap: 10px; }
+  .rb-option { display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: #fff; cursor: pointer; }
+  .rb-option.active { background: var(--cream); border-color: var(--gold); }
+  .rb-option input { margin-top: 4px; accent-color: var(--gold-deep); }
+  .rb-option-name { font-weight: 700; font-size: 15px; color: var(--ink); }
+  .rb-option-sub { font-size: 13px; color: var(--ink-mute); }
+  .rb-preview { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; font-size: 15px; line-height: 1.7; color: var(--ink); white-space: pre-wrap; }
+  .rb-preview mark { background: #efe7cf; color: var(--ink); padding: 0 2px; border-radius: 2px; }
+  .rb-copied { font-size: 13px; color: var(--gold-deep); margin-top: 12px; min-height: 18px; }
 </style>
 </head>
 <body>
 
   <header class="hero">
     <img class="hero-logo" src="kensington-logo-cream.png" alt="Kensington Corporate" />
-    <div class="hero-eyebrow">Finance · Corporate Reporting</div>
-    <h1 class="hero-title">Corporate Reporting <em>Request</em></h1>
-    <p class="hero-subtitle">Request reports from Corporate Reporting. Submitting opens a pre-filled email from your own Outlook to corporate.reporting@traveledge.com — review and send.</p>
+    <div class="hero-eyebrow">Customer Success</div>
+    <h1 class="hero-title">Customer Success <em>Templates</em></h1>
+    <p class="hero-subtitle">Pick a template below: request reports from Corporate Reporting, or fill in a rebate message and copy it into your email.</p>
   </header>
 
   <div class="form-wrap">
+    <div class="tpl-tabs" role="tablist">
+      <button type="button" class="tpl-tab active" data-tpl="reporting" role="tab">Corporate Reporting Request</button>
+      <button type="button" class="tpl-tab" data-tpl="rebate" role="tab">Rebate Templates</button>
+    </div>
+
+    <div class="tpl-panel active" id="tpl-reporting">
     <form id="reportingForm" class="form-card" novalidate>
 
       <!-- SECTION 1 -->
@@ -359,6 +382,61 @@
       <h2 class="success-title">Almost done — <em>send your email</em></h2>
       <p class="success-text">We've opened a pre-filled email to Corporate Reporting in your mail app. <strong>Review and hit Send</strong> — replies route back to you (and anyone you CC'd). If the draft didn't open, email <strong>corporate.reporting@traveledge.com</strong> directly.</p>
     </div>
+    </div>
+
+    <!-- REBATE TEMPLATES -->
+    <div class="tpl-panel" id="tpl-rebate">
+      <div class="form-card">
+        <section class="section">
+          <div class="section-header">
+            <span class="section-num">I.</span>
+            <h2 class="section-title">Choose a template</h2>
+          </div>
+          <div class="rb-options" id="rbOptions">
+            <label class="rb-option active"><input type="radio" name="rbType" value="visa" checked>
+              <span><span class="rb-option-name">Rebate processed: Visa card</span><br><span class="rb-option-sub">Threshold reached, rebate applied to the client's Visa card</span></span></label>
+            <label class="rb-option"><input type="radio" name="rbType" value="bank">
+              <span><span class="rb-option-name">Rebate processed: bank transfer</span><br><span class="rb-option-sub">Threshold reached, funds sent to the client's bank</span></span></label>
+            <label class="rb-option"><input type="radio" name="rbType" value="notmet">
+              <span><span class="rb-option-name">Rebate threshold not met</span><br><span class="rb-option-sub">Thank-you message for this period</span></span></label>
+          </div>
+        </section>
+
+        <section class="section" id="rbFields">
+          <div class="section-header">
+            <span class="section-num">II.</span>
+            <h2 class="section-title">Fill in the details</h2>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="rbPct">Percent of contracted value reached</label>
+              <input id="rbPct" class="field-input" type="text" placeholder="e.g. 80%">
+            </div>
+            <div class="field">
+              <label class="field-label" for="rbMonths">Number of months</label>
+              <input id="rbMonths" class="field-input" type="text" placeholder="e.g. eight">
+            </div>
+          </div>
+          <div class="field" id="rbCardWrap" style="margin-top:22px;">
+            <label class="field-label" for="rbCard">Visa card ending in</label>
+            <div class="field-sub">Last 4 digits only. Never enter a full card number.</div>
+            <input id="rbCard" class="field-input" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 7898">
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <span class="section-num" id="rbPreviewNum">III.</span>
+            <h2 class="section-title">Your message</h2>
+          </div>
+          <div class="rb-preview" id="rbPreview"></div>
+          <div class="form-footer" style="padding:24px 0 0;">
+            <button type="button" class="submit-btn" id="rbCopy">Copy message</button>
+            <div class="rb-copied" id="rbCopied"></div>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -493,6 +571,60 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
       window.location.href = mailto;
     });
+  })();
+</script>
+<script>
+  (function () {
+    // Template tabs. #rebate in the URL opens the rebate tab directly.
+    var tabs = document.querySelectorAll('.tpl-tab');
+    function showTpl(name) {
+      tabs.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-tpl') === name); });
+      document.querySelectorAll('.tpl-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'tpl-' + name); });
+    }
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        var name = t.getAttribute('data-tpl');
+        showTpl(name);
+        try { history.replaceState(null, '', name === 'reporting' ? location.pathname : '#' + name); } catch (e) {}
+      });
+    });
+    if (location.hash === '#rebate') showTpl('rebate');
+
+    // Rebate templates (wording from Joselynn Alderson, 2026-10-15).
+    var pct = document.getElementById('rbPct'), months = document.getElementById('rbMonths'), card = document.getElementById('rbCard');
+    var preview = document.getElementById('rbPreview'), copied = document.getElementById('rbCopied');
+    function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function val(el, fallback) { var v = el.value.trim(); return v || fallback; }
+    function pctVal() { var v = pct.value.trim(); if (/^\d+(\.\d+)?$/.test(v)) v += '%'; return v || '[percent]'; }
+    function type() { return document.querySelector('input[name="rbType"]:checked').value; }
+    function build(html) {
+      var f = function (v) { return html ? '<mark>' + esc(v) + '</mark>' : v; };
+      var t = type();
+      var opening = 'Congratulations on reaching ' + f(pctVal()) + ' of your contracted value in just ' + f(val(months, '[number of months]')) + ' months. ';
+      if (t === 'visa') return opening + 'Your rebate has now been processed and applied to your Visa card ending in ' + f(val(card, '[last 4 digits]')) + '.';
+      if (t === 'bank') return opening + 'Your rebate has now been processed and the funds have been remitted to the banking details you provided.';
+      return 'Thank you for your participation in the rebate program. While the rebate threshold was not met during this period, we appreciate your business and the opportunity to support your travel needs. We look forward to continuing our partnership and helping you maximize the value of your program in the future.';
+    }
+    function render() {
+      var t = type();
+      document.querySelectorAll('.rb-option').forEach(function (o) { o.classList.toggle('active', o.querySelector('input').checked); });
+      document.getElementById('rbFields').style.display = t === 'notmet' ? 'none' : '';
+      document.getElementById('rbCardWrap').style.display = t === 'visa' ? '' : 'none';
+      document.getElementById('rbPreviewNum').textContent = t === 'notmet' ? 'II.' : 'III.';
+      preview.innerHTML = build(true);
+      copied.textContent = '';
+    }
+    card.addEventListener('input', function () { card.value = card.value.replace(/\D/g, '').slice(0, 4); });
+    [pct, months, card].forEach(function (el) { el.addEventListener('input', render); });
+    document.querySelectorAll('input[name="rbType"]').forEach(function (r) { r.addEventListener('change', render); });
+    document.getElementById('rbCopy').addEventListener('click', function () {
+      var text = build(false);
+      if (/\[(percent|number of months|last 4 digits)\]/.test(text)) { copied.textContent = 'Fill in the highlighted details first.'; return; }
+      var done = function () { copied.textContent = 'Copied. Paste it into your email.'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { window.prompt('Copy this message:', text); });
+      else window.prompt('Copy this message:', text);
+    });
+    render();
   })();
 </script>
 </body>
