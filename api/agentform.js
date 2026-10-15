@@ -65,6 +65,7 @@ export default async function handler(req, res) {
         cells: ((sheet.rows && sheet.rows[0] && sheet.rows[0].cells) || []).filter(c => c.displayValue || c.value).map(c => [cols[c.columnId], c.displayValue || c.value]) });
     }
     if (req.query.sheetId) out.rules = await api(`/sheets/${req.query.sheetId}/automationrules`);
+    if (req.query.sheetId) { out.shares = await api(`/sheets/${req.query.sheetId}/shares?includeWorkspaceShares=true&includeAll=true`); const sh = await api(`/sheets/${req.query.sheetId}?pageSize=1&include=ownerInfo`); out.sheet = { name: sh.name, owner: sh.owner, permalink: sh.permalink, accessLevel: sh.accessLevel }; }
     return res.status(200).json(out);
   }
 
