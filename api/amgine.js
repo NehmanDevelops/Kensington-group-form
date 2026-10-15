@@ -528,6 +528,19 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // TEMP: probe a real itinerary's full GetRequest payload to find exact
+  // field names for booked-item/amount data (remove after use, read-only).
+  if (norm(body.__probeGetRequest) && body.__workspaceGuid) {
+    let auth = await getAmgineToken('basic');
+    if (!auth.ok) auth = await getAmgineToken('post');
+    if (!auth.ok) return res.status(200).json({ ok: false, error: 'token failed' });
+    const r = await fetch(`https://app.amgine.ai/publicapi/api/AgentApp/requests/${body.__workspaceGuid}/${norm(body.__probeGetRequest)}`, {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    });
+    const j = await r.json().catch(() => null);
+    return res.status(200).json({ ok: r.ok, status: r.status, raw: j });
+  }
+
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
