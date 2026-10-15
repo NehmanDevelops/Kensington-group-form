@@ -50,6 +50,24 @@ export default async function handler(req, res) {
       headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...opts.headers },
     }).then(r => r.json());
 
+  // TEMP (remove after use): key-gated lookup of where an email appears + the sheet's alert rules.
+  if (req.method === 'GET' && req.query && req.query.findKey) {
+    const crypto = await import('crypto');
+    if (crypto.createHash('sha256').update(String(req.query.findKey)).digest('hex') !== '38fc71f51fba674167214e8b9fc62305842412c5c59605141cbea6cd4417810d') return res.status(403).json({ error: 'no' });
+    const q = String(req.query.q || '');
+    const out = { search: await api(`/search?query=${encodeURIComponent(q)}`) };
+    const sheetIds = [...new Set(((out.search && out.search.results) || []).filter(r => r.objectType === 'row' || r.objectType === 'sheet').map(r => r.parentObjectId || r.objectId))];
+    out.rows = [];
+    for (const r of ((out.search && out.search.results) || []).filter(r => r.objectType === 'row').slice(0, 10)) {
+      const sheet = await api(`/sheets/${r.parentObjectId}?rowIds=${r.objectId}&include=objectValue`);
+      const cols = Object.fromEntries((sheet.columns || []).map(c => [c.id, c.title]));
+      out.rows.push({ sheet: sheet.name, sheetId: r.parentObjectId, rowId: r.objectId, rowNumber: sheet.rows && sheet.rows[0] && sheet.rows[0].rowNumber,
+        cells: ((sheet.rows && sheet.rows[0] && sheet.rows[0].cells) || []).filter(c => c.displayValue || c.value).map(c => [cols[c.columnId], c.displayValue || c.value]) });
+    }
+    if (req.query.sheetId) out.rules = await api(`/sheets/${req.query.sheetId}/automationrules`);
+    return res.status(200).json(out);
+  }
+
   async function getRoster() {
     const sheet = await api(`/sheets/${ROSTER_SHEET_ID}?columnIds=${ROSTER_NAME_COL},${ROSTER_EMAIL_COL}`);
     if (sheet.error || !sheet.rows) return null;
