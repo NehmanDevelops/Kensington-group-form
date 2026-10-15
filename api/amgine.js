@@ -140,6 +140,41 @@ function amgineLink(b) {
   return `${base}/agentapp/transaction/${ws}/${id}`;
 }
 
+// Extract "what was booked" + "the amount" from Amgine's free-text
+// itinerary.agentNotes (Vera, 2026-10-14/15 — "Consuming Info Request":
+// travel intent needs to come back to Smartsheet for reference, and
+// specifically what was booked + amount). There is NO structured price
+// field anywhere in the GetRequest response for a booked itinerary — the
+// only place the real, actually-ticketed fare and flight segments show up
+// is this narrative log Amgine's own agent-booking workflow writes into
+// agentNotes, e.g.:
+//   "---Items:\n\tPNR: HGYVZI, ... Flight: MSY->DFW, DFW->MSY $398.8 USD,"
+// Confirmed via a live probe of a real booked itinerary (286887) — the
+// "Total Fare" lines under "Itinerary Recommendation Summary" are the
+// ORIGINAL options presented (plural, pre-selection) and not reliable for
+// "what was actually booked"; the "---Items:" line(s) reflect the real
+// ticketed PNR, so that's the one this parses. Returns {} if the pattern
+// isn't found (format not guessed beyond what was actually observed).
+function parseBookedFromNotes(agentNotes) {
+  const s = norm(agentNotes);
+  if (!s) return {};
+  const seen = new Set();
+  const items = [];
+  const re = /Flight:\s*([^\n$]+?)\s*\$\s*([\d,]+(?:\.\d+)?)\s*USD/g;
+  let m;
+  while ((m = re.exec(s))) {
+    const key = `${m[1].trim()}|${m[2]}`;
+    if (seen.has(key)) continue; // Amgine's own log repeats the same Items line more than once
+    seen.add(key);
+    items.push({ details: m[1].trim(), amount: m[2] });
+  }
+  if (!items.length) return {};
+  return {
+    bookedDetails: items.map(i => i.details).join('; '),
+    bookedAmount: items.map(i => `$${i.amount} USD`).join('; '),
+  };
+}
+
 // 2026-09-21: Amgine deprecated the old user-based-credential login (grant_type
 // password + username/password) in favor of a client-key-only flow
 // (grant_type=client_credentials, just client_id+client_secret+scope, no user
@@ -528,31 +563,26 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: dump a row's own stored Amgine Note to compare with GetRequest's agentNotes (remove after use).
-  if (norm(body.__dumpRowNote) && body.__rowId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
-    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
-    return res.status(200).json({ ok: true, amgineNote: M.val(row, 'Amgine Note'), status: M.val(row, 'Amgine Status') });
+  // TEMP: one-shot — add "Booked Details"/"Booked Amount" columns to the
+  // Traveller Profile MasterSheet if missing (remove after use).
+  if (norm(body.__setupBookedCols) === 'kcg-booked-2026') {
+    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    const existingTitles = new Set((master.columns || []).map(c => c.title.trim().toLowerCase()));
+    const wanted = ['Booked Details', 'Booked Amount'];
+    const toAdd = wanted.filter(t => !existingTitles.has(t.toLowerCase()));
+    const results = [];
+    let idx = (master.columns || []).length;
+    for (const title of toAdd) {
+      const r = await api(`/sheets/${MASTER}/columns`, { method: 'POST', body: JSON.stringify([{ title, type: 'TEXT_NUMBER', index: idx }]) });
+      const j = await r.json().catch(() => ({}));
+      results.push({ title, ok: r.ok, raw: r.ok ? undefined : j });
+      idx++;
+    }
+    return res.status(200).json({ ok: true, alreadyExisted: wanted.filter(t => existingTitles.has(t.toLowerCase())), created: results });
   }
 
-  // TEMP: find real rows with a PNR/ticketed status to probe for pricing data (remove after use).
-  if (norm(body.__findTicketedRows)) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const rows = (master.rows || []).filter(r => norm(M.val(r, 'Amgine Itinerary ID')) && norm(M.val(r, 'Amgine Link')));
-    return res.status(200).json({
-      ok: true, count: rows.length,
-      sample: rows.slice(0, 10).map(r => ({
-        rowId: r.id, itinId: M.val(r, 'Amgine Itinerary ID'), status: M.val(r, 'Amgine Status'),
-        pnr: M.val(r, 'PNR'), link: M.val(r, 'Amgine Link'),
-      })),
-    });
-  }
-
-  // TEMP: probe a real itinerary's full GetRequest payload to find exact
-  // field names for booked-item/amount data (remove after use, read-only).
+  // TEMP: probe a real itinerary's full GetRequest payload (keep handy for
+  // future debugging of this feature, remove once fully settled).
   if (norm(body.__probeGetRequest) && body.__workspaceGuid) {
     let auth = await getAmgineToken('basic');
     if (!auth.ok) auth = await getAmgineToken('post');
@@ -643,6 +673,13 @@ export default async function handler(req, res) {
               const depLeg = elements[0]?.flightElement;
               const retLeg = elements[1]?.flightElement;
               const depAirport = depLeg ? `${depLeg.from?.airportCode || ''} -> ${depLeg.to?.airportCode || ''}` : '';
+              // ★ Booked Details / Booked Amount (Vera, 2026-10-15 — "Consuming
+              // Info Request": travel intent comes back to Smartsheets for
+              // reference, specifically what was booked + amount). Usually
+              // empty this early (Ready fires before a flight is selected),
+              // but costs nothing to try — see parseBookedFromNotes() for why
+              // this is the only place this data actually exists.
+              const booked = parseBookedFromNotes(wl?.itinerary?.agentNotes);
               const cells = [];
               if (M.id('Group ID') && wl?.servicedEntityBranchName) cells.push({ columnId: M.id('Group ID'), value: wl.servicedEntityBranchName });
               if (M.id('First Name') && user?.firstName) cells.push({ columnId: M.id('First Name'), value: user.firstName });
@@ -657,6 +694,8 @@ export default async function handler(req, res) {
               const link = amgineLink(body);
               if (link && M.id('Amgine Link')) cells.push({ columnId: M.id('Amgine Link'), value: link });
               if (M.id('Source')) cells.push({ columnId: M.id('Source'), value: 'White Label' });
+              if (booked.bookedDetails && M.id('Booked Details')) cells.push({ columnId: M.id('Booked Details'), value: booked.bookedDetails.slice(0, 4000) });
+              if (booked.bookedAmount && M.id('Booked Amount')) cells.push({ columnId: M.id('Booked Amount'), value: booked.bookedAmount.slice(0, 4000) });
               if (cells.length) {
                 const created = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
                 const cj = await created.json().catch(() => ({}));
@@ -676,12 +715,41 @@ export default async function handler(req, res) {
       const note = norm(body.Note);
       const pnr = norm(body.Pnr || body.PNR || body.RecordLocator);
 
+      // ★ Booked Details / Booked Amount (Vera, 2026-10-15 — "Consuming Info
+      // Request"): the webhook's own body.Note is just a thin status string
+      // ("Send By Email" etc.) — the real flight-segments + fare only exist
+      // in Amgine's itinerary.agentNotes, reachable via the same GetRequest
+      // endpoint the White Label ingestion path already uses (see
+      // parseBookedFromNotes()). Fetched on every state change — cheap, and
+      // whichever state actually has it populated just works; no special-
+      // casing which ItineraryState to fetch on. Never blocks the normal
+      // status/link/note/pnr write-back below if this fails or finds nothing.
+      let booked = {};
+      const wsGuid = norm(body.WorkspaceGuid) || AMGINE_WORKSPACE_GUID;
+      if (itinId && wsGuid) {
+        try {
+          let auth = await getAmgineToken('basic');
+          if (!auth.ok) auth = await getAmgineToken('post');
+          if (auth.ok) {
+            const r = await fetch(`https://app.amgine.ai/publicapi/api/AgentApp/requests/${wsGuid}/${itinId}`, {
+              headers: { Authorization: `Bearer ${auth.token}` },
+            });
+            const full = await r.json().catch(() => null);
+            booked = parseBookedFromNotes(full?.itinerary?.agentNotes);
+          }
+        } catch (bErr) {
+          console.log('Booked-details GetRequest failed:', bErr.message);
+        }
+      }
+
       const cells = [];
       if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: status });
       if (M.id('Amgine Itinerary ID') && itinId && !norm(M.val(row, 'Amgine Itinerary ID'))) cells.push({ columnId: M.id('Amgine Itinerary ID'), value: itinId });
       if (link && M.id('Amgine Link')) cells.push({ columnId: M.id('Amgine Link'), value: link });
       if (note && M.id('Amgine Note')) cells.push({ columnId: M.id('Amgine Note'), value: note });
       if (pnr && M.id('PNR')) cells.push({ columnId: M.id('PNR'), value: pnr });
+      if (booked.bookedDetails && M.id('Booked Details')) cells.push({ columnId: M.id('Booked Details'), value: booked.bookedDetails.slice(0, 4000) });
+      if (booked.bookedAmount && M.id('Booked Amount')) cells.push({ columnId: M.id('Booked Amount'), value: booked.bookedAmount.slice(0, 4000) });
       if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells }]) });
 
       return res.status(200).json({ ok: true, matched: true, rowId: row.id, state: body.ItineraryState, status });
