@@ -79,6 +79,11 @@
   .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--gold-deep); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 22px; }
   .success-title { font-family: 'SangBleu Sunrise', Georgia, serif; font-size: 28px; color: var(--ink); margin-bottom: 12px; }
   .success-text { color: var(--ink-soft); max-width: 460px; margin: 0 auto; }
+  .mail-fallback { max-width: 460px; margin: 26px auto 0; padding-top: 22px; border-top: 1px solid rgba(0,0,0,.12); }
+  .mail-fallback p { font-size: 14px; color: var(--ink-soft); margin-bottom: 12px; }
+  .fb-btn { display: inline-block; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: transparent; border: 1px solid var(--ink); border-radius: 6px; padding: 10px 18px; margin: 4px 4px; cursor: pointer; text-decoration: none; }
+  .fb-btn:hover { background: var(--ink); color: var(--bone); }
+  .fb-note { font-size: 13px; color: var(--ink-soft); margin-top: 10px; }
 
   /* ── Menu / tracker ──────────────────────────────────────────────── */
   .menu-btn { position: fixed; top: 20px; right: 20px; z-index: 50; width: 44px; height: 44px; border-radius: 8px; background: rgba(253,249,236,0.12); border: 1px solid rgba(253,249,236,0.3); color: var(--bone); cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -560,6 +565,12 @@
       <div class="success-icon">✓</div>
       <h2 class="success-title">Almost done — <em>send your email</em></h2>
       <p class="success-text">We've opened a pre-filled email in your mail app. <strong>Review and hit Send.</strong> Replies route back to you (and anyone you CC'd). If the draft didn't open, check the recipient noted below and email them directly.</p>
+      <div class="mail-fallback" id="mailFallback">
+        <p><strong>Email didn't open?</strong> Use one of these instead. Your request is already logged, so you only need to send the email.</p>
+        <a class="fb-btn" id="fbOutlook" target="_blank" rel="noopener">Open in Outlook on the web</a>
+        <button type="button" class="fb-btn" id="fbCopy">Copy the email text</button>
+        <div class="fb-note" id="fbNote"></div>
+      </div>
     </div>
   </div>
 
@@ -771,6 +782,18 @@
       form.style.display = 'none';
       document.getElementById('success').style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Fallback for when the browser has no mail app set up for mailto: links.
+      var ccVal = g('ccEmails'), bodyText = lines.join('\n');
+      var fullText = 'To: ' + recipient + (ccVal ? '\nCc: ' + ccVal : '') + '\nSubject: ' + subject + '\n\n' + bodyText;
+      document.getElementById('fbOutlook').href = 'https://outlook.office.com/mail/deeplink/compose?to=' + encodeURIComponent(recipient)
+        + (ccVal ? '&cc=' + encodeURIComponent(ccVal) : '') + '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(bodyText);
+      document.getElementById('fbNote').textContent = 'Send to ' + recipient + (ccVal ? ', cc ' + ccVal : '') + '. Attach your supporting documents before sending.';
+      document.getElementById('fbCopy').onclick = function () {
+        var btn = this;
+        var done = function () { btn.textContent = 'Copied. Paste it into a new email'; };
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(fullText).then(done, function () { window.prompt('Copy this text:', fullText); }); }
+        else { window.prompt('Copy this text:', fullText); }
+      };
       window.location.href = mailto;
     });
 
