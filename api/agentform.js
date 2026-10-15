@@ -31,7 +31,6 @@ const FALLBACK_AGENT_EMAILS = {
   'John Driscoll': 'john.driscoll@kensingtoncorporate.com',
   'Liam Mckeown': 'liam.mckeown@kensingtoncorporate.com',
   'Melissa Sawicki': 'melissa.sawicki@kensingtoncorporate.com',
-  'Rami Itani': 'rami.itani@kensingtoncorporate.com',
   'Grace Northrop': 'grace.northrop@kensingtoncorporate.com',
   'Vera Perisic': 'vera.perisic@kensingtoncorporate.com',
 };
