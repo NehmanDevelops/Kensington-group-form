@@ -616,20 +616,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: check new flight-detail/timestamp columns on a row (remove after use).
-  if (norm(body.__checkFlightCols) && body.__rowId) {
-    const master = await (await api(`/sheets/${MASTER}`)).json();
-    const M = indexSheet(master);
-    const row = (master.rows || []).find(r => String(r.id) === norm(body.__rowId));
-    if (!row) return res.status(200).json({ ok: false, error: 'row not found' });
-    return res.status(200).json({
-      ok: true,
-      status: M.val(row, 'Amgine Status'), statusUpdated: M.val(row, 'Amgine Status Updated'),
-      airline: M.val(row, 'Airline'), flightNumbers: M.val(row, 'Flight Number(s)'),
-      flightDates: M.val(row, 'Flight Date(s)'), flightTimes: M.val(row, 'Flight Time(s)'),
-      pnr: M.val(row, 'PNR'),
-    });
-  }
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
