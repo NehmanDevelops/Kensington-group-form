@@ -275,7 +275,7 @@ async function sendOne({ api, amgToken, mrow, M, groups, G, dryRun }) {
   const rowId = mrow.id;
   const setStatus = async (s) => {
     if (!M.id('Amgine Status')) return;
-    await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells: [{ columnId: M.id('Amgine Status'), value: String(s).slice(0, 4000) }] }]) });
+    await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells: [{ columnId: M.id('Amgine Status'), value: String(s).slice(0, 4000) }, ...(M.id('Amgine Status Updated') ? [{ columnId: M.id('Amgine Status Updated'), value: new Date().toISOString() }] : [])] }]) });
   };
 
   const t = {
@@ -561,6 +561,8 @@ async function sendOne({ api, amgToken, mrow, M, groups, G, dryRun }) {
   if (M.id('Amgine Itinerary ID') && itinId !== '') cells.push({ columnId: M.id('Amgine Itinerary ID'), value: String(itinId) });
   if (M.id('Amgine Link') && itinId !== '') cells.push({ columnId: M.id('Amgine Link'), value: agentLink(itinId) });
   if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: guest ? `Sent (+ guest ${guest.first} ${guest.last})`.trim() : 'Sent' });
+  // Status changed by us -> stamp "Amgine Status Updated" too (Vera 2026-10-16: the stamp updates whenever the status changes)
+  if (M.id('Amgine Status') && M.id('Amgine Status Updated')) cells.push({ columnId: M.id('Amgine Status Updated'), value: new Date().toISOString() });
   if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: rowId, cells }]) });
 
   return { rowId, traveller: who, ok: true, itineraryId: itinId, flightLegs: intentNodes.length, airports: { origin, dest }, guest: guest ? `${guest.first} ${guest.last}`.trim() : null };
@@ -575,7 +577,7 @@ async function bookRows({ api, rows, M }) {
   if (M.id('Amgine Status')) {
     await api(`/sheets/${MASTER}/rows`, {
       method: 'PUT',
-      body: JSON.stringify(rows.map(r => ({ id: r.id, cells: [{ columnId: M.id('Amgine Status'), value: SENDING }] }))),
+      body: JSON.stringify(rows.map(r => ({ id: r.id, cells: [{ columnId: M.id('Amgine Status'), value: SENDING }, ...(M.id('Amgine Status Updated') ? [{ columnId: M.id('Amgine Status Updated'), value: new Date().toISOString() }] : [])] }))),
     });
   }
 
@@ -586,7 +588,7 @@ async function bookRows({ api, rows, M }) {
     if (M.id('Amgine Status')) {
       await api(`/sheets/${MASTER}/rows`, {
         method: 'PUT',
-        body: JSON.stringify(rows.map(r => ({ id: r.id, cells: [{ columnId: M.id('Amgine Status'), value: 'Booking failed: Amgine login failed' }] }))),
+        body: JSON.stringify(rows.map(r => ({ id: r.id, cells: [{ columnId: M.id('Amgine Status'), value: 'Booking failed: Amgine login failed' }, ...(M.id('Amgine Status Updated') ? [{ columnId: M.id('Amgine Status Updated'), value: new Date().toISOString() }] : [])] }))),
       });
     }
     return { ok: false, processed: 0, error: 'Amgine token failed', detail: auth.detail };
