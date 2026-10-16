@@ -350,8 +350,8 @@ export default async function handler(req, res) {
   // Every row is keyed by "Cactus Row ID" on our sheet (created once, then updated in place); Group ID is always CAC_GROUP_ID.
   // Separate from the Arbonne sync on purpose so a change here cannot break Arbonne. Manual run: ?cactus=1 (dry run) / ?cactus=1&commit=1.
   const CAC_SHEET_NAME = 'CACTUS CLUB - I5BACACNOV26YVR';
-  let CAC_SHEET = '';                       // filled in once the sheet id is known (found by name until then)
-  const CAC_ENABLED = false;                // webhooks + cron only after the first manual run is checked
+  const CAC_SHEET = '6992205802852228';     // "CACTUS CLUB - I5BACACNOV26YVR" (owned by the groups account)
+  const CAC_ENABLED = true;                 // webhooks (their sheet + Envoy master) and the daily cron run it
   const CAC_GROUP_ID = 'I5BACACNOV26YVR';
   const CAC_SOURCE = 'Cactus Club';
   // [our column, [their column title candidates]]
@@ -401,6 +401,8 @@ export default async function handler(req, res) {
     const ourNew = [
       { title: 'Approved', type: theirApproved && theirApproved.type === 'PICKLIST' ? 'PICKLIST' : (theirApproved && theirApproved.type === 'CHECKBOX' ? 'CHECKBOX' : 'TEXT_NUMBER'), options: theirApproved && theirApproved.options },
       { title: 'Date Approved', type: 'DATE' },
+      { title: 'Flight Cost', type: 'TEXT_NUMBER' },
+      { title: 'Date Quoted', type: 'DATE' },
       { title: 'Cactus Row ID', type: 'TEXT_NUMBER' },
     ].filter(c => !O[tkey(c.title)]);
     out.ourColumnsToAdd = ourNew.map(c => c.title);
@@ -435,6 +437,7 @@ export default async function handler(req, res) {
     const toCreate = [], toUpdate = [], backUpdates = [], skipped = [];
     for (const tr of theirs.rows || []) {
       const key = 'CAC-' + tr.id, existing = byKey.get(key);
+      const gid = String((T[tkey('Group ID')] && rawVal(tr, T[tkey('Group ID')].id)) || CAC_GROUP_ID).trim().split(/\s/)[0];
       const fn = tFirst ? rawVal(tr, tFirst.id) : '', ln = tLast ? rawVal(tr, tLast.id) : '';
       if (!fn && !ln) { skipped.push({ row: tr.rowNumber, reason: 'no name' }); continue; }
       if (isTestName(fn, ln)) { skipped.push({ row: tr.rowNumber, reason: 'test row (name says test)' }); continue; }
@@ -449,12 +452,12 @@ export default async function handler(req, res) {
       }
       if (!existing) {
         const add = (title, value) => { const c = O[tkey(title)]; if (c && value !== '') cells.push({ columnId: c.id, value }); };
-        add('Group ID', CAC_GROUP_ID); add('Source', CAC_SOURCE); add('Company Name', 'Cactus Club'); add('Submission Date', today);
+        add('Group ID', gid); add('Source', CAC_SOURCE); add('Company Name', 'Cactus Club'); add('Submission Date', today);
         if (keyCol) cells.push({ columnId: keyCol.id, value: key });
         toCreate.push({ toBottom: true, cells, row: tr.rowNumber, name: `${fn} ${ln}`.trim() });
       } else {
         const gcol = O[tkey('Group ID')];
-        if (gcol && rawVal(existing, gcol.id) !== CAC_GROUP_ID) cells.push({ columnId: gcol.id, value: CAC_GROUP_ID });
+        if (gcol && gid && rawVal(existing, gcol.id) !== gid) cells.push({ columnId: gcol.id, value: gid });
         if (cells.length) toUpdate.push({ id: existing.id, cells, row: tr.rowNumber });
         const bc = [];
         for (const b of back) {
@@ -491,11 +494,12 @@ export default async function handler(req, res) {
   }
 
   // One-time: GET ?arbonneHooks=1 registers webhooks on Arbonne's sheet (their edits) and on the Envoy master (agent notes/assignment).
-  if (req.query?.arbonneHooks === '1') {
+  if (req.query?.arbonneHooks === '1' || req.query?.cactusHooks === '1') {
     try {
       const hooks = await api(`/webhooks?includeAll=true`);
       const out = [];
-      for (const [name, sid] of [['Arbonne NVPLM sync (their sheet)', ARB_SHEET], ['Arbonne NVPLM sync (Envoy master)', ENVOY_SHEET]]) {
+      const list = req.query?.cactusHooks === '1' ? [['Cactus Club sync (their sheet)', CAC_SHEET]] : [['Arbonne NVPLM sync (their sheet)', ARB_SHEET], ['Arbonne NVPLM sync (Envoy master)', ENVOY_SHEET]];
+      for (const [name, sid] of list) {
         let hook = (hooks.data || []).find(h => String(h.scopeObjectId) === sid && (h.callbackUrl || '').includes('/api/reconcile-groups'));
         if (!hook) {
           const cr = await api(`/webhooks`, { method: 'POST', body: JSON.stringify({ name, callbackUrl: 'https://kensington-group-form.vercel.app/api/reconcile-groups', scope: 'sheet', scopeObjectId: Number(sid), events: ['*.*'], version: 1 }) });
@@ -522,9 +526,15 @@ export default async function handler(req, res) {
   const pbody = typeof req.body === 'string' ? (() => { try { return JSON.parse(req.body); } catch { return {}; } })() : (req.body || {});
   if (req.method === 'POST' && Array.isArray(pbody.events)) {
     const scope = String(pbody.scopeObjectId || '');
+    if (scope === CAC_SHEET) {      // Cactus Club sync webhook (always answer 200 so Smartsheet never disables the hook)
+      if (!CAC_ENABLED) return res.status(200).json({ ok: true, cactus: 'disabled' });
+      try { return res.status(200).json({ ok: true, cactus: await cactusSync(true) }); } catch (e) { console.error('cactus webhook sync failed:', e.message); return res.status(200).json({ ok: true, error: e.message }); }
+    }
     if (scope === ARB_SHEET || scope === ENVOY_SHEET) {      // Arbonne sync webhooks (always answer 200 so Smartsheet never disables the hook)
-      if (!ARB_ENABLED) return res.status(200).json({ ok: true, arbonne: 'disabled' });
-      try { return res.status(200).json({ ok: true, ...(await arbonneSync(true)) }); } catch (e) { console.error('arbonne webhook sync failed:', e.message); return res.status(200).json({ ok: true, error: e.message }); }
+      const resp = { ok: true };
+      if (scope === ENVOY_SHEET && CAC_ENABLED) { try { resp.cactus = await cactusSync(true); } catch (e) { console.error('cactus webhook sync failed:', e.message); resp.cactusError = e.message; } }
+      if (!ARB_ENABLED) return res.status(200).json({ ...resp, arbonne: 'disabled' });
+      try { return res.status(200).json({ ...resp, ...(await arbonneSync(true)) }); } catch (e) { console.error('arbonne webhook sync failed:', e.message); return res.status(200).json({ ...resp, error: e.message }); }
     }
     const out = await backfillStatus();
     const dd = await dedupeMaster();
@@ -583,6 +593,7 @@ export default async function handler(req, res) {
   }
 
   if (ARB_ENABLED && commit) { try { await arbonneSync(true); } catch (e) { console.error('arbonne cron sync failed', e.message); } }
+  if (CAC_ENABLED && commit) { try { await cactusSync(true); } catch (e) { console.error('cactus cron sync failed', e.message); } }
 
   try {
     const heal = await backfillStatus();
