@@ -29,10 +29,10 @@
   #howto { overflow-y:auto; font-size:13px; }
   #howto h3 { font-size:13px; margin:14px 0 6px; color:var(--text); }
   #howto p { color:var(--muted); font-size:12.5px; line-height:1.5; margin:0 0 10px; }
-  .howto-row { padding:9px 10px; border-radius:6px; border:1px solid var(--border); background:#0c0e13; cursor:pointer; margin-bottom:8px; }
+  .howto-row { padding:12px 12px; border-radius:8px; border:1px solid var(--border); background:#0c0e13; cursor:pointer; margin-bottom:10px; }
   .howto-row:hover { border-color:var(--accent); }
-  .howto-row .symptom { font-size:12.5px; color:var(--text); font-weight:600; }
-  .howto-row .where { font-size:11.5px; color:var(--muted); margin-top:3px; }
+  .howto-row .symptom { font-size:14.5px; color:var(--text); font-weight:600; line-height:1.4; }
+  .howto-row .where { font-size:13px; color:var(--muted); margin-top:6px; line-height:1.5; }
   #editorArea { flex:1; display:flex; flex-direction:column; min-width:0; }
   #editorBar { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; font-size:13px; }
   #editorBar .path { color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -92,25 +92,22 @@ let current = null; // { path, sha }
 // as of 2026-10-16 — if it ever stops matching, the jump just won't find
 // anything and the file still opens at the top, so this degrades safely).
 const HOWTO_INTRO = `
-  <p><b>Start here.</b> This is the code behind the Kensington ↔ Amgine Smartsheet integration — the thing that creates Amgine branches, sends bookings, and syncs booking status/details back to Smartsheet.</p>
-  <p>Two files do almost everything:</p>
-  <p>&nbsp;&nbsp;<b>api/amgine.js</b> — sends bookings to Amgine, and reads status/booking updates back (flight details, price, PNR, etc.)</p>
-  <p>&nbsp;&nbsp;<b>api/create-branch.js</b> — creates a new Amgine branch for a group, and White Label (enable/URL)</p>
-  <p>Click a row below for the thing you're trying to find — it'll open the right file and jump straight to it.</p>
+  <p><b>Start here.</b> Pick what's going wrong below — it'll open straight to the right spot, no searching needed.</p>
 `;
+// Friendly label shown instead of the raw filename — kept simple on purpose.
+// `file`/`anchor` are the real, technical lookup used behind the scenes;
+// she never needs to see those.
+const FRIENDLY_FILE = { 'api/amgine.js': '📘 Booking file', 'api/create-branch.js': '📗 Branch creation file' };
 const HOWTO_ITEMS = [
-  { symptom: 'A booking shows "Booking failed: ..." in Amgine Status', where: 'api/amgine.js → sendOne() — the function that builds and sends a booking', file: 'api/amgine.js', anchor: 'async function sendOne(' },
-  { symptom: 'Where do Snap Code / Tour Code / Airline columns get read from?', where: 'api/amgine.js → RATE_CODE_SLOTS — lists every slot (1-5) and its exact column names', file: 'api/amgine.js', anchor: 'const RATE_CODE_SLOTS = [' },
-  { symptom: 'Guest info (name/email/DOB/TSA) not sending with a booking', where: 'api/amgine.js → the Guest entry block in the booking payload', file: 'api/amgine.js', anchor: 'Guest entry — only the fields' },
-  { symptom: 'PE Emails / email not showing up in the PNR', where: 'api/amgine.js → the PE Emails custom field block', file: 'api/amgine.js', anchor: 'PE Emails custom field' },
-  { symptom: 'Everything is down — logins/bookings failing sitewide', where: 'api/amgine.js → getAmgineToken() — the login function. Check Vercel env vars AMGINE_CLIENT_ID/SECRET/GRANT_TYPE/SCOPE too (not in code, in Vercel settings)', file: 'api/amgine.js', anchor: 'async function getAmgineToken(' },
-  { symptom: '"Booked Details" / "Booked Amount" / flight info not filling in', where: 'api/amgine.js → parseBookedFromNotes() and parseFlightDetailsFromNotes()', file: 'api/amgine.js', anchor: 'function parseBookedFromNotes(' },
-  { symptom: '"Amgine Status Updated" timestamp not updating', where: 'api/amgine.js → where the timestamp gets stamped, right after a status change is detected', file: 'api/amgine.js', anchor: 'Amgine Status Updated timestamp (Vera' },
-  { symptom: 'A new group/branch won’t create in Amgine', where: 'api/create-branch.js → onboard() — the 3-step branch creation chain', file: 'api/create-branch.js', anchor: 'async function onboard(' },
-  { symptom: 'White Label won’t turn on from the checkbox', where: 'api/create-branch.js → setEnableWhiteLabel() / resolveBranchIdByGuid()', file: 'api/create-branch.js', anchor: 'async function setEnableWhiteLabel(' },
-  { symptom: 'The "Enable White Label" checkbox column name/trigger', where: 'api/create-branch.js → WHITE_LABEL_TRIGGER_TITLE constant', file: 'api/create-branch.js', anchor: "const WHITE_LABEL_TRIGGER_TITLE = 'enable white label'" },
-  { symptom: 'Branch creation login/auth (separate from booking login)', where: 'api/create-branch.js → getToken()', file: 'api/create-branch.js', anchor: 'async function getToken(' },
-  { symptom: 'I just want the full written history of every change', where: 'AMGINE_HANDOFF.md — every feature shipped, every bug found, dated and explained in order (search for the newest numbered section at the bottom)', file: 'AMGINE_HANDOFF.md', anchor: '' },
+  { symptom: 'A booking failed', where: 'This opens the part that puts a booking together and sends it. A failed booking usually means something in the traveler’s info was missing or didn’t match.', file: 'api/amgine.js', anchor: 'async function sendOne(' },
+  { symptom: 'Snap Code / Tour Code / Airline isn’t going through', where: 'This opens the part that reads those columns from the sheet.', file: 'api/amgine.js', anchor: 'const RATE_CODE_SLOTS = [' },
+  { symptom: 'Guest info (name, email, birthday) isn’t sending', where: 'This opens the part that adds a guest’s info to a booking.', file: 'api/amgine.js', anchor: 'Guest entry — only the fields' },
+  { symptom: 'Traveler’s email isn’t showing up right', where: 'This opens the part that formats the email for Amgine.', file: 'api/amgine.js', anchor: 'PE Emails custom field' },
+  { symptom: 'Everything is down — nothing is sending at all', where: 'This opens the login step. If Amgine changes something on their end, this is usually the first thing to break. (Also worth checking: the login settings stored in Vercel, not in this code — ask whoever set those up.)', file: 'api/amgine.js', anchor: 'async function getAmgineToken(' },
+  { symptom: 'Flight details or price aren’t showing up after a booking', where: 'This opens the part that pulls flight and price info back in after a booking.', file: 'api/amgine.js', anchor: 'function parseBookedFromNotes(' },
+  { symptom: 'The "last updated" time isn’t changing', where: 'This opens the part that stamps the time whenever a booking’s status changes.', file: 'api/amgine.js', anchor: 'Amgine Status Updated timestamp (Vera' },
+  { symptom: 'A new group/branch won’t create', where: 'This opens the part that builds a brand-new branch in Amgine.', file: 'api/create-branch.js', anchor: 'async function onboard(' },
+  { symptom: 'White Label won’t turn on', where: 'This opens the part that flips the White Label switch on for a branch.', file: 'api/create-branch.js', anchor: 'async function setEnableWhiteLabel(' },
 ];
 
 function renderHowto() {
@@ -118,7 +115,7 @@ function renderHowto() {
   el.innerHTML = HOWTO_INTRO + HOWTO_ITEMS.map((item, i) => `
     <div class="howto-row" onclick="jumpToHowto(${i})">
       <div class="symptom">${item.symptom}</div>
-      <div class="where">${item.where}</div>
+      <div class="where">${FRIENDLY_FILE[item.file] || item.file} — ${item.where}</div>
     </div>
   `).join('');
 }
