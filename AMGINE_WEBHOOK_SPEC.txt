@@ -125,3 +125,5 @@
 //Any other state received should be treated as what we call a Suspense state.
 //This is an end state and the trip can no longer processed by AMGiNE.
 //It is recommended to inform the agents with the ItineraryState
+
+// PORTAL TEST MARKER - safe to ignore, will be reverted immediately
