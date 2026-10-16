@@ -616,41 +616,6 @@ export default async function handler(req, res) {
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-  // TEMP: one-shot — add the new flight-detail columns + Amgine Status
-  // Updated timestamp column to Traveller Profile MasterSheet if missing
-  // (remove after use). Positions: flight-detail columns right after
-  // Booked Amount; the timestamp column right after Amgine Status.
-  if (norm(body.__setupFlightDetailCols) === 'kcg-flightdetails-2026') {
-    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
-    const cols = master.columns || [];
-    const byTitle = {};
-    for (const c of cols) byTitle[c.title.trim().toLowerCase()] = c;
-    const results = [];
-
-    const bookedAmountCol = byTitle['booked amount'];
-    const flightCols = ['Airline', 'Flight Number(s)', 'Flight Date(s)', 'Flight Time(s)', 'PNR'];
-    let idx = bookedAmountCol ? bookedAmountCol.index + 1 : cols.length;
-    for (const title of flightCols) {
-      if (byTitle[title.toLowerCase()]) { results.push({ title, ok: true, alreadyExisted: true }); continue; }
-      const r = await api(`/sheets/${MASTER}/columns`, { method: 'POST', body: JSON.stringify([{ title, type: 'TEXT_NUMBER', index: idx }]) });
-      const j = await r.json().catch(() => ({}));
-      results.push({ title, ok: r.ok, raw: r.ok ? undefined : j });
-      idx++;
-    }
-
-    const statusCol = byTitle['amgine status'];
-    if (!byTitle['amgine status updated']) {
-      const r = await api(`/sheets/${MASTER}/columns`, { method: 'POST', body: JSON.stringify([{ title: 'Amgine Status Updated', type: 'TEXT_NUMBER', index: statusCol ? statusCol.index + 1 : cols.length }]) });
-      const j = await r.json().catch(() => ({}));
-      results.push({ title: 'Amgine Status Updated', ok: r.ok, raw: r.ok ? undefined : j });
-    } else {
-      results.push({ title: 'Amgine Status Updated', ok: true, alreadyExisted: true });
-    }
-
-    return res.status(200).json({ ok: true, results });
-  }
-
-
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
   // email+first+last+group match). Read-only, no writes. Remove after use.
   if (norm(body.__scanMissing)) {
@@ -737,6 +702,9 @@ export default async function handler(req, res) {
               // but costs nothing to try — see parseBookedFromNotes() for why
               // this is the only place this data actually exists.
               const booked = parseBookedFromNotes(wl?.itinerary?.agentNotes);
+              // ★ Airline/Flight Number(s)/Date(s)/Time(s)/PNR, as separate
+              // columns (Vera, 2026-10-16 — see parseFlightDetailsFromNotes()).
+              const flight = parseFlightDetailsFromNotes(wl?.itinerary?.agentNotes);
               const cells = [];
               if (M.id('Group ID') && wl?.servicedEntityBranchName) cells.push({ columnId: M.id('Group ID'), value: wl.servicedEntityBranchName });
               if (M.id('First Name') && user?.firstName) cells.push({ columnId: M.id('First Name'), value: user.firstName });
@@ -748,11 +716,19 @@ export default async function handler(req, res) {
               if (M.id('Return Date') && retLeg?.departureDate) cells.push({ columnId: M.id('Return Date'), value: retLeg.departureDate.slice(0, 10) });
               if (M.id('Amgine Itinerary ID')) cells.push({ columnId: M.id('Amgine Itinerary ID'), value: itinId });
               if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: amgineStatus(body) });
+              // ★ Amgine Status Updated timestamp — a brand-new row has no
+              // "previous" status to compare against, so always stamp it.
+              if (M.id('Amgine Status Updated')) cells.push({ columnId: M.id('Amgine Status Updated'), value: new Date().toISOString() });
               const link = amgineLink(body);
               if (link && M.id('Amgine Link')) cells.push({ columnId: M.id('Amgine Link'), value: link });
               if (M.id('Source')) cells.push({ columnId: M.id('Source'), value: 'White Label' });
               if (booked.bookedDetails && M.id('Booked Details')) cells.push({ columnId: M.id('Booked Details'), value: booked.bookedDetails.slice(0, 4000) });
               if (booked.bookedAmount && M.id('Booked Amount')) cells.push({ columnId: M.id('Booked Amount'), value: booked.bookedAmount.slice(0, 4000) });
+              if (flight.airline && M.id('Airline')) cells.push({ columnId: M.id('Airline'), value: flight.airline });
+              if (flight.flightNumbers && M.id('Flight Number(s)')) cells.push({ columnId: M.id('Flight Number(s)'), value: flight.flightNumbers });
+              if (flight.flightDates && M.id('Flight Date(s)')) cells.push({ columnId: M.id('Flight Date(s)'), value: flight.flightDates });
+              if (flight.flightTimes && M.id('Flight Time(s)')) cells.push({ columnId: M.id('Flight Time(s)'), value: flight.flightTimes });
+              if (flight.pnr && M.id('PNR')) cells.push({ columnId: M.id('PNR'), value: flight.pnr });
               if (cells.length) {
                 const created = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
                 const cj = await created.json().catch(() => ({}));
@@ -772,16 +748,19 @@ export default async function handler(req, res) {
       const note = norm(body.Note);
       const pnr = norm(body.Pnr || body.PNR || body.RecordLocator);
 
-      // ★ Booked Details / Booked Amount (Vera, 2026-10-15 — "Consuming Info
-      // Request"): the webhook's own body.Note is just a thin status string
-      // ("Send By Email" etc.) — the real flight-segments + fare only exist
-      // in Amgine's itinerary.agentNotes, reachable via the same GetRequest
-      // endpoint the White Label ingestion path already uses (see
-      // parseBookedFromNotes()). Fetched on every state change — cheap, and
-      // whichever state actually has it populated just works; no special-
-      // casing which ItineraryState to fetch on. Never blocks the normal
-      // status/link/note/pnr write-back below if this fails or finds nothing.
+      // ★ Booked Details / Booked Amount / Airline / Flight Number(s) /
+      // Date(s) / Time(s) / PNR fallback (Vera, 2026-10-15/16 — "Consuming
+      // Info Request"): the webhook's own body.Note is just a thin status
+      // string ("Send By Email" etc.) — the real flight-segments + fare only
+      // exist in Amgine's itinerary.agentNotes, reachable via the same
+      // GetRequest endpoint the White Label ingestion path already uses (see
+      // parseBookedFromNotes() / parseFlightDetailsFromNotes()). Fetched on
+      // every state change — cheap, and whichever state actually has it
+      // populated just works; no special-casing which ItineraryState to
+      // fetch on. Never blocks the normal status/link/note/pnr write-back
+      // below if this fails or finds nothing.
       let booked = {};
+      let flight = {};
       const wsGuid = norm(body.WorkspaceGuid) || AMGINE_WORKSPACE_GUID;
       if (itinId && wsGuid) {
         try {
@@ -793,6 +772,7 @@ export default async function handler(req, res) {
             });
             const full = await r.json().catch(() => null);
             booked = parseBookedFromNotes(full?.itinerary?.agentNotes);
+            flight = parseFlightDetailsFromNotes(full?.itinerary?.agentNotes);
           }
         } catch (bErr) {
           console.log('Booked-details GetRequest failed:', bErr.message);
@@ -801,12 +781,28 @@ export default async function handler(req, res) {
 
       const cells = [];
       if (M.id('Amgine Status')) cells.push({ columnId: M.id('Amgine Status'), value: status });
+      // ★ Amgine Status Updated timestamp (Vera, 2026-10-16: "can you also
+      // make a time stamp column next to amgine status and whenever status
+      // changes that updates?") — only stamp it when the status actually
+      // changed from what's already stored, so a duplicate/retried webhook
+      // for the same state doesn't bump the timestamp for no reason.
+      if (M.id('Amgine Status Updated') && status !== norm(M.val(row, 'Amgine Status'))) {
+        cells.push({ columnId: M.id('Amgine Status Updated'), value: new Date().toISOString() });
+      }
       if (M.id('Amgine Itinerary ID') && itinId && !norm(M.val(row, 'Amgine Itinerary ID'))) cells.push({ columnId: M.id('Amgine Itinerary ID'), value: itinId });
       if (link && M.id('Amgine Link')) cells.push({ columnId: M.id('Amgine Link'), value: link });
       if (note && M.id('Amgine Note')) cells.push({ columnId: M.id('Amgine Note'), value: note });
-      if (pnr && M.id('PNR')) cells.push({ columnId: M.id('PNR'), value: pnr });
+      // PNR: prefer whatever the webhook itself sent; fall back to the one
+      // parsed out of agentNotes if the webhook body didn't include one
+      // (confirmed on a real row: the webhook's own Pnr/PNR/RecordLocator
+      // fields were blank even on a fully "Booked" itinerary).
+      if ((pnr || flight.pnr) && M.id('PNR')) cells.push({ columnId: M.id('PNR'), value: pnr || flight.pnr });
       if (booked.bookedDetails && M.id('Booked Details')) cells.push({ columnId: M.id('Booked Details'), value: booked.bookedDetails.slice(0, 4000) });
       if (booked.bookedAmount && M.id('Booked Amount')) cells.push({ columnId: M.id('Booked Amount'), value: booked.bookedAmount.slice(0, 4000) });
+      if (flight.airline && M.id('Airline')) cells.push({ columnId: M.id('Airline'), value: flight.airline });
+      if (flight.flightNumbers && M.id('Flight Number(s)')) cells.push({ columnId: M.id('Flight Number(s)'), value: flight.flightNumbers });
+      if (flight.flightDates && M.id('Flight Date(s)')) cells.push({ columnId: M.id('Flight Date(s)'), value: flight.flightDates });
+      if (flight.flightTimes && M.id('Flight Time(s)')) cells.push({ columnId: M.id('Flight Time(s)'), value: flight.flightTimes });
       if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells }]) });
 
       return res.status(200).json({ ok: true, matched: true, rowId: row.id, state: body.ItineraryState, status });
