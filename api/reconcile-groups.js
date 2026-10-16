@@ -343,6 +343,149 @@ export default async function handler(req, res) {
     return out;
   }
 
+  // ── Cactus Club sync (2026-10-16, Vera) ──────────────────────────────────
+  // Cactus Club's Smartsheet "(17) CACTUS CLUB - I5BACACNOV26YVR" <-> our "2. ENVOY Traveller MasterSheet".
+  // Theirs -> ours: names, DOB, email, contact number, Flights requested (-> Client Notes), Approved + Date Approved (new on ours).
+  // Ours -> theirs: Agent Assigned, In progress, Completed, Flight Cost, Date Quoted (added at the end of their sheet if missing).
+  // Every row is keyed by "Cactus Row ID" on our sheet (created once, then updated in place); Group ID is always CAC_GROUP_ID.
+  // Separate from the Arbonne sync on purpose so a change here cannot break Arbonne. Manual run: ?cactus=1 (dry run) / ?cactus=1&commit=1.
+  const CAC_SHEET_NAME = 'CACTUS CLUB - I5BACACNOV26YVR';
+  let CAC_SHEET = '';                       // filled in once the sheet id is known (found by name until then)
+  const CAC_ENABLED = false;                // webhooks + cron only after the first manual run is checked
+  const CAC_GROUP_ID = 'I5BACACNOV26YVR';
+  const CAC_SOURCE = 'Cactus Club';
+  // [our column, [their column title candidates]]
+  const CAC_THEM_TO_US = [
+    ['Last Name', ['Last name', 'Last Name', 'Legal Last Name']],
+    ['First Name', ['First name', 'First Name', 'Legal First Name']],
+    ['Middle Name', ['Middle name', 'Middle Name']],
+    ['Date of Birth', ['DOB', 'Date of Birth', 'Birthdate']],
+    ['Email', ['Email Address', 'Email', 'E-mail']],
+    ['Phone Number', ['Contact number', 'Contact Number', 'Phone Number', 'Phone']],
+    ['Client Notes', ['Flights requested', 'Flights Requested', 'Flight Requested']],
+    ['Approved', ['Approved']],
+    ['Date Approved', ['Date Approved']],
+  ];
+  // [our column candidates, their column title, type to create on their sheet if missing]
+  const CAC_US_TO_THEM = [
+    [['Agent Assigned:', 'Agent Assigned'], 'Agent Assigned', 'TEXT_NUMBER'],
+    [['In progress', 'In Progress'], 'In Progress', 'CHECKBOX'],
+    [['Completed'], 'Completed', 'CHECKBOX'],
+    [['Flight Cost'], 'Flight Cost', 'TEXT_NUMBER'],
+    [['Date Quoted'], 'Date Quoted', 'DATE'],
+  ];
+  async function cactusSync(commit) {
+    const w = async (method, path, body) => {
+      const r = await fetch(`https://api.smartsheet.com/2.0${path}`, { method, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok || (j.message && j.message !== 'SUCCESS')) throw new Error(`Smartsheet ${method} ${path}: ${j.message || r.status}`);
+      return j;
+    };
+    const out = { dryRun: !commit };
+    let sheetId = CAC_SHEET;
+    if (!sheetId) {
+      const s = await api(`/search?query=${encodeURIComponent(CAC_GROUP_ID)}`);
+      const hit = (s.results || []).find(r => r.objectType === 'sheet' && /cactus/i.test(r.text || ''));
+      if (!hit) throw new Error('Cactus Club sheet not found (is it shared with the groups account?)');
+      sheetId = String(hit.objectId); out.foundSheet = { id: sheetId, name: hit.text };
+    }
+    const [theirs0, ours0] = await Promise.all([api(`/sheets/${sheetId}`), api(`/sheets/${ENVOY_SHEET}`)]);
+    if (theirs0.error || !theirs0.columns) throw new Error('Cannot read Cactus Club sheet: ' + (theirs0.message || theirs0.errorCode));
+    if (ours0.error || !ours0.columns) throw new Error('Cannot read Envoy master: ' + (ours0.message || ours0.errorCode));
+    let theirs = theirs0, ours = ours0, T = byTitle(theirs), O = byTitle(ours);
+    out.theirSheet = { name: theirs.name, accessLevel: theirs.accessLevel, rows: (theirs.rows || []).length, columns: theirs.columns.map(c => `${c.title} [${c.type}]`) };
+    const firstOf = (M, titles) => { for (const t of titles) if (M[tkey(t)]) return M[tkey(t)]; return null; };
+
+    // 1) new columns on OUR sheet: Approved (same type/options as theirs), Date Approved, Cactus Row ID
+    const theirApproved = firstOf(T, ['Approved']);
+    const ourNew = [
+      { title: 'Approved', type: theirApproved && theirApproved.type === 'PICKLIST' ? 'PICKLIST' : (theirApproved && theirApproved.type === 'CHECKBOX' ? 'CHECKBOX' : 'TEXT_NUMBER'), options: theirApproved && theirApproved.options },
+      { title: 'Date Approved', type: 'DATE' },
+      { title: 'Cactus Row ID', type: 'TEXT_NUMBER' },
+    ].filter(c => !O[tkey(c.title)]);
+    out.ourColumnsToAdd = ourNew.map(c => c.title);
+    if (ourNew.length && commit) {
+      await w('POST', `/sheets/${ENVOY_SHEET}/columns`, ourNew.map(c => ({ title: c.title, type: c.type, index: ours.columns.length, ...(c.options ? { options: c.options } : {}) })));
+      ours = await api(`/sheets/${ENVOY_SHEET}`); O = byTitle(ours);
+    }
+    // 2) new columns at the END of THEIR sheet for the back-sync (only the ones they do not have yet)
+    const theirNew = CAC_US_TO_THEM.filter(([, t]) => !T[tkey(t)]).map(([, t, type]) => ({ title: t, type }));
+    out.theirColumnsToAdd = theirNew.map(c => c.title);
+    if (theirNew.length && commit) {
+      await w('POST', `/sheets/${sheetId}/columns`, theirNew.map(c => ({ title: c.title, type: c.type, index: theirs.columns.length })));
+      theirs = await api(`/sheets/${sheetId}`); T = byTitle(theirs);
+    }
+    const keyCol = O[tkey('Cactus Row ID')];
+
+    // 3) resolve mappings
+    const pairs = [], back = [], unmatched = [];
+    for (const [u, ts] of CAC_THEM_TO_US) { const tc = firstOf(T, ts), uc = O[tkey(u)]; if (tc && uc) pairs.push({ u, t: tc.title, tc, uc }); else unmatched.push(`${ts[0]} -> ${u}${!tc ? ' (their column missing)' : ''}${!uc ? ' (our column missing)' : ''}`); }
+    for (const [us, t] of CAC_US_TO_THEM) { const uc = firstOf(O, us), tc = T[tkey(t)]; if (uc && tc) back.push({ u: uc.title, t, uc, tc }); else unmatched.push(`${us[0]} -> ${t} (back-sync ${!uc ? 'our' : 'their'} column missing)`); }
+    out.mappings = pairs.map(p => `${p.t} -> ${p.u}`).concat(back.map(b => `${b.u} -> ${b.t} (back)`));
+    out.unmatchedMappings = unmatched;
+
+    // 4) our existing copies keyed by Cactus Row ID (keep the oldest if two exist)
+    const byKey = new Map(), dupes = [];
+    if (keyCol) for (const r of ours.rows || []) { const k = rawVal(r, keyCol.id); if (!k) continue; if (byKey.has(k)) dupes.push(r.id); else byKey.set(k, r); }
+    out.duplicateRows = dupes.length;
+    if (dupes.length && commit) await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${dupes.join(',')}&ignoreRowsNotFound=true`);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const tFirst = firstOf(T, ['First name', 'First Name', 'Legal First Name']), tLast = firstOf(T, ['Last name', 'Last Name', 'Legal Last Name']);
+    const toCreate = [], toUpdate = [], backUpdates = [], skipped = [];
+    for (const tr of theirs.rows || []) {
+      const key = 'CAC-' + tr.id, existing = byKey.get(key);
+      const fn = tFirst ? rawVal(tr, tFirst.id) : '', ln = tLast ? rawVal(tr, tLast.id) : '';
+      if (!fn && !ln) { skipped.push({ row: tr.rowNumber, reason: 'no name' }); continue; }
+      if (isTestName(fn, ln)) { skipped.push({ row: tr.rowNumber, reason: 'test row (name says test)' }); continue; }
+      const cells = [];
+      for (const p of pairs) {
+        let v = rawVal(tr, p.tc.id); if (v === '') continue;
+        if (p.uc.type === 'CHECKBOX') v = /^(true|yes|y|approved)$/i.test(v);
+        const fv = p.uc.type === 'CHECKBOX' ? v : fixVal(p.uc, v);
+        if (fv === null) { (out.unreadableDates = out.unreadableDates || []).push({ theirRow: tr.rowNumber, column: p.u, value: String(v).slice(0, 40) }); continue; }
+        if (existing && String(fv) === rawVal(existing, p.uc.id)) continue;
+        cells.push({ columnId: p.uc.id, value: fv });
+      }
+      if (!existing) {
+        const add = (title, value) => { const c = O[tkey(title)]; if (c && value !== '') cells.push({ columnId: c.id, value }); };
+        add('Group ID', CAC_GROUP_ID); add('Source', CAC_SOURCE); add('Company Name', 'Cactus Club'); add('Submission Date', today);
+        if (keyCol) cells.push({ columnId: keyCol.id, value: key });
+        toCreate.push({ toBottom: true, cells, row: tr.rowNumber, name: `${fn} ${ln}`.trim() });
+      } else {
+        const gcol = O[tkey('Group ID')];
+        if (gcol && rawVal(existing, gcol.id) !== CAC_GROUP_ID) cells.push({ columnId: gcol.id, value: CAC_GROUP_ID });
+        if (cells.length) toUpdate.push({ id: existing.id, cells, row: tr.rowNumber });
+        const bc = [];
+        for (const b of back) {
+          if (b.tc.type === 'CHECKBOX') { const v = rawVal(existing, b.uc.id) === 'true', cur = rawVal(tr, b.tc.id) === 'true'; if (v !== cur) bc.push({ columnId: b.tc.id, value: v }); continue; }
+          let v = rawVal(existing, b.uc.id); const cur = rawVal(tr, b.tc.id);
+          if (b.tc.type === 'DATE') { if (v === '') continue; v = toIsoDate(v); if (!v) continue; }
+          if (v !== cur) bc.push({ columnId: b.tc.id, value: v });
+        }
+        if (bc.length) backUpdates.push({ id: tr.id, cells: bc, row: tr.rowNumber });
+      }
+    }
+    out.alreadyCopied = byKey.size; out.newRows = toCreate.length; out.rowsToUpdate = toUpdate.length; out.backSyncRows = backUpdates.length;
+    out.skipped = skipped;
+    out.plannedNewRows = toCreate.map(c => ({ theirRow: c.row, name: c.name, fields: c.cells.length }));
+    if (!commit) return out;
+
+    if (toCreate.length) {
+      try { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; }
+      catch (e) {
+        out.batchError = e.message; out.created = 0; out.createFailed = [];
+        for (const c of toCreate) { try { await w('POST', `/sheets/${ENVOY_SHEET}/rows`, [{ toBottom: c.toBottom, cells: c.cells }]); out.created++; } catch (e2) { out.createFailed.push({ theirRow: c.row, error: e2.message.slice(0, 160) }); } }
+      }
+    }
+    if (toUpdate.length) { await w('PUT', `/sheets/${ENVOY_SHEET}/rows`, toUpdate.map(({ id, cells }) => ({ id, cells }))); out.updated = toUpdate.length; }
+    if (backUpdates.length) { await w('PUT', `/sheets/${sheetId}/rows`, backUpdates.map(({ id, cells }) => ({ id, cells }))); out.backSynced = backUpdates.length; }
+    return out;
+  }
+  if (req.query?.cactus === '1') {
+    try { return res.status(200).json(await cactusSync(commit)); } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   if (req.query?.arbonne === '1') {
     try { return res.status(200).json(await arbonneSync(commit)); } catch (err) { return res.status(500).json({ error: err.message }); }
   }
