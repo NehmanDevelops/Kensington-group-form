@@ -71,9 +71,9 @@ let current = null; // { path, sha }
 
 function tryLogin() {
   PASSWORD = document.getElementById('pw').value;
-  fetch('/api/portal-list', {
+  fetch('/api/create-branch', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ password: PASSWORD }),
+    body: JSON.stringify({ __portalAction: 'list', password: PASSWORD }),
   }).then(r => r.json()).then(j => {
     if (!j.ok) { document.getElementById('gateErr').textContent = j.error || 'Wrong password'; return; }
     files = j.files;
@@ -100,9 +100,9 @@ function renderFileList() {
 
 function openFile(path) {
   setStatus('Loading ' + path + '...', '');
-  fetch('/api/portal-file', {
+  fetch('/api/create-branch', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ password: PASSWORD, path }),
+    body: JSON.stringify({ __portalAction: 'file', password: PASSWORD, path }),
   }).then(r => r.json()).then(j => {
     if (!j.ok) { setStatus(j.error || 'Could not load file', 'err'); return; }
     current = { path: j.path, sha: j.sha };
@@ -129,9 +129,9 @@ function saveFile() {
   const content = document.getElementById('editor').value;
   const message = document.getElementById('commitMsg').value;
   setStatus('Saving...', '');
-  fetch('/api/portal-save', {
+  fetch('/api/create-branch', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ password: PASSWORD, path: current.path, content, sha: current.sha, message }),
+    body: JSON.stringify({ __portalAction: 'save', password: PASSWORD, path: current.path, content, sha: current.sha, message }),
   }).then(r => r.json()).then(j => {
     if (!j.ok) { setStatus(j.error || 'Save failed', 'err'); return; }
     current.sha = j.newSha;

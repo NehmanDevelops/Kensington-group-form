@@ -718,6 +718,78 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
+  // ── Amgine Portal (2026-10-16) ───────────────────────────────────────────
+  // A simple web editor (amgine-portal.html) so Vera can view/edit this repo
+  // without needing GitHub/git knowledge, while IT sorts out moving the repo
+  // to a company-owned account — see AMGINE_HANDOFF.md. Folded into this
+  // existing function (rather than new api/portal-*.js files) because the
+  // Vercel account is on the Hobby plan's 12-serverless-function cap, which
+  // this project was already sitting at exactly.
+  if (body.__portalAction) {
+    if (body.password !== process.env.PORTAL_PASSWORD) return res.status(401).json({ ok: false, error: 'Wrong password' });
+    const PORTAL_REPO_OWNER = 'NehmanDevelops';
+    const PORTAL_REPO_NAME = 'Kensington-group-form';
+    const PORTAL_REPO_BRANCH = 'main';
+    const ghToken = process.env.PORTAL_GITHUB_TOKEN;
+    const ghHeaders = { Authorization: `Bearer ${ghToken}`, Accept: 'application/vnd.github+json' };
+
+    if (body.__portalAction === 'list') {
+      try {
+        const r = await fetch(`https://api.github.com/repos/${PORTAL_REPO_OWNER}/${PORTAL_REPO_NAME}/git/trees/${PORTAL_REPO_BRANCH}?recursive=1`, { headers: ghHeaders });
+        const j = await r.json();
+        if (!r.ok) return res.status(200).json({ ok: false, error: j.message || 'GitHub list failed' });
+        const files = (j.tree || []).filter((t) => t.type === 'blob').map((t) => ({ path: t.path, size: t.size })).sort((a, b) => a.path.localeCompare(b.path));
+        return res.status(200).json({ ok: true, files });
+      } catch (err) {
+        return res.status(200).json({ ok: false, error: err.message });
+      }
+    }
+
+    if (body.__portalAction === 'file') {
+      const path = String(body.path || '').replace(/^\/+/, '');
+      if (!path) return res.status(200).json({ ok: false, error: 'path is required' });
+      try {
+        const r = await fetch(`https://api.github.com/repos/${PORTAL_REPO_OWNER}/${PORTAL_REPO_NAME}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}?ref=${PORTAL_REPO_BRANCH}`, { headers: ghHeaders });
+        const j = await r.json();
+        if (!r.ok) return res.status(200).json({ ok: false, error: j.message || 'GitHub read failed' });
+        if (j.encoding !== 'base64') return res.status(200).json({ ok: false, error: 'Not a text file — cannot edit here' });
+        const content = Buffer.from(j.content, 'base64').toString('utf8');
+        return res.status(200).json({ ok: true, path, content, sha: j.sha });
+      } catch (err) {
+        return res.status(200).json({ ok: false, error: err.message });
+      }
+    }
+
+    if (body.__portalAction === 'save') {
+      const path = String(body.path || '').replace(/^\/+/, '');
+      const content = body.content;
+      const sha = String(body.sha || '');
+      const message = String(body.message || '').trim() || `Portal edit: ${path}`;
+      if (!path || content == null || !sha) return res.status(200).json({ ok: false, error: 'path, content, and sha are required' });
+      try {
+        const r = await fetch(`https://api.github.com/repos/${PORTAL_REPO_OWNER}/${PORTAL_REPO_NAME}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}`, {
+          method: 'PUT',
+          headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: `${message}\n\nCo-Authored-By: Amgine Portal <portal@kensingtoncorporate.com>`,
+            content: Buffer.from(String(content), 'utf8').toString('base64'),
+            sha, branch: PORTAL_REPO_BRANCH,
+          }),
+        });
+        const j = await r.json();
+        if (!r.ok) {
+          if (r.status === 409) return res.status(200).json({ ok: false, error: 'This file changed since you opened it — reload it and re-apply your edit.' });
+          return res.status(200).json({ ok: false, error: j.message || 'GitHub save failed' });
+        }
+        return res.status(200).json({ ok: true, newSha: j.content?.sha, commitUrl: j.commit?.html_url });
+      } catch (err) {
+        return res.status(200).json({ ok: false, error: err.message });
+      }
+    }
+
+    return res.status(200).json({ ok: false, error: 'Unknown __portalAction' });
+  }
+
   // ── Smartsheet webhook change event ─────────────────────────────────────
   // Always returns 200 (even on failure) so Smartsheet doesn't retry and double-
   // onboard; outcomes land in the row's status column + the JSON response.
