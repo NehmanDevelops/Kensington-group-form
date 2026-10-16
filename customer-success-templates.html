@@ -149,6 +149,8 @@
   .rb-preview { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; font-size: 15px; line-height: 1.7; color: var(--ink); white-space: pre-wrap; }
   .rb-preview mark { background: #efe7cf; color: var(--ink); padding: 0 2px; border-radius: 2px; }
   .rb-copied { font-size: 13px; color: var(--gold-deep); margin-top: 12px; min-height: 18px; }
+  .rb-secondary { display: inline-block; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: transparent; border: 1px solid var(--ink); border-radius: 6px; padding: 10px 18px; margin: 12px 4px 0; cursor: pointer; text-decoration: none; }
+  .rb-secondary:hover { background: var(--ink); color: var(--bone); }
 </style>
 </head>
 <body>
@@ -394,7 +396,7 @@
           </div>
           <div class="rb-options" id="rbOptions">
             <label class="rb-option active"><input type="radio" name="rbType" value="visa" checked>
-              <span><span class="rb-option-name">Rebate processed: Visa card</span><br><span class="rb-option-sub">Threshold reached, rebate applied to the client's Visa card</span></span></label>
+              <span><span class="rb-option-name">Rebate processed: credit card</span><br><span class="rb-option-sub">Threshold reached, rebate applied to the client's credit card</span></span></label>
             <label class="rb-option"><input type="radio" name="rbType" value="bank">
               <span><span class="rb-option-name">Rebate processed: bank transfer</span><br><span class="rb-option-sub">Threshold reached, funds sent to the client's bank</span></span></label>
             <label class="rb-option"><input type="radio" name="rbType" value="notmet">
@@ -418,7 +420,7 @@
             </div>
           </div>
           <div class="field" id="rbCardWrap" style="margin-top:22px;">
-            <label class="field-label" for="rbCard">Visa card ending in</label>
+            <label class="field-label" for="rbCard">Credit card ending in</label>
             <div class="field-sub">Last 4 digits only. Never enter a full card number.</div>
             <input id="rbCard" class="field-input" type="text" inputmode="numeric" maxlength="4" placeholder="e.g. 7898">
           </div>
@@ -429,9 +431,18 @@
             <span class="section-num" id="rbPreviewNum">III.</span>
             <h2 class="section-title">Your message</h2>
           </div>
+          <div class="field">
+            <label class="field-label" for="rbTo">Client email (optional)</label>
+            <div class="field-sub">Fills in the To line. Separate multiple emails with commas.</div>
+            <input id="rbTo" class="field-input" type="text" placeholder="name@company.com">
+          </div>
           <div class="rb-preview" id="rbPreview"></div>
           <div class="form-footer" style="padding:24px 0 0;">
-            <button type="button" class="submit-btn" id="rbCopy">Copy message</button>
+            <button type="button" class="submit-btn" id="rbEmail">Open email</button>
+            <div>
+              <a class="rb-secondary" id="rbOutlook" target="_blank" rel="noopener">Email didn't open? Open in Outlook on the web</a>
+              <button type="button" class="rb-secondary" id="rbCopy">Copy message</button>
+            </div>
             <div class="rb-copied" id="rbCopied"></div>
           </div>
         </section>
@@ -601,7 +612,7 @@
       var f = function (v) { return html ? '<mark>' + esc(v) + '</mark>' : v; };
       var t = type();
       var opening = 'Congratulations on reaching ' + f(pctVal()) + ' of your contracted value in just ' + f(val(months, '[number of months]')) + ' months. ';
-      if (t === 'visa') return opening + 'Your rebate has now been processed and applied to your Visa card ending in ' + f(val(card, '[last 4 digits]')) + '.';
+      if (t === 'visa') return opening + 'Your rebate has now been processed and applied to your credit card ending in ' + f(val(card, '[last 4 digits]')) + '.';
       if (t === 'bank') return opening + 'Your rebate has now been processed and the funds have been remitted to the banking details you provided.';
       return 'Thank you for your participation in the rebate program. While the rebate threshold was not met during this period, we appreciate your business and the opportunity to support your travel needs. We look forward to continuing our partnership and helping you maximize the value of your program in the future.';
     }
@@ -617,6 +628,23 @@
     card.addEventListener('input', function () { card.value = card.value.replace(/\D/g, '').slice(0, 4); });
     [pct, months, card].forEach(function (el) { el.addEventListener('input', render); });
     document.querySelectorAll('input[name="rbType"]').forEach(function (r) { r.addEventListener('change', render); });
+    var SUBJECT = 'Rebate Program Update';
+    function missing(text) { return /\[(percent|number of months|last 4 digits)\]/.test(text); }
+    function outlookUrl() {
+      var to = document.getElementById('rbTo').value.trim();
+      return 'https://outlook.office.com/mail/deeplink/compose?to=' + encodeURIComponent(to) + '&subject=' + encodeURIComponent(SUBJECT) + '&body=' + encodeURIComponent(build(false));
+    }
+    document.getElementById('rbEmail').addEventListener('click', function () {
+      var text = build(false);
+      if (missing(text)) { copied.textContent = 'Fill in the highlighted details first.'; return; }
+      var to = document.getElementById('rbTo').value.trim();
+      copied.textContent = 'Opening your email. If nothing opened, use "Open in Outlook on the web" below.';
+      window.location.href = 'mailto:' + encodeURIComponent(to).replace(/%40/g, '@').replace(/%2C/gi, ',') + '?subject=' + encodeURIComponent(SUBJECT) + '&body=' + encodeURIComponent(text);
+    });
+    document.getElementById('rbOutlook').addEventListener('click', function (e) {
+      if (missing(build(false))) { e.preventDefault(); copied.textContent = 'Fill in the highlighted details first.'; return; }
+      this.href = outlookUrl();
+    });
     document.getElementById('rbCopy').addEventListener('click', function () {
       var text = build(false);
       if (/\[(percent|number of months|last 4 digits)\]/.test(text)) { copied.textContent = 'Fill in the highlighted details first.'; return; }
