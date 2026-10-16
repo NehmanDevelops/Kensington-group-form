@@ -175,6 +175,59 @@ function parseBookedFromNotes(agentNotes) {
   };
 }
 
+// Airline / Flight Number(s) / Date(s) / Time(s) / PNR, broken into separate
+// fields (Vera, 2026-10-16 — "can it give more details? like flight numbers
+// and times and dates?" → "airline, flight numbers, dates, times... each a
+// separate column"). Same agentNotes free-text as parseBookedFromNotes(),
+// but a different section of it:
+//   "Itinerary Recommendation Summary" lists ALL flight OPTIONS that were
+//   ever presented (plural — e.g. two priced the same) — NOT reliable on
+//   its own for "what was actually booked", confirmed on a real itinerary
+//   where Option 1 (AA1684/AA2237) was shown but Option 2 (AA1650/AA842)
+//   is what actually got ticketed.
+//   "---Seat Selection Updated" lines name the ACTUAL flight numbers a seat
+//   was assigned on — this is ground truth for which option was chosen.
+// So: parse every option, parse the seat-selection flight numbers, keep
+// only the options that cross-reference-match a seat-selection flight
+// number. If there's no seat-selection match (not booked yet, or the format
+// differs for a non-flight item), returns {} rather than guessing which of
+// several same-priced options was the real one.
+function parseFlightDetailsFromNotes(agentNotes) {
+  const s = norm(agentNotes);
+  if (!s) return {};
+  const optionRe = /([A-Z]{2})\s+(\d+)\s+\S\s+\S{3}\s+(\d{2}[A-Z]{3}\d{2})\s+(.+?)\s+to\s+(.+?)\s{2,}(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/g;
+  const options = [];
+  let m;
+  while ((m = optionRe.exec(s))) {
+    options.push({ airline: m[1], flightNum: m[2], date: m[3], from: m[4].trim(), to: m[5].trim(), depTime: m[6], arrTime: m[7] });
+  }
+  if (!options.length) return {};
+
+  const seatRe = /Seat\s+\S+\s+on\s+([A-Z]{2})(\d+)\s+[A-Z]{3}-[A-Z]{3}/g;
+  const bookedKeys = new Set();
+  while ((m = seatRe.exec(s))) bookedKeys.add(`${m[1]}${m[2]}`);
+  if (!bookedKeys.size) return {}; // nothing to cross-reference against — don't guess
+
+  const seen = new Set();
+  const matched = [];
+  for (const o of options) {
+    const key = `${o.airline}${o.flightNum}`;
+    if (!bookedKeys.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    matched.push(o);
+  }
+  if (!matched.length) return {};
+
+  const pnrMatch = s.match(/PNR:\s*([A-Z0-9]+),\s*SuperPNR/);
+  return {
+    airline: [...new Set(matched.map(o => o.airline))].join(', '),
+    flightNumbers: matched.map(o => `${o.airline}${o.flightNum}`).join(', '),
+    flightDates: matched.map(o => o.date).join(', '),
+    flightTimes: matched.map(o => `${o.depTime}-${o.arrTime}`).join(', '),
+    pnr: pnrMatch ? pnrMatch[1] : '',
+  };
+}
+
 // 2026-09-21: Amgine deprecated the old user-based-credential login (grant_type
 // password + username/password) in favor of a client-key-only flow
 // (grant_type=client_credentials, just client_id+client_secret+scope, no user
@@ -562,6 +615,40 @@ export default async function handler(req, res) {
   const TOKEN = process.env.SMARTSHEET_API_TOKEN;
   const api = ss(TOKEN);
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+  // TEMP: one-shot — add the new flight-detail columns + Amgine Status
+  // Updated timestamp column to Traveller Profile MasterSheet if missing
+  // (remove after use). Positions: flight-detail columns right after
+  // Booked Amount; the timestamp column right after Amgine Status.
+  if (norm(body.__setupFlightDetailCols) === 'kcg-flightdetails-2026') {
+    const master = await (await api(`/sheets/${MASTER}?pageSize=1`)).json();
+    const cols = master.columns || [];
+    const byTitle = {};
+    for (const c of cols) byTitle[c.title.trim().toLowerCase()] = c;
+    const results = [];
+
+    const bookedAmountCol = byTitle['booked amount'];
+    const flightCols = ['Airline', 'Flight Number(s)', 'Flight Date(s)', 'Flight Time(s)', 'PNR'];
+    let idx = bookedAmountCol ? bookedAmountCol.index + 1 : cols.length;
+    for (const title of flightCols) {
+      if (byTitle[title.toLowerCase()]) { results.push({ title, ok: true, alreadyExisted: true }); continue; }
+      const r = await api(`/sheets/${MASTER}/columns`, { method: 'POST', body: JSON.stringify([{ title, type: 'TEXT_NUMBER', index: idx }]) });
+      const j = await r.json().catch(() => ({}));
+      results.push({ title, ok: r.ok, raw: r.ok ? undefined : j });
+      idx++;
+    }
+
+    const statusCol = byTitle['amgine status'];
+    if (!byTitle['amgine status updated']) {
+      const r = await api(`/sheets/${MASTER}/columns`, { method: 'POST', body: JSON.stringify([{ title: 'Amgine Status Updated', type: 'TEXT_NUMBER', index: statusCol ? statusCol.index + 1 : cols.length }]) });
+      const j = await r.json().catch(() => ({}));
+      results.push({ title: 'Amgine Status Updated', ok: r.ok, raw: r.ok ? undefined : j });
+    } else {
+      results.push({ title: 'Amgine Status Updated', ok: true, alreadyExisted: true });
+    }
+
+    return res.status(200).json({ ok: true, results });
+  }
 
 
   // TEMP: scan whole CVENT sheet for rows missing from master (strict
