@@ -257,6 +257,32 @@ export default async function handler(req, res) {
     if (testCopies.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${testCopies.join(',')}&ignoreRowsNotFound=true`); out.testCopiesDeleted = testCopies.length; }
     if (dupes.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${dupes.join(',')}&ignoreRowsNotFound=true`); out.duplicatesDeleted = dupes.length; }
 
+    // Vera (2026-10-16): Arbonne's sheet can hold the SAME traveller on several rows (all YES). Each used to get its own copy, and a
+    // copy Vera deleted came straight back. Now one traveller (email + first + last name) is copied ONCE. Extra copies of the same
+    // traveller are removed, but only if nobody has worked on them (agent columns blank); the oldest copy is always kept.
+    const personKey = (email, first, last) => { const e = tkey(email), f = tkey(first), l = tkey(last); return e && (f || l) ? `${e}|${f}|${l}` : ''; };
+    const oEmail = O[tkey('Email')], oFirst = O[tkey('First Name')], oLast = O[tkey('Last Name')];
+    const ourPerson = r => personKey(oEmail && rawVal(r, oEmail.id), oFirst && rawVal(r, oFirst.id), oLast && rawVal(r, oLast.id));
+    const agentCols = ['Agent Assigned:', 'Agent Notes', 'In progress', 'Completed'].map(t => O[tkey(t)]).filter(Boolean);
+    const untouched = r => agentCols.every(c => { const v = rawVal(r, c.id); return v === '' || v === 'false'; });
+    const copiesByPerson = new Map();
+    for (const r of [...byKey.values()].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))) {
+      const pk = ourPerson(r); if (!pk) continue;
+      if (!copiesByPerson.has(pk)) copiesByPerson.set(pk, []);
+      copiesByPerson.get(pk).push(r);
+    }
+    const personDupes = [];
+    for (const [pk, rows] of copiesByPerson) for (const r of rows.slice(1)) {
+      if (untouched(r)) personDupes.push({ id: r.id, person: pk.split('|')[0], key: rawVal(r, keyCol.id) });
+      else (out.personDupesKept = out.personDupesKept || []).push({ person: pk.split('|')[0], row: r.rowNumber, reason: 'agent already working on it' });
+    }
+    out.personDuplicateCopies = personDupes.map(d => d.person);
+    if (personDupes.length && commit) { await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${personDupes.map(d => d.id).join(',')}&ignoreRowsNotFound=true`); out.personDuplicatesDeleted = personDupes.length; }
+    for (const d of personDupes) byKey.delete(d.key);
+    const seenPeople = new Set(copiesByPerson.keys());
+    const tEmail = T[tkey('Email Address')], tFirst = T[tkey('NVP First Name')], tLast = T[tkey('NVP Last Name')];
+    const theirPerson = tr => personKey(tEmail && rawVal(tr, tEmail.id), tFirst && rawVal(tr, tFirst.id), tLast && rawVal(tr, tLast.id));
+
     // Vera (2026-10-14): our yellow "Client Notes" column must be filled from Arbonne's sheet. On THEIR side the text lives in "Comments"
     // ("Notes from Arbonne" is empty on every row), so Client Notes = their "Client Notes" / "Comments" / "Notes from Arbonne", first one with text.
     const notesSources = ['Client Notes', 'Comments', 'Notes from Arbonne'].map(t => T[tkey(t)]).filter(Boolean);
@@ -286,6 +312,9 @@ export default async function handler(req, res) {
       if (!existing && !gid) out.noGroupId = (out.noGroupId || 0) + 1;   // still copied; Group ID stays blank until Arbonne supplies one
 
       if (!existing) {
+        const pk = theirPerson(tr);
+        if (pk && seenPeople.has(pk)) { skipped.push({ row: tr.rowNumber, reason: 'same traveller is on another Arbonne row (already copied)' }); continue; }
+        if (pk) seenPeople.add(pk);
         const cells = [];
         for (const p of pairs) {
           const v = srcVal(tr, p); if (v === '') continue;
