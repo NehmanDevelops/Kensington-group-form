@@ -89,6 +89,33 @@ export default async function handler(req, res) {
       return res.status(intakeRes.status).json({ error: intakeData.message || 'Smartsheet error' });
     }
 
+    // ── New-request alert email ─────────────────────────────────────────
+    // The Smartsheet notification automations stopped firing, so the form
+    // emails the team directly (Smartsheet "send row by email"). Best-effort:
+    // a failure here must never fail the submission.
+    try {
+      const intakeRowId = Array.isArray(intakeData.result) ? intakeData.result[0]?.id : intakeData.result?.id;
+      const co = String((smartsheetPayload.cells || []).find(c => c.columnId === INTAKE_COMPANY_COL)?.value || 'Unknown company');
+      if (intakeRowId) {
+        const mailRes = await fetch(`https://api.smartsheet.com/2.0/sheets/${INTAKE_SHEET_ID}/rows/emails`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${process.env.SMARTSHEET_API_TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rowIds: [intakeRowId],
+            sendTo: [{ email: 'corp.groups@kensingtoncorporate.com' }],
+            subject: `New Group Travel Request: ${co}`,
+            message: 'A new group travel request was just submitted through the website form. Details below.',
+            includeAttachments: false,
+            includeDiscussions: false,
+            layout: 'VERTICAL',
+          }),
+        });
+        if (!mailRes.ok) console.error('New-request alert email failed:', mailRes.status, await mailRes.text());
+      }
+    } catch (mailErr) {
+      console.error('New-request alert email error:', mailErr.message);
+    }
+
     // ── Step 2: Mirror key fields to LIVE GROUP MASTERSHEET ───────────────
     // Build a lookup map: columnId → value from the submitted cells
     const cells = smartsheetPayload.cells || [];
