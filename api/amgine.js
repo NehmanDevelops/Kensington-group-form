@@ -218,8 +218,14 @@ function parseFlightDetailsFromNotes(agentNotes) {
   }
   if (!matched.length) return {};
 
+  // One-line summary of every booked flight for a single "Amgine Booking Info"
+  // column (Vera, 2026-10-27 — the separate columns made the sheet too wide).
+  // e.g. "AC104 15JAN TORONTO - MONTREAL 2:30PM-3:30PM | AC881 15JAN MONTREAL - HALIFAX 4:15PM-5:15PM"
+  const to12h = t => { const [h, mi] = t.split(':').map(Number); return `${h % 12 || 12}:${String(mi).padStart(2, '0')}${h < 12 ? 'AM' : 'PM'}`; };
+  const city = x => x.split('/')[0].trim().toUpperCase();
   const pnrMatch = s.match(/PNR:\s*([A-Z0-9]+),\s*SuperPNR/);
   return {
+    bookingInfo: matched.map(o => `${o.airline}${o.flightNum} ${o.date.slice(0, 5)} ${city(o.from)} - ${city(o.to)} ${to12h(o.depTime)}-${to12h(o.arrTime)}`).join(' | '),
     airline: [...new Set(matched.map(o => o.airline))].join(', '),
     flightNumbers: matched.map(o => `${o.airline}${o.flightNum}`).join(', '),
     flightDates: matched.map(o => o.date).join(', '),
@@ -731,6 +737,7 @@ export default async function handler(req, res) {
               if (flight.flightNumbers && M.id('Flight Number(s)')) cells.push({ columnId: M.id('Flight Number(s)'), value: flight.flightNumbers });
               if (flight.flightDates && M.id('Flight Date(s)')) cells.push({ columnId: M.id('Flight Date(s)'), value: flight.flightDates });
               if (flight.flightTimes && M.id('Flight Time(s)')) cells.push({ columnId: M.id('Flight Time(s)'), value: flight.flightTimes });
+              if (flight.bookingInfo && M.id('Amgine Booking Info')) cells.push({ columnId: M.id('Amgine Booking Info'), value: flight.bookingInfo.slice(0, 4000) });
               if (flight.pnr && M.id('PNR')) cells.push({ columnId: M.id('PNR'), value: flight.pnr });
               if (cells.length) {
                 const created = await api(`/sheets/${MASTER}/rows`, { method: 'POST', body: JSON.stringify([{ toBottom: true, cells }]) });
@@ -806,6 +813,7 @@ export default async function handler(req, res) {
       if (flight.flightNumbers && M.id('Flight Number(s)')) cells.push({ columnId: M.id('Flight Number(s)'), value: flight.flightNumbers });
       if (flight.flightDates && M.id('Flight Date(s)')) cells.push({ columnId: M.id('Flight Date(s)'), value: flight.flightDates });
       if (flight.flightTimes && M.id('Flight Time(s)')) cells.push({ columnId: M.id('Flight Time(s)'), value: flight.flightTimes });
+      if (flight.bookingInfo && M.id('Amgine Booking Info')) cells.push({ columnId: M.id('Amgine Booking Info'), value: flight.bookingInfo.slice(0, 4000) });
       if (cells.length) await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify([{ id: row.id, cells }]) });
 
       return res.status(200).json({ ok: true, matched: true, rowId: row.id, state: body.ItineraryState, status });
