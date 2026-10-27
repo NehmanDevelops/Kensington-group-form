@@ -864,6 +864,50 @@ export default async function handler(req, res) {
     }
   }
 
+  // TEMP (2026-10-27): add the "Amgine Booking Info" column right after the last Amgine column, then run the parser on
+  // real Booked rows ({write:true} puts the result in the sheet). Remove after use.
+  if (isTrue(body.__bookingInfoTest)) {
+    try {
+      let master = await (await api(`/sheets/${MASTER}`)).json();
+      let M = indexSheet(master);
+      const out = {};
+      if (!M.id('Amgine Booking Info')) {
+        const amg = master.columns.filter(c => /^amgine/i.test(c.title));
+        const at = amg.length ? Math.max(...amg.map(c => c.index)) + 1 : master.columns.length;
+        const cr = await api(`/sheets/${MASTER}/columns`, { method: 'POST', body: JSON.stringify({ title: 'Amgine Booking Info', type: 'TEXT_NUMBER', index: at }) });
+        out.columnCreate = await cr.json();
+        master = await (await api(`/sheets/${MASTER}`)).json(); M = indexSheet(master);
+      }
+      const bi = master.columns.find(c => c.title === 'Amgine Booking Info');
+      out.columnIndex = bi ? bi.index : null;
+      out.neighbours = bi ? master.columns.filter(c => c.index >= bi.index - 4 && c.index <= bi.index + 4).map(c => `${c.index}|${c.title}`) : [];
+      let auth = await getAmgineToken('basic'); if (!auth.ok) auth = await getAmgineToken('post');
+      if (!auth.ok) return res.status(200).json({ ...out, error: 'Amgine token failed' });
+      const cands = (master.rows || [])
+        .filter(r => norm(M.val(r, 'Amgine Status')).toLowerCase() === 'booked' && /agentapp\/transaction\/[^/]+\/\d+/.test(norm(M.val(r, 'Amgine Link'))))
+        .sort((a, b) => Number(norm(M.val(b, 'Amgine Itinerary ID'))) - Number(norm(M.val(a, 'Amgine Itinerary ID'))))
+        .slice(0, 12);
+      const tried = await Promise.all(cands.map(async r => {
+        const m = /agentapp\/transaction\/([^/]+)\/(\d+)/.exec(norm(M.val(r, 'Amgine Link')));
+        try {
+          const g = await fetch(`https://app.amgine.ai/publicapi/api/AgentApp/requests/${m[1]}/${m[2]}`, { headers: { Authorization: `Bearer ${auth.token}` } });
+          const full = await g.json().catch(() => null);
+          const f = parseFlightDetailsFromNotes(full?.itinerary?.agentNotes);
+          return { rowId: r.id, itin: m[2], bookingInfo: f.bookingInfo || '' };
+        } catch (e) { return { rowId: r.id, itin: m[2], bookingInfo: '', error: e.message }; }
+      }));
+      const good = tried.filter(t => t.bookingInfo).slice(0, 5);
+      out.candidatesTried = tried.length; out.parsed = good;
+      if (body.write === true && M.id('Amgine Booking Info') && good.length) {
+        await api(`/sheets/${MASTER}/rows`, { method: 'PUT', body: JSON.stringify(good.map(t => ({ id: t.rowId, cells: [{ columnId: M.id('Amgine Booking Info'), value: t.bookingInfo }] }))) });
+        out.written = good.length;
+      }
+      return res.status(200).json(out);
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+
   // ── SEND half (us -> Amgine) ────────────────────────────────────────────
   // Modes:
   //   { scan: true }                              → book every eligible traveller
