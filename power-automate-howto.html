@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Automate How-To</title>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --text:#1c2230; --muted:#5d667a; --border:#e1e5ee; --accent:#4f7cff; --red:#e11; --warn-bg:#fff7e0; --warn-text:#7a5a00; --ok-bg:#e8f6ec; --ok-text:#1b6b35; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e8ebf2; --muted:#9aa3b5; --border:#2a2f3b; --warn-bg:#2a2110; --warn-text:#e0b84c; --ok-bg:#112a1a; --ok-text:#6fd69a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:28px; margin:8px 0 4px; }
+  h2 { font-size:21px; margin:0 0 8px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin:16px 0; }
+  .step-n { display:inline-block; background:var(--red); color:#fff; border-radius:50%; width:26px; height:26px; text-align:center; line-height:26px; font-weight:700; font-size:14px; margin-right:6px; }
+  img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:8px; margin:10px 0 4px; display:block; }
+  .note, .warn, .ok { border-radius:8px; padding:10px 14px; margin:12px 0; font-size:15px; }
+  .note { background:var(--bg); border:1px solid var(--border); }
+  .warn { background:var(--warn-bg); color:var(--warn-text); }
+  .ok { background:var(--ok-bg); color:var(--ok-text); }
+  table { width:100%; border-collapse:collapse; font-size:14.5px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  code { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:13.5px; }
+  a { color:var(--accent); }
+  ol, ul { padding-left:22px; } li { margin:4px 0; }
+  .toc a { margin-right:12px; white-space:nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Power Automate How-To</h1>
+  <p class="sub">Kensington group &amp; traveller automations — how to check them, and what to do when one breaks. Red circles and numbers in the screenshots show where to click.</p>
+
+  <div class="warn"><b>Before you start:</b> the sign-in for the shared Power Automate account (<code>service.corp.groups@kensingtoncorporate.com</code>) is stored in Sabre — it is not written on this page. Don’t edit or delete a flow unless a step below tells you to. Looking around is always safe.</div>
+
+  <p class="toc"><b>Jump to:</b>
+    <a href="#signin">1 Sign in</a><a href="#find">2 Find a flow</a><a href="#status">3 Is it on?</a><a href="#ran">4 Did it run?</a><a href="#failed">5 Failed runs</a><a href="#flows">Flow list</a><a href="#fixes">Common fixes</a><a href="#risks">Handover risks</a></p>
+
+  <section class="card" id="signin">
+    <h2><span class="step-n">1</span>Sign in</h2>
+    <ol>
+      <li>Go to <a href="https://make.powerautomate.com" target="_blank" rel="noopener">make.powerautomate.com</a> and sign in with the shared account (details in Sabre).</li>
+      <li>Check the top bar says <b>Environments → TravelEdge (default)</b>. All of our flows live in that environment. If it shows another environment, click it and switch.</li>
+    </ol>
+  </section>
+
+  <section class="card" id="find">
+    <h2><span class="step-n">1</span>Find a flow &nbsp;→&nbsp; <span class="step-n">2</span>Open it</h2>
+    <p>In the left menu click <b>My flows</b>, then open the <b>Shared with me</b> tab (circle 1). Every flow Nehman owns is shared with the shared account, so they all appear here (16 at the time of writing).</p>
+    <img src="power-automate-howto/step1-shared-with-me.jpg" alt="Flows page with the Shared with me tab circled">
+    <p>Scroll the list and click the flow’s <b>name</b> (circle 2). Tip: on the list, a greyed-out icon with a small “no entry” sign means the flow is switched <b>off</b>.</p>
+    <img src="power-automate-howto/step2-open-flow.jpg" alt="Flow list with CVENT EMAIL PARSER - CANADA circled">
+  </section>
+
+  <section class="card" id="status">
+    <h2><span class="step-n">3</span>Is the flow turned on?</h2>
+    <p>The flow’s page shows <b>Status</b> (circle 3) — it should say <b>On</b>. Below it is the <b>28-day run history</b> (circle 4): every time the flow ran, with a green <b>Succeeded</b> or red <b>Failed</b>. <b>All runs</b> (circle 5) opens the full list.</p>
+    <img src="power-automate-howto/step3-flow-page.jpg" alt="Flow details page with Status, run history and All runs circled">
+    <div class="ok"><b>If it says Off:</b> use <b>Turn on</b> in the top toolbar, then check a few minutes later that it ran.</div>
+    <div class="note"><b>Also on this page:</b> <b>Connections</b> (top right) shows whose account the flow uses to read mail / write to sheets. <b>Co-owner</b> shows who can edit it (NR = Nehman, SG = the shared account).</div>
+  </section>
+
+  <section class="card" id="ran">
+    <h2><span class="step-n">4</span>Did it actually run? (“click here to see if it ran”)</h2>
+    <p>In the run history, click the most recent <b>date</b>. A green bar says <b>“Your flow ran successfully”</b> (circle 1) and every step shows a green tick (circle 2). <b>Resubmit</b> (circle 3) re-runs that same email/event again.</p>
+    <img src="power-automate-howto/step5-run-succeeded.jpg" alt="A successful run with green ticks and the Resubmit button">
+    <div class="warn"><b>Harmless warning:</b> you may see a red banner “There’s a problem that needs to be fixed to trigger this flow”. If the detail says <i>“It hasn’t been triggered successfully in the last 28 days”</i> (circle 2 below), nothing is broken — no new email or row has arrived for it lately. This is normal for the Canada parser. It only matters if emails <i>did</i> arrive and nothing ran.</div>
+    <img src="power-automate-howto/step4-warning.jpg" alt="Flow checker saying the flow has not been triggered in the last 28 days">
+  </section>
+
+  <section class="card" id="failed">
+    <h2><span class="step-n">5</span>Find and re-run failed runs</h2>
+    <ol>
+      <li>On the flow’s page click <b>All runs</b>.</li>
+      <li>Top right, click the <b>All runs</b> filter (circle 1) and choose <b>Failed runs</b> (circle 2).</li>
+      <li>Click a failed run. The step with a <b>red cross</b> is what broke — click it to see the error message.</li>
+      <li>Fix the cause if you can (see <a href="#fixes">Common fixes</a>), then click <b>Resubmit</b> at the top of that run. For the CVENT parsers it is safe to resubmit: the parser skips people it has already saved, so nobody is doubled up.</li>
+    </ol>
+    <img src="power-automate-howto/step6-failed-runs.jpg" alt="Run history filter menu with Failed runs circled">
+    <div class="note">After a long outage (e.g. the parser was down), resubmit <b>every</b> failed run since it stopped, then check the traveller sheet to make sure the people appear.</div>
+  </section>
+
+  <section class="card" id="flows">
+    <h2>What each flow does</h2>
+    <p style="color:var(--muted);margin-top:0">Plain-language summary based on the flow names and how our website uses them — open the flow and read its steps (top to bottom) to confirm before relying on a description.</p>
+    <table>
+      <tr><th>Flow</th><th>What it does</th><th>If it’s not working</th></tr>
+      <tr><td><b>CVENT EMAIL PARSER - CANADA / - USA</b></td><td>When a CVENT/Swoogo registration email lands in the shared mailbox, sends it to our parser (<code>/api/parse-email</code>) which writes the traveller to the sheets.</td><td>Check Status = On, then the latest run: both steps (mailbox trigger + HTTP) should be green. Travellers missing from the Envoy master sheet? Resubmit failed runs; for code problems use the <a href="parser-portal.html">Email Parser Portal</a>.</td></tr>
+      <tr><td><b>Amgine, Auto Book</b></td><td>When the “Book” checkbox is ticked on a traveller row in Smartsheet, triggers the booking in Amgine.</td><td>Check it’s On and the last run is green. The booking logic itself is in the Amgine Portal.</td></tr>
+      <tr><td><b>Group Travel Recap Email</b></td><td>Emails the person who submitted the Group Travel Request a copy when they tick “send me a copy”.</td><td>Check On + latest run. The new-request alert to corp.groups is sent by the form itself, not by this flow.</td></tr>
+      <tr><td><b>Groups Manager Email Sender</b></td><td>Sends group-manager emails from Smartsheet rows.</td><td>Check On + latest run for a red step.</td></tr>
+      <tr><td><b>Traveller Profile Form</b></td><td>Sends the Passenger Profile copy email when “send me a copy” is ticked.</td><td>Check On + latest run.</td></tr>
+      <tr><td><b>UDID → Finance Excel log</b><br><b>Http → Add a row into a table</b></td><td>Receive data from our website (UDID / Go-Live forms) and add a row to the finance Excel table.</td><td>These are triggered by a web address. <b>Never export/re-import them</b> — the address would change and the forms would stop working.</td></tr>
+      <tr><td><b>SYNC Manager → Agent</b></td><td>Keeps the manager and agent group sheets in sync.</td><td>Check On + latest run.</td></tr>
+      <tr><td><b>Contracted Hotels → Booking Builder</b> (and “(Auto)”)</td><td>Builds hotel booking rows from the contracted-hotels Excel. “(Auto)” runs on a schedule.</td><td>Check On, and for the scheduled one check it has run in the last day.</td></tr>
+      <tr><td><b>Email Stats - US</b> and the <b>canada@ COMPLETED EMAILS</b> flow</td><td>Log received emails (date, subject, category, queue) into an Excel table for stats.</td><td>One “Email Stats - US” copy is switched off (greyed) — that is expected.</td></tr>
+      <tr><td><b>When a new row is created → …</b> (2 flows)</td><td>Smartsheet row-created triggers that read sheet data and branch on a condition.</td><td>Open them to see exactly which sheet they watch before changing anything.</td></tr>
+    </table>
+  </section>
+
+  <section class="card" id="fixes">
+    <h2>Common problems and fixes</h2>
+    <table>
+      <tr><th>What you see</th><th>What to do</th></tr>
+      <tr><td>Status says <b>Off</b></td><td>Open the flow → <b>Turn on</b>. (Smartsheet or Outlook triggers sometimes get switched off after repeated failures.)</td></tr>
+      <tr><td>A run <b>Failed</b> at the first step (mailbox / Smartsheet trigger or action)</td><td>Usually the connection expired. On the flow page, under <b>Connections</b>, click the warning/<b>Fix</b> link and sign in again. If it is the owner’s connection, Nehman (or the new owner) must do it.</td></tr>
+      <tr><td>A run <b>Failed</b> at the <b>HTTP</b> step</td><td>Our website/parser returned an error. Open the run → HTTP step → read the response. Try <b>Resubmit</b> once; if it fails again the code needs fixing (use the portals).</td></tr>
+      <tr><td>Emails arrive but <b>no run</b> appears</td><td>The flow is off, or can’t read the mailbox. Confirm the shared account can open the shared mailbox (Canada / USA) in Outlook; if not, ask IT for <b>Full Access</b> to that mailbox.</td></tr>
+      <tr><td>“Premium”/licence error</td><td>Flows using the HTTP step need a Premium licence on the flow owner. Ask IT to assign/renew it before removing it from anyone.</td></tr>
+      <tr><td>Everything fails at once</td><td>Check whether the Smartsheet API token was regenerated (the website needs it updated in Vercel), and whether the owner’s password was changed (connections then need re-signing-in).</td></tr>
+    </table>
+  </section>
+
+  <section class="card" id="risks">
+    <h2>Handover risks (read once)</h2>
+    <ul>
+      <li><b>Flows run on the original owner’s connections.</b> The flows are co-owned by the shared account, but connections such as Office 365 Outlook were created with Nehman’s sign-in (visible in the <b>Connections</b> box). If Nehman’s account is disabled, those flows will fail until someone re-signs the connections with an account that will stay.</li>
+      <li><b>Never “export and import” a flow to move it</b> — web-triggered flows get a new address and the forms break.</li>
+      <li><b>Premium licence</b> sits with the owner. Move it deliberately (add first, remove after).</li>
+      <li><b>When in doubt, ask before editing.</b> Every flow can be turned off/on safely; deleting is not reversible.</li>
+    </ul>
+  </section>
+
+  <p class="sub" style="text-align:center">Last updated 2026-10-27 · Related: <a href="forms-portal.html">Forms Portal</a> · <a href="parser-portal.html">Email Parser Portal</a> · <a href="amgine-portal.html">Amgine Portal</a></p>
+</main>
+</body>
+</html>
