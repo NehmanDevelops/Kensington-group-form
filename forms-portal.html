@@ -59,7 +59,7 @@
   <header>
     <div>
       <h1>Forms Portal</h1>
-      <div class="sub">Group Travel Request Form &amp; Passenger Profile — view and edit the live code</div>
+      <div class="sub">Group Request Form, Passenger Profile &amp; Email Parser — view and edit the live code</div>
     </div>
   </header>
   <div class="warn-banner">⚠️ Saving here commits directly to the live site — changes go live within about a minute. There's no undo button; if something breaks, say so right away.</div>
@@ -87,7 +87,7 @@ let PASSWORD = '';
 let files = [];
 let REPO = 'Kensington-group-form';
 // Only these files are shown in All Files (keeps the list to what matters for each form).
-const RELEVANT = { 'Kensington-group-form': ['index.html', 'api/submit.js'], 'Kensington-traveller-profile': ['index.html', 'api/submit-profile.js', 'package.json'] };
+const RELEVANT = { 'Kensington-group-form': ['index.html', 'api/submit.js', 'api/parse-email.py'], 'Kensington-traveller-profile': ['index.html', 'api/submit-profile.js', 'package.json'] };
 let current = null; // { path, sha }
 
 // ── How-To guide data ──────────────────────────────────────────────────────
@@ -213,7 +213,63 @@ const HOWTO_ITEMS = [
   "where": "Almost always the Smartsheet API token expired or was regenerated. It is NOT in the code: update SMARTSHEET_API_TOKEN in Vercel (project kensington-group-form AND the profile project) → Settings → Environment Variables, then redeploy. Opens the server step that uses it.",
   "file": "api/submit.js",
   "anchor": "process.env.SMARTSHEET_API_TOKEN"
- }
+ },
+{
+ "repo": "Kensington-group-form",
+ "label": "📧 Email parser — api/parse-email.py",
+ "symptom": "EMAIL PARSER: registration emails aren’t reaching the Envoy master travel sheet (start here)",
+ "where": "First check Power Automate: open the flow that sends the email to the parser → Run history → look for failed runs → Resubmit them (the parser skips duplicates, so re-running is safe). Also check the parser is alive: https://kensington-group-form.vercel.app/api/parse-email should answer (a 404 means the file was deleted). This opens the part that receives the email from Power Automate and writes it.",
+ "file": "api/parse-email.py",
+ "anchor": "def do_POST(self):"
+},
+{
+ "repo": "Kensington-group-form",
+ "label": "📧 Email parser — api/parse-email.py",
+ "symptom": "EMAIL PARSER: email was read but no row was written to the sheet",
+ "where": "Opens the step that decides where each row goes (CVENT log, Traveller MasterSheet, agent copy). Its result is returned as “smartsheet_write” — look there for the error.",
+ "file": "api/parse-email.py",
+ "anchor": "def write_to_smartsheet("
+},
+{
+ "repo": "Kensington-group-form",
+ "label": "📧 Email parser — api/parse-email.py",
+ "symptom": "EMAIL PARSER: Smartsheet rejects the write (INVALID_COLUMN_ID) after a column was renamed/deleted",
+ "where": "Opens the list that maps parsed fields to the master sheet’s column IDs. Re-copy the ID from Smartsheet (right-click column → Properties → Column ID).",
+ "file": "api/parse-email.py",
+ "anchor": "MASTER_COLUMN_MAP = {"
+},
+{
+ "repo": "Kensington-group-form",
+ "label": "📧 Email parser — api/parse-email.py",
+ "symptom": "EMAIL PARSER: the email is ignored (“not a registration email”)",
+ "where": "Opens the rules that decide whether an email counts as a registration. Add the sender’s wording here if a new type of email is being skipped.",
+ "file": "api/parse-email.py",
+ "anchor": "def is_registration_email("
+},
+{
+ "repo": "Kensington-group-form",
+ "label": "📧 Email parser — api/parse-email.py",
+ "symptom": "EMAIL PARSER: a field (name, passport, phone…) comes through blank or wrong",
+ "where": "Opens the list of labels the parser looks for in emails. If an email says “Attendee Cell” and it isn’t listed, add it to that field’s list.",
+ "file": "api/parse-email.py",
+ "anchor": "FIELD ALIASES — what to look for"
+},
+{
+ "repo": "Kensington-group-form",
+ "label": "📧 Email parser — api/parse-email.py",
+ "symptom": "EMAIL PARSER: the same person appears twice (or a real person is skipped as a duplicate)",
+ "where": "Opens the duplicate-protection key (email + event code + name).",
+ "file": "api/parse-email.py",
+ "anchor": "def _dedup_key("
+},
+{
+ "repo": "Kensington-group-form",
+ "label": "📧 Email parser — api/parse-email.py",
+ "symptom": "EMAIL PARSER: a failed write didn’t send a Teams alert",
+ "where": "Opens the alert step. It only works if TEAMS_WEBHOOK_URL is set in Vercel (Settings → Environment Variables).",
+ "file": "api/parse-email.py",
+ "anchor": "def _send_failure_alert("
+}
 ];
 
 function renderHowto() {

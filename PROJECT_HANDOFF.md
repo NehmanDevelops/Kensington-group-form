@@ -243,3 +243,6 @@ How-To / live editor for both forms is built and live:
 - Password: the `PORTAL_PASSWORD` env var in Vercel (project kensington-group-form → Settings → Environment Variables). Deliberately NOT written here; ask Nehman / the Vercel owner. Same password as the Amgine Portal.
 
 **BE CAREFUL: every Save & Deploy commits DIRECTLY to the live sites (no preview, no undo).** Change one thing at a time, keep the commit note short and clear, and re-test the form with a dummy submission afterwards. If something breaks, revert the commit in GitHub (repo → Commits → Revert), or fix it here and save again.
+
+### Email parser how-to (added 2026-10-27)
+`forms-portal.html` now also has 7 How-To rows for `api/parse-email.py` (the CVENT/Swoogo email parser that writes to the CVENT log, Envoy/Traveller MasterSheet `8780932377956228` and the agent copy). First step when rows stop arriving: Power Automate parser flow → Run history → Resubmit failed runs (safe, duplicates are skipped); confirm `/api/parse-email` still answers (the api-health workflow checks this daily).
