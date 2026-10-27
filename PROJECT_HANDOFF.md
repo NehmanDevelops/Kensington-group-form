@@ -233,3 +233,13 @@ All repos are under GitHub user `NehmanDevelops`. Deploys are on Vercel (`vercel
 - Backend is the `__portalAction` block in `api/create-branch.js`; repos are whitelisted in `PORTAL_REPOS`. `PORTAL_GITHUB_TOKEN` must have write access to BOTH repos (if Save on the profile site says "Not Found", widen the token).
 - How-To rows live in `HOWTO_ITEMS` in `forms-portal.html`; each `anchor` must match code verbatim (if it stops matching, the file just opens at the top).
 - An empty/unset `PORTAL_PASSWORD` now locks the portal instead of opening it.
+
+### STATUS: DONE (2026-10-27) — How-To for the two request links
+
+How-To / live editor for both forms is built and live:
+- Portal: https://kensington-group-form.vercel.app/forms-portal.html
+- Group Travel Request Form: https://kensington-group-form.vercel.app/
+- Passenger Profile: https://kensington-registration-profile.vercel.app/
+- Password: the `PORTAL_PASSWORD` env var in Vercel (project kensington-group-form → Settings → Environment Variables). Deliberately NOT written here; ask Nehman / the Vercel owner. Same password as the Amgine Portal.
+
+**BE CAREFUL: every Save & Deploy commits DIRECTLY to the live sites (no preview, no undo).** Change one thing at a time, keep the commit note short and clear, and re-test the form with a dummy submission afterwards. If something breaks, revert the commit in GitHub (repo → Commits → Revert), or fix it here and save again.
