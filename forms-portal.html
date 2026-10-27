@@ -86,6 +86,8 @@
 let PASSWORD = '';
 let files = [];
 let REPO = 'Kensington-group-form';
+// Only these files are shown in All Files (keeps the list to what matters for each form).
+const RELEVANT = { 'Kensington-group-form': ['index.html', 'api/submit.js'], 'Kensington-traveller-profile': ['index.html', 'api/submit-profile.js', 'package.json'] };
 let current = null; // { path, sha }
 
 // ── How-To guide data ──────────────────────────────────────────────────────
@@ -269,7 +271,7 @@ function renderFileList() {
   const q = document.getElementById('search').value.toLowerCase();
   const el = document.getElementById('fileListInner');
   el.innerHTML = '';
-  files.filter(f => f.path.toLowerCase().includes(q)).forEach(f => {
+  files.filter(f => (RELEVANT[REPO] || []).includes(f.path) && f.path.toLowerCase().includes(q)).forEach(f => {
     const row = document.createElement('div');
     row.className = 'file-row' + (current && current.path === f.path ? ' active' : '');
     row.textContent = f.path;
