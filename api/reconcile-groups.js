@@ -518,6 +518,15 @@ export default async function handler(req, res) {
     try { return res.status(200).json(await cactusSync(commit)); } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // TEMP DEBUG (2026-10-27): list column titles/types of Arbonne's sheet + our Envoy master (read-only). Remove after use.
+  if (req.query?.arbonneCols === '1') {
+    try {
+      const [t, o] = await Promise.all([api(`/sheets/${ARB_SHEET}?pageSize=1`), api(`/sheets/${ENVOY_SHEET}?pageSize=1`)]);
+      const pick = s => (s.columns || []).map(c => `${c.index}|${c.title}|${c.type}`);
+      return res.status(200).json({ theirs: pick(t), oursAgentRelated: pick(o).filter(x => /agent|travel edge|progress|complete/i.test(x)) });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   if (req.query?.arbonne === '1') {
     try { return res.status(200).json(await arbonneSync(commit)); } catch (err) { return res.status(500).json({ error: err.message }); }
   }
