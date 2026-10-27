@@ -35,7 +35,7 @@
   <h1>Power Automate How-To</h1>
   <p class="sub">Kensington group &amp; traveller automations, how to check them, and what to do when one breaks. Red circles and numbers in the screenshots show where to click.</p>
 
-  <div class="warn"><b>Before you start:</b> the sign-in for the shared Power Automate account (<code>service.corp.groups@kensingtoncorporate.com</code>) is not written on this page. Get the sign-in details from Vera or me (Nehman). Don’t edit or delete a flow unless a step below tells you to. Looking around is always safe.</div>
+  <div class="warn"><b>Before you start:</b> the sign-in for the shared Power Automate account (<code>service.corp.groups@kensingtoncorporate.com</code>) is not written on this page. Get the sign-in details from Vera or Nehman. Don’t edit or delete a flow unless a step below tells you to. Looking around is always safe.</div>
 
   <p class="toc"><b>Jump to:</b>
     <a href="#signin">1 Sign in</a><a href="#find">2 Find a flow</a><a href="#status">3 Is it on?</a><a href="#ran">4 Did it run?</a><a href="#failed">5 Failed runs</a><a href="#cvent">If the CVENT parser breaks</a><a href="#flows">Flow list</a><a href="#fixes">Common fixes</a><a href="#risks">Handover risks</a></p>
@@ -50,7 +50,7 @@
 
   <section class="card" id="find">
     <h2><span class="step-n">1</span>Find a flow &nbsp;→&nbsp; <span class="step-n">2</span>Open it</h2>
-    <p>In the left menu click <b>My flows</b>, then open the <b>Shared with me</b> tab (circle 1). Every flow I own is shared with the shared account, so they all appear here (16 at the time of writing).</p>
+    <p>In the left menu click <b>My flows</b>, then open the <b>Shared with me</b> tab (circle 1). Every flow Nehman owns is shared with the shared account, so they all appear here (16 at the time of writing).</p>
     <img src="power-automate-howto/step1-shared-with-me.jpg" alt="Flows page with the Shared with me tab circled">
     <p>Scroll the list and click the flow’s <b>name</b> (circle 2). Tip: on the list, a greyed-out icon with a small “no entry” sign means the flow is switched <b>off</b>.</p>
     <img src="power-automate-howto/step2-open-flow.jpg" alt="Flow list with CVENT EMAIL PARSER - CANADA circled">
@@ -97,7 +97,7 @@
     <h3>B. Work out what kind of problem it is</h3>
     <table>
       <tr><th>What the run history shows</th><th>What it means</th><th>What to do</th></tr>
-      <tr><td><b>No run</b> at the time the email arrived</td><td>The flow never saw the email: it was off, the mailbox connection expired, or the email went to a different folder/mailbox.</td><td>Make sure it’s On; open <b>Connections</b> on the flow page and fix any warning (sign in again); confirm the email really is in the shared mailbox the flow watches (Canada / USA). If the connection belongs to my account, I (or the new owner) have to re-sign it. Then <b>wait for the next email</b>; Power Automate can’t re-read an email it missed.</td></tr>
+      <tr><td><b>No run</b> at the time the email arrived</td><td>The flow never saw the email: it was off, the mailbox connection expired, or the email went to a different folder/mailbox.</td><td>Make sure it’s On; open <b>Connections</b> on the flow page and fix any warning (sign in again); confirm the email really is in the shared mailbox the flow watches (Canada / USA). If the connection belongs to Nehman’s account, Nehman (or the new owner) has to re-sign it. Then <b>wait for the next email</b>; Power Automate can’t re-read an email it missed.</td></tr>
       <tr><td>Run <b>Succeeded</b> but traveller is not on the sheet</td><td>The flow did its job; the parser website decided to skip it or wrote it somewhere else.</td><td>Open the run, click the <b>HTTP</b> step and read the response (see C). The parser skips emails that don’t look like registrations, and skips people it has already saved (duplicates). Search the CVENT log and the master by the person’s <b>email address</b>. They may already be there.</td></tr>
       <tr><td>Run <b>Failed</b> at the first step (mailbox trigger)</td><td>Connection or mailbox access problem.</td><td>Fix the connection under <b>Connections</b>; if it says no access to the shared mailbox, ask IT for Full Access for the account the connection uses.</td></tr>
       <tr><td>Run <b>Failed</b> at the <b>HTTP</b> step</td><td>The parser website returned an error (or was unreachable).</td><td>See C and D below.</td></tr>
@@ -114,7 +114,7 @@
 
     <h3>D. Check the parser website is alive</h3>
     <ol>
-      <li>Open <a href="https://kensington-group-form.vercel.app/api/parse-email" target="_blank" rel="noopener">kensington-group-form.vercel.app/api/parse-email</a> in a browser tab. An error page saying <b>“Unsupported method (GET)”</b> (code 501) is good (it’s alive, it just doesn’t accept a plain page visit). A <b>404</b> means the parser file is missing from the website. <b>Tell me (Nehman) or the developer</b>; this happened before (Oct 7) when the file was deleted by accident.</li>
+      <li>Open <a href="https://kensington-group-form.vercel.app/api/parse-email" target="_blank" rel="noopener">kensington-group-form.vercel.app/api/parse-email</a> in a browser tab. An error page saying <b>“Unsupported method (GET)”</b> (code 501) is good (it’s alive, it just doesn’t accept a plain page visit). A <b>404</b> means the parser file is missing from the website. <b>Tell Nehman</b>; this happened before (Oct 7) when the file was deleted by accident.</li>
       <li>Code problems (a field blank/wrong, an email being ignored, a sheet column renamed) are fixed in the <a href="parser-portal.html">Email Parser Portal</a>. It has a How-To for each symptom.</li>
     </ol>
 
@@ -152,7 +152,7 @@
     <table>
       <tr><th>What you see</th><th>What to do</th></tr>
       <tr><td>Status says <b>Off</b></td><td>Open the flow → <b>Turn on</b>. (Smartsheet or Outlook triggers sometimes get switched off after repeated failures.)</td></tr>
-      <tr><td>A run <b>Failed</b> at the first step (mailbox / Smartsheet trigger or action)</td><td>Usually the connection expired. On the flow page, under <b>Connections</b>, click the warning/<b>Fix</b> link and sign in again. If it is the owner’s connection, I (Nehman) or the new owner must do it.</td></tr>
+      <tr><td>A run <b>Failed</b> at the first step (mailbox / Smartsheet trigger or action)</td><td>Usually the connection expired. On the flow page, under <b>Connections</b>, click the warning/<b>Fix</b> link and sign in again. If it is the owner’s connection, Nehman or the new owner must do it.</td></tr>
       <tr><td>A run <b>Failed</b> at the <b>HTTP</b> step</td><td>Our website/parser returned an error. Open the run → HTTP step → read the response. Try <b>Resubmit</b> once; if it fails again the code needs fixing (use the portals).</td></tr>
       <tr><td>Emails arrive but <b>no run</b> appears</td><td>The flow is off, or can’t read the mailbox. Confirm the shared account can open the shared mailbox (Canada / USA) in Outlook; if not, ask IT for <b>Full Access</b> to that mailbox.</td></tr>
       <tr><td>“Premium”/licence error</td><td>Flows using the HTTP step need a Premium licence on the flow owner. Ask IT to assign/renew it before removing it from anyone.</td></tr>
@@ -163,7 +163,7 @@
   <section class="card" id="risks">
     <h2>Handover risks (read once)</h2>
     <ul>
-      <li><b>Flows run on the original owner’s connections.</b> The flows are co-owned by the shared account, but connections such as Office 365 Outlook were created with my (Nehman’s) sign-in (visible in the <b>Connections</b> box). If my account is disabled, those flows will fail until someone re-signs the connections with an account that will stay.</li>
+      <li><b>Flows run on the original owner’s connections.</b> The flows are co-owned by the shared account, but connections such as Office 365 Outlook were created with Nehman’s sign-in (visible in the <b>Connections</b> box). If Nehman’s account is disabled, those flows will fail until someone re-signs the connections with an account that will stay.</li>
       <li><b>Never “export and import” a flow to move it</b>, web-triggered flows get a new address and the forms break.</li>
       <li><b>Premium licence</b> sits with the owner. Move it deliberately (add first, remove after).</li>
       <li><b>When in doubt, ask before editing.</b> Every flow can be turned off/on safely; deleting is not reversible.</li>
