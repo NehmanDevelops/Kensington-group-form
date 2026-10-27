@@ -170,7 +170,9 @@ export default async function handler(req, res) {
     ['NVP Approved by Arbonne', 'NVP Approved by Arbonne'], ['Guest Approved by Arbonne', 'Guest Approved by Arbonne'],
     ['Did you achieve a guest?', 'Did you achieve a guest?'], ['Assistance with flight booking? (Unearned guest)', 'Assistance with flight booking? (Unearned guest)'],
   ];
-  const ARB_US_TO_THEM = [['Agent Notes', 'Notes From Travel Edge'], ['Agent Assigned:', 'Travel Edge Team Member'], ['In progress', 'In Progress'], ['Completed', 'Completed']];
+  // Their side may be an array of accepted titles: Arbonne renamed "Travel Edge ..." to "Kensington ..." (found 2026-10-27, which silently
+  // stopped Agent Assigned / Agent Notes from reaching their sheet), so accept both spellings.
+  const ARB_US_TO_THEM = [['Agent Notes', ['Notes From Kensington', 'Notes From Travel Edge']], ['Agent Assigned:', ['Kensington Team Member', 'Travel Edge Team Member']], ['In progress', 'In Progress'], ['Completed', 'Completed']];
   const ARB_NEW_COLS = [
     { title: 'NVP Approved by Arbonne', type: 'PICKLIST', options: ['YES', 'NO', 'HOLD', 'Duplicate'] },
     { title: 'Guest Approved by Arbonne', type: 'PICKLIST', options: ['YES', 'NO', 'HOLD', 'Duplicate'] },
@@ -237,7 +239,7 @@ export default async function handler(req, res) {
     const pairs = [], unmatched = [];
     for (const [t, u] of ARB_THEM_TO_US) { const tc = T[tkey(t)], uc = O[tkey(u)]; if (tc && uc) pairs.push({ t, u, tc, uc }); else unmatched.push(`${t} -> ${u}${!tc ? ' (their column missing)' : ''}${!uc ? ' (our column missing)' : ''}`); }
     const back = [];
-    for (const [u, t] of ARB_US_TO_THEM) { const uc = O[tkey(u)], tc = T[tkey(t)]; if (uc && tc) back.push({ u, t, uc, tc }); else unmatched.push(`${u} -> ${t} (back-sync column missing)`); }
+    for (const [u, t] of ARB_US_TO_THEM) { const uc = O[tkey(u)], tc = [].concat(t).map(x => T[tkey(x)]).find(Boolean); if (uc && tc) back.push({ u, t: tc.title, uc, tc }); else unmatched.push(`${u} -> ${[].concat(t).join(' / ')} (back-sync column missing)`); }
     out.unmatchedMappings = unmatched;
     const approvedCol = T[tkey('NVP Approved by Arbonne')], theirGroupCol = T[tkey('Group ID')];
     if (!approvedCol) throw new Error('Their "NVP Approved by Arbonne" column not found');
@@ -516,15 +518,6 @@ export default async function handler(req, res) {
   }
   if (req.query?.cactus === '1') {
     try { return res.status(200).json(await cactusSync(commit)); } catch (err) { return res.status(500).json({ error: err.message }); }
-  }
-
-  // TEMP DEBUG (2026-10-27): list column titles/types of Arbonne's sheet + our Envoy master (read-only). Remove after use.
-  if (req.query?.arbonneCols === '1') {
-    try {
-      const [t, o] = await Promise.all([api(`/sheets/${ARB_SHEET}?pageSize=1`), api(`/sheets/${ENVOY_SHEET}?pageSize=1`)]);
-      const pick = s => (s.columns || []).map(c => `${c.index}|${c.title}|${c.type}`);
-      return res.status(200).json({ theirs: pick(t), oursAgentRelated: pick(o).filter(x => /agent|travel edge|progress|complete/i.test(x)) });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
   if (req.query?.arbonne === '1') {
