@@ -12,6 +12,7 @@
   main { max-width:860px; margin:0 auto; padding:24px 16px 64px; }
   h1 { font-size:28px; margin:8px 0 4px; }
   h2 { font-size:21px; margin:0 0 8px; }
+  h3 { font-size:17px; margin:18px 0 6px; }
   .sub { color:var(--muted); margin:0 0 20px; }
   .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin:16px 0; }
   .step-n { display:inline-block; background:var(--red); color:#fff; border-radius:50%; width:26px; height:26px; text-align:center; line-height:26px; font-weight:700; font-size:14px; margin-right:6px; }
@@ -37,7 +38,7 @@
   <div class="warn"><b>Before you start:</b> the sign-in for the shared Power Automate account (<code>service.corp.groups@kensingtoncorporate.com</code>) is stored in Sabre — it is not written on this page. Don’t edit or delete a flow unless a step below tells you to. Looking around is always safe.</div>
 
   <p class="toc"><b>Jump to:</b>
-    <a href="#signin">1 Sign in</a><a href="#find">2 Find a flow</a><a href="#status">3 Is it on?</a><a href="#ran">4 Did it run?</a><a href="#failed">5 Failed runs</a><a href="#flows">Flow list</a><a href="#fixes">Common fixes</a><a href="#risks">Handover risks</a></p>
+    <a href="#signin">1 Sign in</a><a href="#find">2 Find a flow</a><a href="#status">3 Is it on?</a><a href="#ran">4 Did it run?</a><a href="#failed">5 Failed runs</a><a href="#cvent">If the CVENT parser breaks</a><a href="#flows">Flow list</a><a href="#fixes">Common fixes</a><a href="#risks">Handover risks</a></p>
 
   <section class="card" id="signin">
     <h2><span class="step-n">1</span>Sign in</h2>
@@ -49,8 +50,6 @@
 
   <section class="card" id="find">
     <h2><span class="step-n">1</span>Find a flow &nbsp;→&nbsp; <span class="step-n">2</span>Open it</h2>
-    <p><b>🎬 Watch:</b> finding and opening a flow</p>
-    <img src="power-automate-howto/pa-1-find-flow.gif" alt="finding and opening a flow" loading="lazy">
     <p>In the left menu click <b>My flows</b>, then open the <b>Shared with me</b> tab (circle 1). Every flow Nehman owns is shared with the shared account, so they all appear here (16 at the time of writing).</p>
     <img src="power-automate-howto/step1-shared-with-me.jpg" alt="Flows page with the Shared with me tab circled">
     <p>Scroll the list and click the flow’s <b>name</b> (circle 2). Tip: on the list, a greyed-out icon with a small “no entry” sign means the flow is switched <b>off</b>.</p>
@@ -59,8 +58,6 @@
 
   <section class="card" id="status">
     <h2><span class="step-n">3</span>Is the flow turned on?</h2>
-    <p><b>🎬 Watch:</b> checking Status and the run history</p>
-    <img src="power-automate-howto/pa-2-status.gif" alt="checking Status and the run history" loading="lazy">
     <p>The flow’s page shows <b>Status</b> (circle 3) — it should say <b>On</b>. Below it is the <b>28-day run history</b> (circle 4): every time the flow ran, with a green <b>Succeeded</b> or red <b>Failed</b>. <b>All runs</b> (circle 5) opens the full list.</p>
     <img src="power-automate-howto/step3-flow-page.jpg" alt="Flow details page with Status, run history and All runs circled">
     <div class="ok"><b>If it says Off:</b> use <b>Turn on</b> in the top toolbar, then check a few minutes later that it ran.</div>
@@ -69,8 +66,6 @@
 
   <section class="card" id="ran">
     <h2><span class="step-n">4</span>Did it actually run? (“click here to see if it ran”)</h2>
-    <p><b>🎬 Watch:</b> opening a run to see the green ticks</p>
-    <img src="power-automate-howto/pa-3-run.gif" alt="opening a run to see the green ticks" loading="lazy">
     <p>In the run history, click the most recent <b>date</b>. A green bar says <b>“Your flow ran successfully”</b> (circle 1) and every step shows a green tick (circle 2). <b>Resubmit</b> (circle 3) re-runs that same email/event again.</p>
     <img src="power-automate-howto/step5-run-succeeded.jpg" alt="A successful run with green ticks and the Resubmit button">
     <div class="warn"><b>Harmless warning:</b> you may see a red banner “There’s a problem that needs to be fixed to trigger this flow”. If the detail says <i>“It hasn’t been triggered successfully in the last 28 days”</i> (circle 2 below), nothing is broken — no new email or row has arrived for it lately. This is normal for the Canada parser. It only matters if emails <i>did</i> arrive and nothing ran.</div>
@@ -79,8 +74,6 @@
 
   <section class="card" id="failed">
     <h2><span class="step-n">5</span>Find and re-run failed runs</h2>
-    <p><b>🎬 Watch:</b> filtering to Failed runs (none showing means no failures)</p>
-    <img src="power-automate-howto/pa-4-failed.gif" alt="filtering to Failed runs (none showing means no failures)" loading="lazy">
     <ol>
       <li>On the flow’s page click <b>All runs</b>.</li>
       <li>Top right, click the <b>All runs</b> filter (circle 1) and choose <b>Failed runs</b> (circle 2).</li>
@@ -89,6 +82,52 @@
     </ol>
     <img src="power-automate-howto/step6-failed-runs.jpg" alt="Run history filter menu with Failed runs circled">
     <div class="note">After a long outage (e.g. the parser was down), resubmit <b>every</b> failed run since it stopped, then check the traveller sheet to make sure the people appear.</div>
+  </section>
+
+  <section class="card" id="cvent">
+    <h2>If the CVENT email parser breaks (step by step)</h2>
+    <p>There are two flows: <b>CVENT EMAIL PARSER - CANADA</b> and <b>CVENT EMAIL PARSER - USA</b>. Each one does the same two things: <b>(1)</b> when a new email arrives in its shared mailbox, <b>(2)</b> an <b>HTTP</b> step sends that email to our parser website, which saves the traveller to the CVENT log, the Envoy traveller master sheet and the agent copy. <b>Signs it has broken:</b> a registration email arrived but the traveller isn’t on the Envoy master sheet, or Vera/the team report missing registrations.</p>
+
+    <h3>A. Check the flow is on and has been running</h3>
+    <ol>
+      <li>Sign in (<a href="#signin">step 1</a>) → <b>My flows → Shared with me</b> → open the CVENT flow for that region (<a href="#find">steps 1–2</a>).</li>
+      <li>Check <b>Status = On</b>. If it says Off, click <b>Turn on</b> in the toolbar.</li>
+      <li>Look at the <b>28-day run history</b>. Compare it with when the missing email arrived: <b>is there a run at that time?</b></li>
+    </ol>
+
+    <h3>B. Work out what kind of problem it is</h3>
+    <table>
+      <tr><th>What the run history shows</th><th>What it means</th><th>What to do</th></tr>
+      <tr><td><b>No run</b> at the time the email arrived</td><td>The flow never saw the email: it was off, the mailbox connection expired, or the email went to a different folder/mailbox.</td><td>Make sure it’s On; open <b>Connections</b> on the flow page and fix any warning (sign in again); confirm the email really is in the shared mailbox the flow watches (Canada / USA). If the connection belongs to Nehman’s account, he (or the new owner) has to re-sign it. Then <b>wait for the next email</b>; Power Automate can’t re-read an email it missed.</td></tr>
+      <tr><td>Run <b>Succeeded</b> but traveller is not on the sheet</td><td>The flow did its job; the parser website decided to skip it or wrote it somewhere else.</td><td>Open the run, click the <b>HTTP</b> step and read the response (see C). The parser skips emails that don’t look like registrations, and skips people it has already saved (duplicates). Search the CVENT log and the master by the person’s <b>email address</b>. They may already be there.</td></tr>
+      <tr><td>Run <b>Failed</b> at the first step (mailbox trigger)</td><td>Connection or mailbox access problem.</td><td>Fix the connection under <b>Connections</b>; if it says no access to the shared mailbox, ask IT for Full Access for the account the connection uses.</td></tr>
+      <tr><td>Run <b>Failed</b> at the <b>HTTP</b> step</td><td>The parser website returned an error (or was unreachable).</td><td>See C and D below.</td></tr>
+    </table>
+
+    <h3>C. Read what the parser said</h3>
+    <ol>
+      <li>Click the run (<a href="#ran">step 4</a>). Every step shows a green tick or a red cross.</li>
+      <li>Click the <b>HTTP</b> step to expand it. Under <b>Outputs</b> you’ll see a <b>Status code</b> and a <b>Body</b>.</li>
+      <li><b>Status 200:</b> the parser answered. Inside the body, <code>should_process</code> = <code>false</code> means it decided the email isn’t a registration; <code>smartsheet_write</code> shows what happened for each sheet (any error, e.g. <code>INVALID_COLUMN_ID</code>, is listed there).</li>
+      <li><b>Status 404 / 5xx / timeout:</b> the parser website itself is down (go to D).</li>
+    </ol>
+    <div class="warn">The body contains the traveller’s personal details. Don’t paste it into chat or email; just note the error text.</div>
+
+    <h3>D. Check the parser website is alive</h3>
+    <ol>
+      <li>Open <a href="https://kensington-group-form.vercel.app/api/parse-email" target="_blank" rel="noopener">kensington-group-form.vercel.app/api/parse-email</a> in a browser tab. A page that says <b>“Method not allowed”</b> or similar is good (it’s alive, it just doesn’t accept a plain page visit). A <b>404</b> means the parser file is missing from the website. <b>Tell Nehman / the developer</b>; this happened before (Oct 7) when the file was deleted by accident.</li>
+      <li>Code problems (a field blank/wrong, an email being ignored, a sheet column renamed) are fixed in the <a href="parser-portal.html">Email Parser Portal</a>. It has a How-To for each symptom.</li>
+    </ol>
+
+    <h3>E. Re-run the emails that were missed</h3>
+    <ol>
+      <li>After the cause is fixed, go to the flow → <b>All runs</b> → filter <b>Failed runs</b> (<a href="#failed">step 5</a>).</li>
+      <li>Open each failed run <b>since the problem started</b> (oldest first) and click <b>Resubmit</b>. It is safe: the parser skips anyone it has already saved, so nobody is doubled up.</li>
+      <li>If there are no failed runs but emails were missed (the flow was off), Power Automate can’t replay them: use the <b>original email</b> and re-send it to the shared mailbox, or add the traveller by hand.</li>
+      <li><b>Check the result:</b> search the Envoy traveller master sheet by the person’s email. The new row should have <b>Source = CVENT</b>. If the Group ID wasn’t in the email, fill it in by hand.</li>
+    </ol>
+
+    <div class="note"><b>Quick checklist:</b> Flow On? → Run at the right time? → Succeeded or Failed? → HTTP step response → Parser website alive? → Resubmit failed runs → Person on the master sheet?</div>
   </section>
 
   <section class="card" id="flows">
