@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Forms Portal</title>
+<style>
+  :root { --bg:#0f1115; --panel:#161922; --border:#272b36; --text:#e6e8ee; --muted:#8a90a2; --accent:#4f7cff; --danger:#e05d5d; --ok:#4caf7d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header .sub { font-size:12px; color:var(--muted); }
+  #gate { max-width:360px; margin:120px auto; padding:24px; background:var(--panel); border:1px solid var(--border); border-radius:10px; }
+  #gate input { width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:#0c0e13; color:var(--text); margin-top:10px; }
+  #gate button, .btn { background:var(--accent); color:#fff; border:none; padding:9px 14px; border-radius:6px; cursor:pointer; font-size:13px; }
+  #gate button:hover, .btn:hover { opacity:0.9; }
+  #gate .err { color:var(--danger); font-size:13px; margin-top:8px; min-height:16px; }
+  #app { display:none; height:calc(100vh - 53px); }
+  .layout { display:flex; height:100%; }
+  #fileList { width:340px; border-right:1px solid var(--border); overflow-y:auto; padding:10px; display:flex; flex-direction:column; }
+  #fileList input { width:100%; padding:7px; border-radius:6px; border:1px solid var(--border); background:#0c0e13; color:var(--text); margin-bottom:8px; font-size:13px; }
+  .file-row { padding:6px 8px; border-radius:5px; cursor:pointer; font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .file-row:hover { background:#1d2130; color:var(--text); }
+  .file-row.active { background:var(--accent); color:#fff; }
+  .tabs { display:flex; gap:4px; margin-bottom:10px; }
+  .tab-btn { flex:1; padding:8px; border-radius:6px; border:1px solid var(--border); background:#0c0e13; color:var(--muted); cursor:pointer; font-size:13px; text-align:center; }
+  .tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  #howto { overflow-y:auto; font-size:13px; }
+  #howto h3 { font-size:13px; margin:14px 0 6px; color:var(--text); }
+  #howto p { color:var(--muted); font-size:12.5px; line-height:1.5; margin:0 0 10px; }
+  .howto-row { padding:12px 12px; border-radius:8px; border:1px solid var(--border); background:#0c0e13; cursor:pointer; margin-bottom:10px; }
+  .howto-row:hover { border-color:var(--accent); }
+  .howto-row .symptom { font-size:14.5px; color:var(--text); font-weight:600; line-height:1.4; }
+  .howto-row .where { font-size:13px; color:var(--muted); margin-top:6px; line-height:1.5; }
+  #editorArea { flex:1; display:flex; flex-direction:column; min-width:0; }
+  #editorBar { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; font-size:13px; }
+  #editorBar .path { color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #editorBar input[type=text] { flex:1; max-width:380px; padding:7px; border-radius:6px; border:1px solid var(--border); background:#0c0e13; color:var(--text); font-size:13px; }
+  textarea#editor { flex:1; border:none; outline:none; resize:none; background:#0c0e13; color:#dbe1ee; font-family: "SF Mono", Consolas, monospace; font-size:13px; padding:16px; line-height:1.5; }
+  #status { padding:8px 16px; font-size:12px; border-top:1px solid var(--border); min-height:16px; }
+  #status.ok { color:var(--ok); }
+  #status.err { color:var(--danger); }
+  #empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:14px; }
+  .warn-banner { background:#2a2110; color:#e0b84c; border-bottom:1px solid #4a3a16; padding:8px 16px; font-size:12px; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h2 style="margin-top:0;">Forms Portal</h2>
+  <p style="color:var(--muted); font-size:13px;">Enter the password to continue.</p>
+  <input type="password" id="pw" placeholder="Password" />
+  <button class="btn" style="margin-top:12px; width:100%;" onclick="tryLogin()">Enter</button>
+  <div class="err" id="gateErr"></div>
+</div>
+
+<div id="app">
+  <header>
+    <div>
+      <h1>Forms Portal</h1>
+      <div class="sub">Group Travel Request Form &amp; Passenger Profile — view and edit the live code</div>
+    </div>
+  </header>
+  <div class="warn-banner">⚠️ Saving here commits directly to the live site — changes go live within about a minute. There's no undo button; if something breaks, say so right away.</div>
+  <div class="layout">
+    <div id="fileList">
+      <div class="tabs">
+        <div class="tab-btn active" id="tabHowto" onclick="showTab('howto')">How-To</div>
+        <div class="tab-btn" id="tabFiles" onclick="showTab('files')">All Files</div>
+      </div>
+      <div id="howto"></div>
+      <div id="filesPane" style="display:none;">
+        <select id="repoSel" onchange="switchRepo(this.value)" style="width:100%;margin-bottom:6px;"><option value="Kensington-group-form">Group Travel Request Form site</option><option value="Kensington-traveller-profile">Passenger Profile site</option></select>
+        <input type="text" id="search" placeholder="Filter files..." oninput="renderFileList()" />
+        <div id="fileListInner"></div>
+      </div>
+    </div>
+    <div id="editorArea">
+      <div id="empty">Pick a file on the left to view or edit it — or start with the <b>How-To</b> tab if you're not sure where to look.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let PASSWORD = '';
+let files = [];
+let REPO = 'Kensington-group-form';
+let current = null; // { path, sha }
+
+// ── How-To guide data ──────────────────────────────────────────────────────
+// Each entry: a symptom she'd actually see, which file that lives in, and an
+// exact anchor string to jump straight to (taken verbatim from the real code
+// as of 2026-10-16 — if it ever stops matching, the jump just won't find
+// anything and the file still opens at the top, so this degrades safely).
+const HOWTO_INTRO = `
+  <p><b>Start here.</b> Pick what's going wrong below — it'll open straight to the right spot, no searching needed.</p>
+`;
+// Friendly label shown instead of the raw filename — kept simple on purpose.
+// `file`/`anchor` are the real, technical lookup used behind the scenes;
+// she never needs to see those.
+const HOWTO_ITEMS = [
+ {
+  "repo": "Kensington-group-form",
+  "label": "📘 Group form — server file",
+  "symptom": "GROUP FORM: submitting shows an error / requests aren’t landing in Smartsheet",
+  "where": "Opens the server step that saves the request to Smartsheet (intake, master and agent sheets).",
+  "file": "api/submit.js",
+  "anchor": "Step 1: Save to Group Travel intake sheet"
+ },
+ {
+  "repo": "Kensington-group-form",
+  "label": "📘 Group form — server file",
+  "symptom": "GROUP FORM: the same request shows up twice",
+  "where": "Opens the duplicate-submission guard (same company + email within 3 minutes).",
+  "file": "api/submit.js",
+  "anchor": "Duplicate-submission guard"
+ },
+ {
+  "repo": "Kensington-group-form",
+  "label": "📘 Group form — server file",
+  "symptom": "GROUP FORM: request saved but missing from the Master / Agent sheet",
+  "where": "Opens the part that copies the row to the LIVE GROUP MASTERSHEET.",
+  "file": "api/submit.js",
+  "anchor": "Step 2: Mirror key fields to LIVE GROUP MASTERSHEET"
+ },
+ {
+  "repo": "Kensington-group-form",
+  "label": "📘 Group form — server file",
+  "symptom": "GROUP FORM: Smartsheet says INVALID_COLUMN_ID after someone changed a column",
+  "where": "Opens the master column ID list. Re-copy the ID from Smartsheet (right-click column → Properties).",
+  "file": "api/submit.js",
+  "anchor": "const MASTER = {"
+ },
+ {
+  "repo": "Kensington-group-form",
+  "label": "📗 Group form — page file",
+  "symptom": "GROUP FORM: a field is missing, mislabelled or needs a new question",
+  "where": "Opens the list of answers sent to Smartsheet (each line = one column).",
+  "file": "index.html",
+  "anchor": "HIDDEN SYSTEM FIELDS"
+ },
+ {
+  "repo": "Kensington-group-form",
+  "label": "📗 Group form — page file",
+  "symptom": "GROUP FORM: the Submit button errors out in the browser",
+  "where": "Opens the part that sends the form to /api/submit and shows the error pop-up.",
+  "file": "index.html",
+  "anchor": "fetch('/api/submit'"
+ },
+ {
+  "repo": "Kensington-group-form",
+  "label": "📗 Group form — page file",
+  "symptom": "GROUP FORM: change the page heading",
+  "where": "Opens the big heading at the top of the form.",
+  "file": "index.html",
+  "anchor": "Group Travel Request Form</h1>"
+ },
+ {
+  "repo": "Kensington-traveller-profile",
+  "label": "📙 Profile — server file",
+  "symptom": "PROFILE: submitting shows an error / profiles aren’t landing in Smartsheet",
+  "where": "Opens the server step that saves the profile to the Traveller Profile sheet.",
+  "file": "api/submit-profile.js",
+  "anchor": "fetch('https://api.smartsheet.com/2.0/sheets/298113280462724/rows'"
+ },
+ {
+  "repo": "Kensington-traveller-profile",
+  "label": "📙 Profile — server file",
+  "symptom": "PROFILE: “Email me a copy” isn’t working",
+  "where": "Opens the checkbox column that Power Automate watches to send the copy.",
+  "file": "api/submit-profile.js",
+  "anchor": "const SEND_COPY_COL"
+ },
+ {
+  "repo": "Kensington-traveller-profile",
+  "label": "📙 Profile — server file",
+  "symptom": "PROFILE: saved but missing from the Traveller Profile MasterSheet",
+  "where": "Opens the column map used to copy the profile to the master sheet.",
+  "file": "api/submit-profile.js",
+  "anchor": "Mirror to Traveller Profile MasterSheet"
+ },
+ {
+  "repo": "Kensington-traveller-profile",
+  "label": "📕 Profile — page file",
+  "symptom": "PROFILE: a field is missing or needs a new question",
+  "where": "Opens the list of answers sent to Smartsheet (each line = one column).",
+  "file": "index.html",
+  "anchor": "value: v('additionalNotes')"
+ },
+ {
+  "repo": "Kensington-traveller-profile",
+  "label": "📕 Profile — page file",
+  "symptom": "PROFILE: the Submit button errors out in the browser",
+  "where": "Opens the part that sends the profile to /api/submit-profile and shows the error pop-up.",
+  "file": "index.html",
+  "anchor": "fetch('/api/submit-profile'"
+ },
+ {
+  "repo": "Kensington-traveller-profile",
+  "label": "📕 Profile — page file",
+  "symptom": "PROFILE: the Group ID entry screen / wording",
+  "where": "Opens the first screen where travellers enter their Group ID.",
+  "file": "index.html",
+  "anchor": "Enter your <em>Group ID</em>"
+ },
+ {
+  "repo": "Kensington-group-form",
+  "label": "🔐 Both forms",
+  "symptom": "BOTH FORMS: everything fails with a 401 / unauthorized from Smartsheet",
+  "where": "Almost always the Smartsheet API token expired or was regenerated. It is NOT in the code: update SMARTSHEET_API_TOKEN in Vercel (project kensington-group-form AND the profile project) → Settings → Environment Variables, then redeploy. Opens the server step that uses it.",
+  "file": "api/submit.js",
+  "anchor": "process.env.SMARTSHEET_API_TOKEN"
+ }
+];
+
+function renderHowto() {
+  const el = document.getElementById('howto');
+  el.innerHTML = HOWTO_INTRO + HOWTO_ITEMS.map((item, i) => `
+    <div class="howto-row" onclick="jumpToHowto(${i})">
+      <div class="symptom">${item.symptom}</div>
+      <div class="where">${item.label} — ${item.where}</div>
+    </div>
+  `).join('');
+}
+
+function jumpToHowto(i) {
+  const item = HOWTO_ITEMS[i];
+  showTab('howto');
+  if (item.repo !== REPO) { REPO = item.repo; document.getElementById('repoSel').value = REPO; loadList(() => openFile(item.file, item.anchor)); }
+  else openFile(item.file, item.anchor);
+}
+
+function showTab(tab) {
+  document.getElementById('tabHowto').classList.toggle('active', tab === 'howto');
+  document.getElementById('tabFiles').classList.toggle('active', tab === 'files');
+  document.getElementById('howto').style.display = tab === 'howto' ? 'block' : 'none';
+  document.getElementById('filesPane').style.display = tab === 'files' ? 'block' : 'none';
+}
+
+function tryLogin() {
+  PASSWORD = document.getElementById('pw').value;
+  fetch('/api/create-branch', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ __portalAction: 'list', password: PASSWORD, repo: REPO }),
+  }).then(r => r.json()).then(j => {
+    if (!j.ok) { document.getElementById('gateErr').textContent = j.error || 'Wrong password'; return; }
+    files = j.files;
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    renderHowto();
+    renderFileList();
+  }).catch(e => { document.getElementById('gateErr').textContent = 'Could not connect: ' + e.message; });
+}
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+
+function loadList(cb) {
+  fetch('/api/create-branch', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ __portalAction: 'list', password: PASSWORD, repo: REPO }),
+  }).then(r => r.json()).then(j => {
+    if (!j.ok) { setStatus(j.error || 'Could not list files', 'err'); return; }
+    files = j.files; current = null; renderFileList(); if (cb) cb();
+  }).catch(e => setStatus('Error: ' + e.message, 'err'));
+}
+function switchRepo(r) { REPO = r; loadList(); }
+
+function renderFileList() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const el = document.getElementById('fileListInner');
+  el.innerHTML = '';
+  files.filter(f => f.path.toLowerCase().includes(q)).forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'file-row' + (current && current.path === f.path ? ' active' : '');
+    row.textContent = f.path;
+    row.title = f.path;
+    row.onclick = () => openFile(f.path);
+    el.appendChild(row);
+  });
+}
+
+function openFile(path, anchor) {
+  setStatus('Loading ' + path + '...', '');
+  fetch('/api/create-branch', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ __portalAction: 'file', password: PASSWORD, repo: REPO, path }),
+  }).then(r => r.json()).then(j => {
+    if (!j.ok) { setStatus(j.error || 'Could not load file', 'err'); return; }
+    current = { path: j.path, sha: j.sha };
+    renderEditor(j.content, anchor);
+    renderFileList();
+    setStatus('', '');
+  }).catch(e => setStatus('Error: ' + e.message, 'err'));
+}
+
+function renderEditor(content, anchor) {
+  const area = document.getElementById('editorArea');
+  area.innerHTML = `
+    <div id="editorBar">
+      <span class="path">${current.path}</span>
+      <input type="text" id="commitMsg" placeholder="What did you change? (optional)" />
+      <button class="btn" onclick="saveFile()">Save &amp; Deploy</button>
+    </div>
+    <textarea id="editor" spellcheck="false">${content.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+    <div id="status"></div>
+  `;
+  if (anchor) jumpToText(content, anchor);
+}
+
+// Scrolls the editor to (and selects) the first match of `anchor` in the
+// file, so clicking a How-To row lands right on the relevant code instead
+// of just opening the file at the top. Best-effort: if the anchor text
+// isn't found (e.g. the code changed since this guide was written), it
+// just leaves the file open at the top — never errors, never blocks.
+function jumpToText(content, anchor) {
+  const idx = content.indexOf(anchor);
+  if (idx === -1) { setStatus('Opened the file, but couldn’t find that exact spot (the code may have changed) — you’ll need to look around.', ''); return; }
+  const textarea = document.getElementById('editor');
+  if (!textarea) return;
+  const before = content.slice(0, idx);
+  const lineNumber = (before.match(/\n/g) || []).length;
+  const approxLineHeight = 19.5; // matches textarea's 13px font / 1.5 line-height
+  textarea.focus();
+  textarea.setSelectionRange(idx, idx + anchor.length);
+  textarea.scrollTop = Math.max(0, (lineNumber - 4) * approxLineHeight);
+}
+
+function saveFile() {
+  const content = document.getElementById('editor').value;
+  const message = document.getElementById('commitMsg').value;
+  setStatus('Saving...', '');
+  fetch('/api/create-branch', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ __portalAction: 'save', password: PASSWORD, repo: REPO, path: current.path, content, sha: current.sha, message }),
+  }).then(r => r.json()).then(j => {
+    if (!j.ok) { setStatus(j.error || 'Save failed', 'err'); return; }
+    current.sha = j.newSha;
+    setStatus('Saved — deploying live now (give it about a minute).', 'ok');
+  }).catch(e => setStatus('Error: ' + e.message, 'err'));
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = cls || '';
+}
+</script>
+</body>
+</html>

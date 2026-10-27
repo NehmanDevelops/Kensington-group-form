@@ -726,10 +726,13 @@ export default async function handler(req, res) {
   // Vercel account is on the Hobby plan's 12-serverless-function cap, which
   // this project was already sitting at exactly.
   if (body.__portalAction) {
-    if (body.password !== process.env.PORTAL_PASSWORD) return res.status(401).json({ ok: false, error: 'Wrong password' });
+    if (!process.env.PORTAL_PASSWORD || body.password !== process.env.PORTAL_PASSWORD) return res.status(401).json({ ok: false, error: 'Wrong password' });
+    // Repos the portal may touch (whitelist: repo name -> default branch).
+    // Default is this repo; the Passenger Profile site lives in its own repo.
+    const PORTAL_REPOS = { 'Kensington-group-form': 'main', 'Kensington-traveller-profile': 'master' };
     const PORTAL_REPO_OWNER = 'NehmanDevelops';
-    const PORTAL_REPO_NAME = 'Kensington-group-form';
-    const PORTAL_REPO_BRANCH = 'main';
+    const PORTAL_REPO_NAME = PORTAL_REPOS[body.repo] ? body.repo : 'Kensington-group-form';
+    const PORTAL_REPO_BRANCH = PORTAL_REPOS[PORTAL_REPO_NAME];
     const ghToken = process.env.PORTAL_GITHUB_TOKEN;
     const ghHeaders = { Authorization: `Bearer ${ghToken}`, Accept: 'application/vnd.github+json' };
 
