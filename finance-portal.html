@@ -43,6 +43,24 @@
   #status.err { color:var(--danger); }
   #empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:14px; }
   .warn-banner { background:#2a2110; color:#e0b84c; border-bottom:1px solid #4a3a16; padding:8px 16px; font-size:12px; }
+  /* Simple "change an email" screen (the default view for Jos) */
+  #quick { flex:1; overflow-y:auto; padding:28px 32px; }
+  #quick h2 { margin:0 0 6px; font-size:22px; }
+  #quick .lead { color:var(--muted); font-size:14px; margin:0 0 22px; }
+  .q-card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:18px; max-width:760px; }
+  .q-card h3 { margin:0 0 4px; font-size:17px; }
+  .q-card .what { color:var(--muted); font-size:13.5px; margin:0 0 14px; line-height:1.5; }
+  .q-help { background:#3a3112; border:1px solid #6b5a1c; color:#ffe08a; border-radius:8px; padding:10px 12px; font-size:13.5px; margin-bottom:12px; line-height:1.5; }
+  .q-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .q-row label { font-size:12px; color:var(--muted); width:100%; }
+  .q-row input { flex:1; min-width:260px; padding:11px 12px; border-radius:8px; border:2px solid #e0b84c; background:#0c0e13; color:var(--text); font-size:15px; }
+  .q-row input:focus { outline:none; border-color:var(--accent); }
+  .q-save { background:var(--ok); color:#fff; border:none; padding:11px 18px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; }
+  .q-save:disabled { opacity:.5; cursor:default; }
+  .q-msg { font-size:13.5px; margin-top:10px; min-height:18px; }
+  .q-msg.ok { color:var(--ok); } .q-msg.err { color:var(--danger); }
+  .q-steps { max-width:760px; background:#11203a; border:1px solid #23406f; border-radius:12px; padding:14px 18px; margin-bottom:22px; font-size:14px; line-height:1.7; }
+  .q-link { color:#8fb0ff; cursor:pointer; text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -76,7 +94,7 @@
       </div>
     </div>
     <div id="editorArea">
-      <div id="empty">Pick a file on the left to view or edit it — or start with the <b>How-To</b> tab if you're not sure where to look.</div>
+      <div id="quick"></div>
     </div>
   </div>
 </div>
@@ -185,6 +203,12 @@ const HOWTO_ITEMS = [
 ];
 
 function renderHowto() {
+  const el0 = document.getElementById('howto');
+  el0.innerHTML = '';
+  renderHowtoRows();
+  el0.insertAdjacentHTML('afterbegin', '<div class="howto-row" style="border-color:#e0b84c" onclick="renderQuick()"><div class="symptom">✏️ Change an email address (easiest, no code)</div><div class="where">Opens a simple form: type the new address and click Save.</div></div>');
+}
+function renderHowtoRows() {
   const el = document.getElementById('howto');
   el.innerHTML = HOWTO_INTRO + HOWTO_ITEMS.map((item, i) => `
     <div class="howto-row" onclick="jumpToHowto(${i})">
@@ -220,6 +244,7 @@ function tryLogin() {
     document.getElementById('app').style.display = 'block';
     renderHowto();
     renderFileList();
+    renderQuick();
   }).catch(e => { document.getElementById('gateErr').textContent = 'Could not connect: ' + e.message; });
 }
 document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
@@ -307,6 +332,86 @@ function saveFile() {
     current.sha = j.newSha;
     setStatus('Saved — deploying live now (give it about a minute).', 'ok');
   }).catch(e => setStatus('Error: ' + e.message, 'err'));
+}
+
+// ── Simple "change an email" screen ─────────────────────────────────────────
+// Each entry finds the CURRENT address in the live file with a pattern, so the box is pre-filled,
+// and on Save replaces just that address (the rest of the file is untouched) and commits it.
+const QUICK = [
+  { id: 'fin', title: 'Finance Request Form: where requests are emailed',
+    what: 'When an agent submits the Finance Request form, the email goes to this address (General, Payment Change, Payout, Refund, Concierge Bundled and UDID requests).',
+    file: 'finance-request.html', re: /(\r?\n      return ')([^']+@[^']+)(';\r?\n    \})/, all: false },
+  { id: 'arc', title: 'Finance Request Form: ADM requests (ARC)',
+    what: 'ADM requests where the agent picks location “ARC” go to this address.',
+    file: 'finance-request.html', re: /(loc === 'ARC' \? ')([^']+@[^']+)(')/, all: false },
+  { id: 'bsp', title: 'Finance Request Form: ADM requests (BSP)',
+    what: 'ADM requests where the agent picks location “BSP” go to this address.',
+    file: 'finance-request.html', re: /(loc === 'BSP' \? ')([^']+@[^']+)(')/, all: false },
+  { id: 'rep', title: 'Customer Success Templates: Corporate Reporting Request',
+    what: 'The Corporate Reporting Request email goes to this address. It is also shown in the text on that page; every mention is updated.',
+    file: 'customer-success-templates.html', re: /(mailto:)([^'"\s]+@[^'"\s]+)(')/, all: true },
+];
+const quickFiles = {};   // path -> { content, sha }
+async function loadQuickFile(path) {
+  const r = await fetch('/api/create-branch', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ __portalAction: 'file', password: PASSWORD, repo: 'Kensington-group-form', path }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Could not load ' + path);
+  quickFiles[path] = { content: j.content, sha: j.sha };
+  return quickFiles[path];
+}
+async function renderQuick() {
+  const area = document.getElementById('editorArea');
+  area.innerHTML = '<div id="quick"><p class="lead">Loading the current addresses…</p></div>';
+  const q = document.getElementById('quick');
+  try { for (const f of [...new Set(QUICK.map(x => x.file))]) await loadQuickFile(f); }
+  catch (e) { q.innerHTML = '<p class="q-msg err">' + e.message + '</p>'; return; }
+  q.innerHTML = `
+    <h2>Change an email address</h2>
+    <p class="lead">No code needed. Find the box below, type the new address, click Save.</p>
+    <div class="q-steps"><b>How it works</b><br>
+      1. Find the box for the address you want to change (the current address is already filled in).<br>
+      2. Delete it and type the new address.<br>
+      3. Click <b>Save</b>. You'll see a green “Saved” message.<br>
+      4. Wait about 1 minute, then submit a test on the form to check the email goes to the new address.</div>
+    ${QUICK.map(x => {
+      const m = quickFiles[x.file].content.match(x.re);
+      const cur = m ? m[2] : '';
+      return `<div class="q-card">
+        <h3>${x.title}</h3>
+        <p class="what">${x.what}</p>
+        <div class="q-help">👉 Change the address in the yellow box, then click Save.</div>
+        <div class="q-row">
+          <label for="q_${x.id}">Email address</label>
+          <input id="q_${x.id}" type="email" value="${cur}" data-old="${cur}" ${cur ? '' : 'disabled placeholder="Could not find this address in the file. Ask Nehman."'} />
+          <button class="q-save" onclick="saveQuick('${x.id}')" ${cur ? '' : 'disabled'}>Save</button>
+        </div>
+        <div class="q-msg" id="qm_${x.id}"></div>
+      </div>`; }).join('')}
+    <p class="lead">Need to change something else (wording, subject line, dropdown)? Use the <span class="q-link" onclick="showTab('howto')">How-To list on the left</span>.</p>`;
+}
+async function saveQuick(id) {
+  const x = QUICK.find(q => q.id === id);
+  const input = document.getElementById('q_' + id), msg = document.getElementById('qm_' + id);
+  const oldAddr = input.dataset.old, newAddr = input.value.trim();
+  msg.className = 'q-msg'; msg.textContent = '';
+  if (!/^[^\s@'"<>]+@[^\s@'"<>]+\.[a-z]{2,}$/i.test(newAddr)) { msg.className = 'q-msg err'; msg.textContent = 'That doesn’t look like an email address. Check it and try again.'; return; }
+  if (newAddr === oldAddr) { msg.textContent = 'That’s already the current address, nothing to save.'; return; }
+  if (!confirm('Change\n' + oldAddr + '\nto\n' + newAddr + '\n\nThis updates the live form right away.')) return;
+  msg.textContent = 'Saving…';
+  try {
+    const f = await loadQuickFile(x.file);   // fresh copy, so nothing anyone else saved gets overwritten
+    if (!x.re.test(f.content)) throw new Error('Could not find the address in the file anymore. Ask Nehman.');
+    let content = f.content.replace(x.re, (all, a, addr, b) => a + newAddr + b);
+    if (x.all) content = content.split(oldAddr).join(newAddr);   // also the address written in the page text
+    const r = await fetch('/api/create-branch', { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ __portalAction: 'save', password: PASSWORD, repo: 'Kensington-group-form', path: x.file, content, sha: f.sha, message: 'Finance Portal: ' + x.title + ' -> ' + newAddr }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Save failed');
+    quickFiles[x.file] = { content, sha: j.newSha };
+    input.dataset.old = newAddr;
+    msg.className = 'q-msg ok'; msg.textContent = '✓ Saved. The form will use ' + newAddr + ' in about 1 minute. Then submit a test to check.';
+  } catch (e) { msg.className = 'q-msg err'; msg.textContent = e.message; }
 }
 
 function setStatus(msg, cls) {
