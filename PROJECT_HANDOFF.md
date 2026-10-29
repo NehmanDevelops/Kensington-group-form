@@ -249,5 +249,8 @@ How-To / live editor for both forms is built and live:
 
 **Update 2026-10-27:** the parser how-to moved out of the Forms Portal into its own page, `/parser-portal.html` (Email Parser Portal, same password, edits `api/parse-email.py` only). `/forms-portal.html` is forms-only again.
 
+### Finance Portal (2026-10-29, for Jos)
+`/finance-portal.html`: same password and backend as the Forms/Parser portals (`__portalAction` in `api/create-branch.js`, env `PORTAL_PASSWORD`). Edits only `finance-request.html` and `customer-success-templates.html`. 10 How-To rows: finance email routing (`recipientFor`), request-type dropdown, subject line, payout note, page intro, rebate wording (processed / not met), rebate subject, rebate option list, Corporate Reporting address. `finance-request-form.html` is an older unlinked copy and is deliberately left out. Same warning: Save & Deploy commits straight to the live site.
+
 ### Power Automate how-to (2026-10-27)
 `/power-automate-howto.html` (images in `power-automate-howto/`): step-by-step with annotated screenshots for checking a flow is On, whether it ran, finding failed runs and resubmitting, plus a per-flow cheat sheet and common fixes. Shared account `service.corp.groups@` is co-owner of all 16 flows (credentials are in Sabre, not here). Known risk: flow connections (e.g. Office 365 Outlook on the CVENT parsers) still belong to Nehman's account.
