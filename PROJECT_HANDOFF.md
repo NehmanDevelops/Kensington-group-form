@@ -156,6 +156,15 @@ All repos are under GitHub user `NehmanDevelops`. Deploys are on Vercel (`vercel
 
 **To finish (in order):** 1) get Full Access to the five mailboxes; 2) for each, open a copy of the Canada flow, change the trigger mailbox (type the address, pick it from the list), pick the inbox's COMPLETED EMAILS folder in the folder picker, set Queue and Mailbox text in the action, Save, Turn on; 3) verify each flow's first run shows Succeeded and a row lands in `EmailLog` (check Agent is filled for tagged emails); 4) build the pivot report; 5) tell Sandra where to look.
 
+**Update 2026-10-30: one nightly flow replaces the per-inbox flows.** The shared-mailbox trigger never passes Outlook categories, so all ~1,600 rows from the Canada/US flows have a blank Agent. New flow **"Email Stats - Nightly (all mailboxes)"** (id `6f87b1b3-c287-423f-ad4f-1d69be2e4a7a`, On, daily from 2026-10-31 07:00 UTC = 3 AM Eastern):
+- Initialize variable `Mailboxes` (array of `{mbx, q}`): usa (US), canada (CA), concierge, entourage, dcm, calianvip, corp.staff.travel, booking@ensembletravel.com (Ensemble). traderjoes@ is still FORBIDDEN for Nehman (not in the IT grant).
+- Apply to each mailbox -> Office 365 Outlook **Send an HTTP request** ("Get messages"): `GET https://graph.microsoft.com/v1.0/users/{mbx}/messages?$top=999&$select=subject,receivedDateTime,categories,from&$filter=receivedDateTime ge <today-2> and lt <today-1>` (UTC days). Reading 2 days back gives agents a day to tag. All folders, not only COMPLETED EMAILS.
+- Filter array: `@greater(length(item()?['categories']),0)` (tagged = touched by an agent).
+- For each -> Excel Add a row into `EmailLog`: Received `@{items('For_each')?['receivedDateTime']}`, Queue/Mailbox from `items('Apply_to_each')`, Agent `@{join(items('For_each')?['categories'], ', ')}`, Subject, From.
+- Test run 2026-10-30 (Oct 28 mail, US+CA only) succeeded: 78 tagged US rows plus the CA ones, agents Karen, Cheryl, Grace, Ivana, Liam, Melissa, Lori, Jenn. The 6 other mailboxes were checked readable through the M365 connector but have not run in the flow yet (first nightly run will show).
+- **Designer gotcha:** in the new designer the expression editor rejects `items('For_each')` and the Excel column fields drop tokens; typing the expression as plain text `@{...}` straight into the field works (check Code view shows `item/<Column>`). The classic designer's Save hung ("Saving..." forever).
+- Still to do: turn OFF the old Canada/US flows (their rows have no Agent); delete the unused copy `8672c1d3-...`; October backfill (Oct 1-27, plus Oct 28 for the 6 new mailboxes); build the per-agent per-month report from rows where Agent is not blank.
+
 **Browser-pane lessons from this work:** keep the Claude browser pane visible and wide; when the pane is hidden or narrow, screenshots time out and clicks miss. Do not use `resize_window` emulation at 1280x900 here: ref/coordinate clicks land in the wrong place; use the pane's own size. In the Power Automate dynamic-content boxes type `/` then "Insert expression"; the Code view tab is read-only; Copilot could not set the column mappings. After "Save As", Enter confirms the dialog (it can create the copy twice if you also click Save). Always confirm a save on the flow's Details page (Modified time), not from the editor.
 
 ---
@@ -195,7 +204,7 @@ All repos are under GitHub user `NehmanDevelops`. Deploys are on Vercel (`vercel
 6. **Reporting form:** confirm the "Request Type" options with Jos.
 7. **Nehman:** add the Link Hub link to the SharePoint Links folder.
 8. **Older, still open:** Monster Energy has 33 leftover task Tickets in HubSpot; corp.groups Smartsheet token ownership (Dragos); Departure City data-loss root cause; Amgine edit-mode bug.
-10. **Email stats report (Nehman, blocked on Sandra/IT):** get Full Access to concierge@, entourage@, dcm@, calianvip@, traderjoes@; then finish the per-inbox flows and build the pivot. Full state in section 3.7.
+10. **Email stats report (Nehman):** nightly flow live for 8 mailboxes (2026-10-30); left: turn off old Canada/US flows, October backfill, the per-agent monthly report, traderjoes@ access. Full state in section 3.7.
 9. **Ideas not built:** upload the implementation workbook to pre-fill the go-live form; prettier client email (hosted welcome page or PDF attachment).
 
 ---
