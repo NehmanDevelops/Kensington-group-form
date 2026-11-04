@@ -258,6 +258,8 @@ How-To / live editor for both forms is built and live:
 **BE CAREFUL: every Save & Deploy commits DIRECTLY to the live sites (no preview, no undo).** Change one thing at a time, keep the commit note short and clear, and re-test the form with a dummy submission afterwards. If something breaks, revert the commit in GitHub (repo → Commits → Revert), or fix it here and save again.
 
 ### Email parser how-to (added 2026-10-27)
+**Blocked former clients (2026-11-04, Vera):** `BLOCKED_COMPANIES` near the top of `api/parse-email.py` (currently `zo skin health`, `zoskinhealth`). Any email whose subject/body contains one is answered `should_process: False`, `source_form: Blocked Company` and is never written to CVENT / master / agent copy (so no Smartsheet notifications). To block another company add its lowercase name (and email domain) to the list.
+
 `forms-portal.html` now also has 7 How-To rows for `api/parse-email.py` (the CVENT/Swoogo email parser that writes to the CVENT log, Envoy/Traveller MasterSheet `8780932377956228` and the agent copy). First step when rows stop arriving: Power Automate parser flow → Run history → Resubmit failed runs (safe, duplicates are skipped); confirm `/api/parse-email` still answers (the api-health workflow checks this daily).
 
 **Update 2026-10-27:** the parser how-to moved out of the Forms Portal into its own page, `/parser-portal.html` (Email Parser Portal, same password, edits `api/parse-email.py` only). `/forms-portal.html` is forms-only again.
