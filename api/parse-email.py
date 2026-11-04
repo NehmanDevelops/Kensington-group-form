@@ -236,6 +236,24 @@ HARD_NEGATIVE_PATTERNS = [
 ]
 
 
+# Former clients whose Swoogo/CVENT emails still arrive but must never reach
+# the sheets (Vera 2026-11-04: ZO Skin Health). Matched case-insensitively
+# against subject + body, spaces collapsed, so "ZO  Skin Health" and the
+# zoskinhealth.com domain both match.
+BLOCKED_COMPANIES = [
+    'zo skin health',
+    'zoskinhealth',
+]
+
+
+def blocked_company(email_text):
+    lower = re.sub(r'\s+', ' ', email_text.lower())
+    for name in BLOCKED_COMPANIES:
+        if name in lower:
+            return name
+    return ''
+
+
 def is_registration_email(email_text, email_subject=''):
     lower = email_text.lower()
     subject_lower = email_subject.lower()
@@ -671,6 +689,16 @@ def parse_email(html_email_body, email_subject=''):
     is_reg, detection_reason, reg_confidence = is_registration_email(combined_text, email_subject)
 
     output = {field: '' for fields in SECTION_FIELDS.values() for field in fields}
+
+    blocked = blocked_company(combined_text)
+    if blocked:
+        output['should_process'] = False
+        output['source_form'] = 'Blocked Company'
+        output['confidence_score'] = 0
+        output['needs_review'] = False
+        output['detection_reason'] = f'blocked_company:{blocked}'
+        output['parser_version'] = PARSER_VERSION
+        return output
 
     if not is_reg:
         output['should_process'] = False
