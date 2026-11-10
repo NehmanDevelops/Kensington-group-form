@@ -269,3 +269,30 @@ How-To / live editor for both forms is built and live:
 
 ### Power Automate how-to (2026-10-27)
 `/power-automate-howto.html` (images in `power-automate-howto/`): step-by-step with annotated screenshots for checking a flow is On, whether it ran, finding failed runs and resubmitting, plus a per-flow cheat sheet and common fixes. Shared account `service.corp.groups@` is co-owner of all 16 flows (credentials are in Sabre, not here). Known risk: flow connections (e.g. Office 365 Outlook on the CVENT parsers) still belong to Nehman's account.
+
+## Session log 2026-11-10 (Nehman): Contracted Suppliers, Magnatech template, Range gala site
+
+### Contracted Suppliers -> HubSpot (repo `sales-bi-sync`, branch `master`)
+Brief: "Hotel Contract Renewal - HubSpot Automation Project" (Jenna/Michael/Badi). Goal: complete by end of Nov.
+- **Done 2026-11-10 (commits 68a4def, b7b5fed):**
+  - `api/suppliers-sync.js` reads a **Renewal Needed** column into HubSpot `supplier_renewal_needed` (sent only if the posted rows include that column).
+  - Text like "Auto Renew" in Contract Expiration gives status **Auto-renewed** and no task.
+  - `markRemoved:true` flags hotels no longer on the sheet as **Removed from sheet** (never deletes; needs >=50 rows as a safety guard).
+  - `scripts/supplier-tasks.mjs`: env `RENEWAL_GATE=on` (GitHub repo variable) creates tasks only when Renewal Needed = Yes; removed hotels are skipped. Default off, cron still commented out.
+  - `scripts/create-supplier-properties.mjs` adds `supplier_renewal_needed` and the two new status options (run the **Set up supplier properties** workflow with create=true).
+  - **`/suppliers-upload.html`** (https://sales-bi-sync.vercel.app/suppliers-upload.html): team uploads Contracted Suppliers.xlsx, previews, then syncs. Asks for the sync key (`SUPPLIER_SYNC_KEY` in Vercel); key is not stored.
+- **Tested** with a fake HubSpot (sync + task job + xlsx reader). **Not yet run against real data.**
+- **Open / blocked:**
+  1. Setup preview (2026-11-10) says HubSpot property `supplier_csm` is MISSING. Run setup with create=true to recreate it before any live sync (a sync writes to it).
+  2. Task owners: need CSM HubSpot owner IDs (Badi, Jenna, Mira) or the owners.read scope; then set repo variables `CSM_OWNER_IDS` / `FALLBACK_OWNER_ID`.
+  3. Does the Excel have a "Renewal Needed" column yet, and what are the exact values? (Gate stays off until it does.)
+  4. No Power Automate flow yet (upload page covers manual runs).
+  5. Not done on purpose: parent/child hotel-client links (Badi to clarify), two-way sync, auto-enrolling the hotel rep sequence, hotel contacts as HubSpot contacts, Air sheet (16 airline contracts).
+- Custom object "Hotels" in the CRM menu: Jos/Nehman want it. Needs a custom-objects plan (Enterprise?) and would mean rebuilding the model. Plan not confirmed (HubSpot Settings > Data Management > Objects > Custom objects). Workaround: a saved Companies view "Hotels" (Type = Vendor, Supplier Sheet Key is known).
+- HubSpot Nov 17 custom-code retirement notice (from Bluleadz): checked, no custom code workflow actions in the portal; none of our work uses them.
+
+### Magnatech (SafeToGo) Pre-Trip Advisory email template
+Portal webportal.magnatech.com > Common Utilities > Custom Email Templates > Itinerary Tracking > Pre-Trip Advisories: "Kensington Corporate Pre-Trip Advisory". Block editor (TinyMCE text blocks accept inline HTML via tinymce.get(...).setContent). Cream logo on a purple banner, record locator + date card, Travel Summary placeholder `{{Travel Summary Text}}`, warnings text kept word for word, "passenger" wording (Jos, US/CA spelling). Page background currently ivory `#FAF7F0` (Outlook dark mode darkens it). Divider blocks do not render in Outlook; lines are drawn as table borders. **Active toggle is OFF** until Jos approves. The old draft was renamed UNUSED and later deleted by Jos. Other folders still have no custom template (Jos wants all).
+
+### Range End of Year Celebration site (for Dany, Holiday Dinner & Awards Gala)
+Single page, content in the `CONFIG` block at the top of `index.html`; [TO CONFIRM] = placeholder. Find Your Table is locked until 5:00 PM EST event day (`?unlock=1` previews). Local copy: `range-gala/` in this repo. Preview copy: https://nehmandevelops.github.io/range-gala/ (GitHub repo NehmanDevelops/range-gala, public, noindex). Vercel import was started but stopped at a Vercel email verification code; finish at vercel.com/new, then turn off GitHub Pages. Waiting on: real date, logos, Jeff's message, venue, agenda, menu, award and seating lists.
