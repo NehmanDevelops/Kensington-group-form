@@ -450,8 +450,26 @@ _SECTION_HEADER_RE = re.compile(
 )
 
 
+# CVENT's table titles are Title Case ("Event Information"), so the ALL-CAPS
+# rule below misses them; an empty field just above one (e.g. a blank "Guest
+# Passport Exp. Date:") then swallowed the whole next block as its value
+# (2026-11-12, Monster X Games: master write rejected, not a DATE).
+_KNOWN_SECTION_HEADERS = {
+    'contact information', 'event information', 'request details',
+    'registration information', 'travel selections', 'travel information',
+    'guest information', 'air request', 'hotel request',
+}
+# A line that is nothing but "Some Label:" is always a label, even when the
+# label is not in FIELD_ALIASES (e.g. CVENT's "Code:" / "Title:").
+_BARE_LABEL_RE = re.compile(r'^[A-Za-z][A-Za-z0-9 .#/()\-]{0,40}:\s*$')
+
+
 def _looks_like_section_header(line):
-    if not line or len(line) < 5:
+    if not line:
+        return False
+    if line.strip().rstrip(':').strip().lower() in _KNOWN_SECTION_HEADERS:
+        return True
+    if len(line) < 5:
         return False
     if not _SECTION_HEADER_RE.match(line):
         return False
@@ -470,6 +488,8 @@ def _collect_multiline_value(first_line, rest):
         if _starts_with_label(stripped):
             break
         if _looks_like_section_header(stripped):
+            break
+        if _BARE_LABEL_RE.match(stripped):
             break
         parts.append(stripped)
     value = ' '.join(parts)
@@ -502,6 +522,8 @@ def _capture_value_from(text):
     if not next_line:
         return ''
     if _starts_with_label(next_line):
+        return ''
+    if _looks_like_section_header(next_line) or _BARE_LABEL_RE.match(next_line):
         return ''
     rest_after = remaining[next_nl+1:] if next_nl >= 0 else ''
     return _collect_multiline_value(next_line, rest_after)
@@ -542,7 +564,7 @@ def extract_field(section_text, field_key, exclude_prefixes=None):
 
 
 def extract_email(section_text, field_key):
-    email_re = r'([\w\.\-]+@[\w\.\-]+\.\w+)'
+    email_re = r"([\w\.\-'+]+@[\w\.\-]+\.\w+)"
     if field_key == 'email_address':
         pattern = rf'(?<!CC )(?<!Guest )(?:Email\s+Address|E-mail\s+Address|Email|E-mail|E mail)\s*[:\-=]\s*{email_re}'
     elif field_key == 'cc_email_address':
@@ -553,7 +575,7 @@ def extract_email(section_text, field_key):
         return ''
     match = re.search(pattern, section_text, re.IGNORECASE)
     if match:
-        candidate = match.group(1)
+        candidate = match.group(1).lstrip("'")
         if 'kensington' in candidate.lower():
             return ''
         return candidate
@@ -636,7 +658,7 @@ def parse_full_name_fallback(output):
 def extract_emails_fallback(text, output):
     if output.get('email_address'):
         return
-    emails = re.findall(r'[\w\.\-]+@[\w\.\-]+\.\w+', text)
+    emails = [e.lstrip("'") for e in re.findall(r"[\w\.\-'+]+@[\w\.\-]+\.\w+", text)]
     for email in emails:
         if 'kensington' in email.lower():
             continue
@@ -679,7 +701,7 @@ def calculate_confidence(output):
 
 
 def parse_email(html_email_body, email_subject=''):
-    PARSER_VERSION = '3.0-date-time-split'
+    PARSER_VERSION = '3.1-section-stop'
 
     text = clean_html_to_text(html_email_body)
     text = normalize_swoogo_format(text)
@@ -1262,6 +1284,10 @@ def _write_rows(token, sheet_id, column_map, parsed, extra_cells=None):
         if val != '' and val is not None:
             if col_id in DATE_COLUMNS:
                 val = _normalize_date_for_smartsheet(val)
+                # Smartsheet rejects the WHOLE row if a DATE cell is not a
+                # date, so drop a junk value instead of losing the passenger.
+                if not re.match(r'^\d{4}-\d{2}-\d{2}$', str(val)):
+                    continue
             cells.append({'columnId': col_id, 'value': val})
     if extra_cells:
         cells.extend(extra_cells)
@@ -1470,6 +1496,10 @@ def _update_row(token, sheet_id, row_id, column_map, parsed, extra_cells=None):
         if val != '' and val is not None:
             if col_id in DATE_COLUMNS:
                 val = _normalize_date_for_smartsheet(val)
+                # Smartsheet rejects the WHOLE row if a DATE cell is not a
+                # date, so drop a junk value instead of losing the passenger.
+                if not re.match(r'^\d{4}-\d{2}-\d{2}$', str(val)):
+                    continue
             cells.append({'columnId': col_id, 'value': val})
     if extra_cells:
         cells.extend(extra_cells)
