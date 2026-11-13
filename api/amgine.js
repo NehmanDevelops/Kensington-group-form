@@ -849,11 +849,28 @@ export default async function handler(req, res) {
   // return the exact booking payload for that row WITHOUT sending anything
   // or touching its status. For showing the real JSON live (e.g. to Amgine
   // on a screenshare) without firing a real booking each time.
-  if (isTrue(body.__previewPayload) && body.rowId) {
+  // Also accepts { __previewPayload: true, groupId[, email | firstName+lastName] }
+  // (2026-11-13, Vera: "did the snap code go to Amgine for MLTIMONJAN27ASEU")
+  // → previews the first matching traveller in that group. Still read-only.
+  if (isTrue(body.__previewPayload) && (body.rowId || body.groupId)) {
     try {
       const master = await (await api(`/sheets/${MASTER}`)).json();
       const M = indexSheet(master);
-      const mrow = (master.rows || []).find(x => String(x.id) === String(body.rowId));
+      let mrow;
+      if (body.rowId) {
+        mrow = (master.rows || []).find(x => String(x.id) === String(body.rowId));
+      } else {
+        const wantGroup = norm(body.groupId).toLowerCase();
+        const wantEmail = norm(body.email).toLowerCase();
+        const wantFirst = norm(body.firstName).toLowerCase();
+        const wantLast = norm(body.lastName).toLowerCase();
+        mrow = (master.rows || []).find(x => {
+          if (norm(M.val(x, 'Group ID')).toLowerCase() !== wantGroup) return false;
+          if (wantEmail) return norm(M.val(x, 'Email Address')).toLowerCase() === wantEmail;
+          if (wantFirst || wantLast) return norm(M.val(x, 'First Name')).toLowerCase() === wantFirst && norm(M.val(x, 'Last Name')).toLowerCase() === wantLast;
+          return true;
+        });
+      }
       if (!mrow) return res.status(404).json({ ok: false, error: 'row not found' });
       const groups = await (await api(`/sheets/${GROUPS}`)).json();
       const G = indexSheet(groups);
