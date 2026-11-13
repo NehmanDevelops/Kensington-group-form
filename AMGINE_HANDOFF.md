@@ -256,6 +256,9 @@ Sent at the **ROOT** of the booking payload (sibling of `ExternalId`, `TravelerR
 - **Vera confirmed:** "As long as Ray sees them coming through then that should be good! For now." She'll program a real code with a real client later to verify actual pricing/booking behavior.
 - **⚠️ Open note:** the SNAPCODETEST01 / itinerary 276617 test does not correspond to any group row in the LIVE GROUP MASTERSHEET (checked 2026-08-05 — `Snap Code/Contract Code` and `Tour Code` are blank on every row, no group ID contains "SNAP"). That test was likely fired directly against Amgine (Postman or similar), not through our Smartsheet pipeline. **Our code path itself has not yet been proven end-to-end with real data in a group row** — worth a real test (enter codes on an actual group row, fire a booking, confirm Raymond sees `NegotiatedRateCodes` on that itinerary) next time it's convenient.
 
+### 12.3a Checking what a group sends (2026-11-13)
+Read-only preview, nothing is booked: `POST /api/amgine {"__previewPayload": true, "groupId": "<GROUP ID>"}` (optionally `email` or `firstName`+`lastName`; `rowId` still works). Returns the exact payload, including `BranchInfo.AirConfig.NegotiatedRateCodes`. First real-data proof: MLTIMONJAN27ASEU (Monster X Games) sends AA CorporateId MON11 + TourCode N*IN7483US for slot 1, and slots 2-5 (UA/DL/AS/WN) the same way.
+
 ### 12.4 How to use it going forward
 On any group's row in the LIVE GROUP MASTERSHEET, fill in:
 - **`Snap Code/Contract Code`**: e.g. `AA:DIS01, DL:DIS02`
