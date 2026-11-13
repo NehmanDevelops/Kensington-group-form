@@ -51,6 +51,10 @@ const MASTER_TITLES = {
   autoSynced:   ['Auto-Synced', 'Auto Synced'],
 };
 
+// Ledger sheet of every partner-sync key ever copied (see loadLedger). Found by name on first use; paste its id here to skip the lookup.
+const LEDGER_SHEET_ID = '';
+let ledgerIdCache = null;
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -211,6 +215,53 @@ export default async function handler(req, res) {
   };
   // value to send for a column: dates are normalised (null = skip), everything else unchanged
   const fixVal = (col, v) => (col && col.type === 'DATE') ? toIsoDate(v) : v;
+  // ── "Already copied" ledger (2026-11-13, Vera) ───────────────────────────
+  // The partner syncs only knew a row was copied by finding its key on our sheet, so when an agent DELETED our copy
+  // (Lisa Voorhies, Arbonne, signed up twice with two emails) the next run re-created it, again and again. Every key a
+  // sync has ever copied is now recorded on a small sheet; a key that is on the ledger but missing from our sheet was
+  // deleted on purpose and is NOT re-created. To bring one back: delete its row from the ledger sheet, then run the sync.
+  const LEDGER_NAME = 'Partner Sync - Copied Rows (do not edit)';
+  const ssWrite = async (method, path, body) => {
+    const r = await fetch(`https://api.smartsheet.com/2.0${path}`, { method, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok || (j.message && j.message !== 'SUCCESS')) throw new Error(`Smartsheet ${method} ${path}: ${j.message || r.status}`);
+    return j;
+  };
+  async function loadLedger(commit) {
+    let id = LEDGER_SHEET_ID || ledgerIdCache;
+    if (!id) {
+      const list = await api('/sheets?includeAll=true');
+      const hit = (list.data || []).find(x => x.name === LEDGER_NAME);
+      id = hit && String(hit.id);
+    }
+    if (!id && commit) {
+      const made = await ssWrite('POST', '/sheets', { name: LEDGER_NAME, columns: [
+        { title: 'Key', type: 'TEXT_NUMBER', primary: true }, { title: 'Copied At', type: 'TEXT_NUMBER' }, { title: 'Source', type: 'TEXT_NUMBER' } ] });
+      id = String(made.result.id);
+    }
+    if (!id) return { sheetId: null, keys: new Set(), missing: true };
+    ledgerIdCache = id;
+    const sh = await api(`/sheets/${id}`);
+    if (sh.error || !sh.columns) throw new Error('Cannot read ledger sheet: ' + (sh.message || sh.errorCode));
+    const keyCol = sh.columns.find(c => c.primary) || sh.columns[0];
+    const cols = Object.fromEntries(sh.columns.map(c => [c.title, c.id]));
+    const keys = new Set((sh.rows || []).map(r => rawVal(r, keyCol.id)).filter(Boolean));
+    return { sheetId: id, keyColId: keyCol.id, atColId: cols['Copied At'], srcColId: cols['Source'], keys };
+  }
+  async function recordLedger(ledger, keys, source) {
+    if (!ledger || !ledger.sheetId) return 0;
+    const fresh = [...new Set(keys)].filter(k => k && !ledger.keys.has(k));
+    const now = new Date().toISOString();
+    for (let i = 0; i < fresh.length; i += 400) {
+      await ssWrite('POST', `/sheets/${ledger.sheetId}/rows`, fresh.slice(i, i + 400).map(k => ({ toBottom: true, cells: [
+        { columnId: ledger.keyColId, value: k },
+        ...(ledger.atColId ? [{ columnId: ledger.atColId, value: now }] : []),
+        ...(ledger.srcColId ? [{ columnId: ledger.srcColId, value: source }] : []) ] })));
+    }
+    fresh.forEach(k => ledger.keys.add(k));
+    return fresh.length;
+  }
+
   async function arbonneSync(commit) {
     const w = async (method, path, body) => {
       const r = await fetch(`https://api.smartsheet.com/2.0${path}`, { method, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -249,6 +300,9 @@ export default async function handler(req, res) {
     const byKey = new Map(), dupes = [];
     if (keyCol) for (const r of ours.rows || []) { const k = rawVal(r, keyCol.id); if (!k) continue; if (byKey.has(k)) dupes.push(r.id); else byKey.set(k, r); }
     out.duplicateRows = dupes.length;
+    const ledger = await loadLedger(commit);
+    const keysOnSheet = [...byKey.keys()];   // recorded below, before any clean-up deletes some of them
+    out.ledger = ledger.missing ? 'not created yet (first committed run creates it)' : `${ledger.keys.size} keys`;
     // Our synced copies (they carry an Arbonne Row ID) of test rows: remove them, they are not real travellers.
     const testCopies = [];
     if (keyCol) for (const r of ours.rows || []) {
@@ -303,6 +357,7 @@ export default async function handler(req, res) {
       // A test row on Arbonne's sheet (name says "test") is never copied: deleting our copy used to make the next run re-create it.
       if (isTestName(name, rawVal(tr, (T[tkey('NVP First Name')] || {}).id), rawVal(tr, (T[tkey('NVP Last Name')] || {}).id))) { skipped.push({ row: tr.rowNumber, reason: 'test row (name says test)' }); continue; }
       if (!approved && !existing) { skipped.push({ row: tr.rowNumber, reason: 'not approved (YES)' }); continue; }
+      if (!existing && ledger.keys.has(key)) { skipped.push({ row: tr.rowNumber, reason: 'copied before, then deleted from our sheet (not re-added)' }); out.deletedNotReAdded = (out.deletedNotReAdded || 0) + 1; continue; }
 
       if (!approved && existing) {   // was copied before, no longer YES: only keep the approval columns current
         const cells = [];
@@ -327,7 +382,7 @@ export default async function handler(req, res) {
         const add = (title, value) => { const c = O[tkey(title)]; if (c && value !== '') cells.push({ columnId: c.id, value }); };
         add('Group ID', gid); add('Source', ARB_SOURCE); add('Traveller Type', 'Invitee'); add('Company Name', 'Arbonne'); add('Submission Date', today);
         if (keyCol) cells.push({ columnId: keyCol.id, value: key });
-        toCreate.push({ toBottom: true, cells, row: tr.rowNumber, name });
+        toCreate.push({ toBottom: true, cells, row: tr.rowNumber, name, key });
       } else {
         const cells = [];   // update only what changed; never blank out something Arbonne left empty
         for (const p of pairs) {
@@ -360,15 +415,16 @@ export default async function handler(req, res) {
     if (!commit) return out;
 
     if (toCreate.length) {
-      try { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; }
+      try { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; toCreate.forEach(c => keysOnSheet.push(c.key)); }
       catch (e) {   // the batch was rejected: add the rows one by one so a single bad row cannot block the rest
         out.batchError = e.message; out.created = 0; out.createFailed = [];
         for (const c of toCreate) {
-          try { await w('POST', `/sheets/${ENVOY_SHEET}/rows`, [{ toBottom: c.toBottom, cells: c.cells }]); out.created++; }
+          try { await w('POST', `/sheets/${ENVOY_SHEET}/rows`, [{ toBottom: c.toBottom, cells: c.cells }]); out.created++; keysOnSheet.push(c.key); }
           catch (e2) { out.createFailed.push({ theirRow: c.row, error: e2.message.slice(0, 160) }); }
         }
       }
     }
+    out.ledgerAdded = await recordLedger(ledger, keysOnSheet, ARB_SOURCE);
     if (toUpdate.length) { await w('PUT', `/sheets/${ENVOY_SHEET}/rows`, toUpdate.map(({ id, cells }) => ({ id, cells }))); out.updated = toUpdate.length; }
     if (backUpdates.length) { await w('PUT', `/sheets/${ARB_SHEET}/rows`, backUpdates.map(({ id, cells }) => ({ id, cells }))); out.backSynced = backUpdates.length; }
     return out;
@@ -462,6 +518,8 @@ export default async function handler(req, res) {
     if (keyCol) for (const r of ours.rows || []) { const k = rawVal(r, keyCol.id); if (!k) continue; if (byKey.has(k)) dupes.push(r.id); else byKey.set(k, r); }
     out.duplicateRows = dupes.length;
     if (dupes.length && commit) await w('DELETE', `/sheets/${ENVOY_SHEET}/rows?ids=${dupes.join(',')}&ignoreRowsNotFound=true`);
+    const ledger = await loadLedger(commit);
+    const keysOnSheet = [...byKey.keys()];
 
     const today = new Date().toISOString().slice(0, 10);
     const tFirst = firstOf(T, ['First name', 'First Name', 'Legal First Name']), tLast = firstOf(T, ['Last name', 'Last Name', 'Legal Last Name']);
@@ -472,6 +530,7 @@ export default async function handler(req, res) {
       const fn = tFirst ? rawVal(tr, tFirst.id) : '', ln = tLast ? rawVal(tr, tLast.id) : '';
       if (!fn && !ln) { skipped.push({ row: tr.rowNumber, reason: 'no name' }); continue; }
       if (isTestName(fn, ln)) { skipped.push({ row: tr.rowNumber, reason: 'test row (name says test)' }); continue; }
+      if (!existing && ledger.keys.has(key)) { skipped.push({ row: tr.rowNumber, reason: 'copied before, then deleted from our sheet (not re-added)' }); continue; }
       const cells = [];
       for (const p of pairs) {
         let v = rawVal(tr, p.tc.id); if (v === '') continue;
@@ -485,7 +544,7 @@ export default async function handler(req, res) {
         const add = (title, value) => { const c = O[tkey(title)]; if (c && value !== '') cells.push({ columnId: c.id, value }); };
         add('Group ID', gid); add('Source', CAC_SOURCE); add('Company Name', 'Cactus Club'); add('Submission Date', today);
         if (keyCol) cells.push({ columnId: keyCol.id, value: key });
-        toCreate.push({ toBottom: true, cells, row: tr.rowNumber, name: `${fn} ${ln}`.trim() });
+        toCreate.push({ toBottom: true, cells, row: tr.rowNumber, name: `${fn} ${ln}`.trim(), key });
       } else {
         const gcol = O[tkey('Group ID')];
         if (gcol && gid && rawVal(existing, gcol.id) !== gid) cells.push({ columnId: gcol.id, value: gid });
@@ -506,12 +565,13 @@ export default async function handler(req, res) {
     if (!commit) return out;
 
     if (toCreate.length) {
-      try { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; }
+      try { const res = await w('POST', `/sheets/${ENVOY_SHEET}/rows`, toCreate.map(({ toBottom, cells }) => ({ toBottom, cells }))); out.created = (res.result || []).length; toCreate.forEach(c => keysOnSheet.push(c.key)); }
       catch (e) {
         out.batchError = e.message; out.created = 0; out.createFailed = [];
-        for (const c of toCreate) { try { await w('POST', `/sheets/${ENVOY_SHEET}/rows`, [{ toBottom: c.toBottom, cells: c.cells }]); out.created++; } catch (e2) { out.createFailed.push({ theirRow: c.row, error: e2.message.slice(0, 160) }); } }
+        for (const c of toCreate) { try { await w('POST', `/sheets/${ENVOY_SHEET}/rows`, [{ toBottom: c.toBottom, cells: c.cells }]); out.created++; keysOnSheet.push(c.key); } catch (e2) { out.createFailed.push({ theirRow: c.row, error: e2.message.slice(0, 160) }); } }
       }
     }
+    out.ledgerAdded = await recordLedger(ledger, keysOnSheet, CAC_SOURCE);
     if (toUpdate.length) { await w('PUT', `/sheets/${ENVOY_SHEET}/rows`, toUpdate.map(({ id, cells }) => ({ id, cells }))); out.updated = toUpdate.length; }
     if (backUpdates.length) { await w('PUT', `/sheets/${sheetId}/rows`, backUpdates.map(({ id, cells }) => ({ id, cells }))); out.backSynced = backUpdates.length; }
     return out;
